@@ -1,0 +1,173 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { useFinanzas } from "@/context/FinanzasContext";
+import {
+  gastosPorCategoriaFija,
+  totalMensualPorMoneda,
+  totalPorQuincena,
+} from "@/lib/gastos-fijos";
+import { formatearMoneda } from "@/lib/quincenas";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { FormularioGastoFijo } from "@/components/gastos-fijos/FormularioGastoFijo";
+import { ListaGastosFijos } from "@/components/gastos-fijos/ListaGastosFijos";
+
+export function GastosFijosContent() {
+  const { gastosFijos, configuracion, cargado } = useFinanzas();
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [vistaCategoria, setVistaCategoria] = useState<"todas" | "1" | "2">("todas");
+
+  const totalesPorMoneda = useMemo(
+    () => Array.from(totalMensualPorMoneda(gastosFijos).entries()),
+    [gastosFijos]
+  );
+
+  const totalQ1 = useMemo(
+    () => totalPorQuincena(gastosFijos, 1).get(configuracion.moneda) ?? 0,
+    [gastosFijos, configuracion.moneda]
+  );
+
+  const totalQ2 = useMemo(
+    () => totalPorQuincena(gastosFijos, 2).get(configuracion.moneda) ?? 0,
+    [gastosFijos, configuracion.moneda]
+  );
+
+  const porCategoria = useMemo(() => {
+    const q = vistaCategoria === "todas" ? undefined : (Number(vistaCategoria) as 1 | 2);
+    return gastosPorCategoriaFija(gastosFijos, q);
+  }, [gastosFijos, vistaCategoria]);
+
+  if (!cargado) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <p className="text-muted">Cargando...</p>
+      </div>
+    );
+  }
+
+  return (
+    <PageContainer>
+      <header className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-foreground sm:text-2xl">Gastos fijos</h1>
+          <p className="mt-1 text-sm text-muted">
+            Pagos mensuales organizados por quincena según tus días de pago (
+            {configuracion.diasPago.join(" y ")})
+          </p>
+
+          {totalesPorMoneda.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-4 text-sm">
+              {totalesPorMoneda.map(([moneda, total]) => (
+                <div
+                  key={moneda}
+                  className="rounded-lg border border-border bg-surface px-4 py-2"
+                >
+                  <span className="font-medium text-foreground">{moneda}</span>
+                  <span className="ml-3 text-muted">
+                    Total mensual:{" "}
+                    <span className="font-semibold text-gasto">
+                      {formatearMoneda(total, moneda)}
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {!mostrarFormulario && (
+          <button
+            type="button"
+            onClick={() => setMostrarFormulario(true)}
+            className="w-full shrink-0 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover sm:w-auto"
+          >
+            + Nuevo gasto fijo
+          </button>
+        )}
+      </header>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="rounded-xl border border-border bg-surface p-4 sm:p-5">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted">Quincena 1</p>
+          <p className="mt-1 text-2xl font-bold text-gasto">
+            {formatearMoneda(totalQ1, configuracion.moneda)}
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            Gastos que pagas o presupuestas en la primera quincena
+          </p>
+        </div>
+        <div className="rounded-xl border border-border bg-surface p-4 sm:p-5">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted">Quincena 2</p>
+          <p className="mt-1 text-2xl font-bold text-gasto">
+            {formatearMoneda(totalQ2, configuracion.moneda)}
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            Gastos que pagas o presupuestas en la segunda quincena
+          </p>
+        </div>
+      </div>
+
+      {porCategoria.length > 0 && (
+        <div className="rounded-xl border border-border bg-surface p-4 sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold text-foreground">Por categoría</h2>
+            <div className="flex gap-2">
+              {(["todas", "1", "2"] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setVistaCategoria(v)}
+                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                    vistaCategoria === v
+                      ? "bg-accent text-white"
+                      : "bg-background text-muted hover:text-foreground"
+                  }`}
+                >
+                  {v === "todas" ? "Todas" : `Q${v}`}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {porCategoria.map((item) => (
+              <div
+                key={item.categoria}
+                className="flex items-center justify-between rounded-lg bg-background px-3 py-2 text-sm"
+              >
+                <span className="text-muted">
+                  {item.categoria}{" "}
+                  <span className="text-xs">({item.cantidad})</span>
+                </span>
+                <span className="font-semibold text-gasto">
+                  {formatearMoneda(item.monto, configuracion.moneda)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div
+        className={
+          mostrarFormulario
+            ? "grid gap-8 xl:grid-cols-[380px_1fr]"
+            : "grid gap-8"
+        }
+      >
+        {mostrarFormulario && (
+          <div className="space-y-4">
+            <button
+              type="button"
+              onClick={() => setMostrarFormulario(false)}
+              className="text-sm text-muted transition-colors hover:text-foreground"
+            >
+              ← Cancelar
+            </button>
+            <FormularioGastoFijo onExito={() => setMostrarFormulario(false)} />
+          </div>
+        )}
+        <ListaGastosFijos gastosFijos={gastosFijos} />
+      </div>
+    </PageContainer>
+  );
+}

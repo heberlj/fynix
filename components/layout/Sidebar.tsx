@@ -1,0 +1,139 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useFinanzas } from "@/context/FinanzasContext";
+import { SelectorTema } from "@/components/ui/SelectorTema";
+import { Logo } from "@/components/ui/Logo";
+import { NAV_ITEMS } from "@/components/layout/navegacion";
+import { useAuth } from "@/context/AuthContext";
+import { aplicarTema } from "@/lib/tema";
+import type { TemaApp } from "@/types/finanzas";
+
+interface SidebarProps {
+  abierto: boolean;
+  onCerrar: () => void;
+  nombreUsuario?: string;
+}
+
+export function Sidebar({ abierto, onCerrar, nombreUsuario }: SidebarProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { configuracion, actualizarConfiguracion } = useFinanzas();
+  const { cerrarSesion } = useAuth();
+
+  function cambiarTema(tema: TemaApp) {
+    aplicarTema(tema);
+    actualizarConfiguracion({ tema });
+  }
+
+  return (
+    <>
+      {abierto && (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={onCerrar}
+          aria-label="Cerrar menú"
+        />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex h-screen w-72 max-w-[85vw] flex-col border-r border-border bg-surface transition-transform duration-300 ease-in-out lg:sticky lg:top-0 lg:z-auto lg:w-64 lg:max-w-none lg:translate-x-0 ${
+          abierto ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex items-center justify-between border-b border-border px-5 py-4 lg:px-6 lg:py-5">
+          <div className="flex items-center gap-3">
+            <Logo variante="compacto" />
+            <div>
+              <p className="text-sm font-semibold text-foreground">Fynix</p>
+              <p className="text-xs text-muted">Tu dinero, tu futuro</p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onCerrar}
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-hover hover:text-foreground lg:hidden"
+            aria-label="Cerrar menú"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              aria-hidden
+            >
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-4">
+          {NAV_ITEMS.map((item) => {
+            const activo =
+              item.href === "/"
+                ? pathname === "/"
+                : pathname.startsWith(item.href);
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onCerrar}
+                className={`flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors lg:py-2.5 ${
+                  activo
+                    ? "bg-accent/10 text-accent"
+                    : "text-muted hover:bg-surface-hover hover:text-foreground"
+                }`}
+              >
+                <span className="text-base">{item.icon}</span>
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="mt-auto space-y-3 border-t border-border p-4">
+          {nombreUsuario && (
+            <div className="rounded-lg bg-background px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wider text-muted">
+                Sesión
+              </p>
+              <p className="truncate text-sm font-medium text-foreground">
+                {nombreUsuario}
+              </p>
+            </div>
+          )}
+          <SelectorTema
+            value={configuracion.tema ?? "claro"}
+            onChange={cambiarTema}
+            compacto
+          />
+          <p className="text-xs text-muted">
+            Quincenas alineadas a tus días de pago
+          </p>
+          <p className="text-[10px] text-muted/80">
+            © 2026 Fynix. Todos los derechos reservados.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              cerrarSesion();
+              onCerrar();
+              router.replace("/login");
+            }}
+            className="w-full rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-hover hover:text-foreground"
+          >
+            Cerrar sesión
+          </button>
+        </div>
+      </aside>
+    </>
+  );
+}

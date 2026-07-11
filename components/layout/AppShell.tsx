@@ -1,0 +1,83 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { Sidebar } from "@/components/layout/Sidebar";
+import { MobileHeader } from "@/components/layout/MobileHeader";
+import { ThemeSync } from "@/components/layout/ThemeSync";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { FinanzasProvider } from "@/context/FinanzasContext";
+
+const RUTAS_AUTH = ["/login", "/registro"];
+
+function AppRoutes({ children }: { children: React.ReactNode }) {
+  const { sesion, cargado } = useAuth();
+  const pathname = usePathname();
+  const router = useRouter();
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  const esRutaAuth = RUTAS_AUTH.includes(pathname);
+
+  useEffect(() => {
+    setMenuAbierto(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!cargado) return;
+
+    if (!sesion && !esRutaAuth) {
+      router.replace("/login");
+      return;
+    }
+
+    if (sesion && esRutaAuth) {
+      router.replace("/");
+    }
+  }, [cargado, sesion, esRutaAuth, router]);
+
+  useEffect(() => {
+    document.body.style.overflow = menuAbierto ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [menuAbierto]);
+
+  if (!cargado) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-muted">Cargando...</p>
+      </div>
+    );
+  }
+
+  if (esRutaAuth) {
+    if (sesion) return null;
+    return <>{children}</>;
+  }
+
+  if (!sesion) return null;
+
+  return (
+    <FinanzasProvider key={sesion.usuarioId} usuarioId={sesion.usuarioId}>
+      <ThemeSync />
+      <div className="flex min-h-screen bg-background">
+        <Sidebar
+          abierto={menuAbierto}
+          onCerrar={() => setMenuAbierto(false)}
+          nombreUsuario={sesion.nombre}
+        />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <MobileHeader onAbrirMenu={() => setMenuAbierto(true)} />
+          <main className="flex flex-1 flex-col overflow-auto">{children}</main>
+        </div>
+      </div>
+    </FinanzasProvider>
+  );
+}
+
+export function AppShell({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthProvider>
+      <AppRoutes>{children}</AppRoutes>
+    </AuthProvider>
+  );
+}
