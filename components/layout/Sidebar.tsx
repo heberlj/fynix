@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useFinanzas } from "@/context/FinanzasContext";
 import { SelectorTema } from "@/components/ui/SelectorTema";
 import { Logo } from "@/components/ui/Logo";
+import { NavIcon } from "@/components/ui/NavIcon";
 import {
   NAV_CONFIGURACION,
   NAV_DASHBOARD,
@@ -48,7 +49,9 @@ function NavLink({
           : "text-muted hover:bg-surface-hover hover:text-foreground"
       }`}
     >
-      <span className="text-base">{item.icon}</span>
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+        <NavIcon name={item.icon} />
+      </span>
       {item.label}
     </Link>
   );
