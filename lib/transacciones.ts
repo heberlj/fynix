@@ -87,6 +87,21 @@ export function origenPorDefectoPago(
   return { tipo: "efectivo" };
 }
 
+export function monedaDeOrigen(
+  origen: OrigenFondo,
+  cuentas: CuentaBancaria[],
+  tarjetas: TarjetaCredito[],
+  monedaDefecto: string
+): string {
+  if (origen.tipo === "cuenta") {
+    return cuentas.find((c) => c.id === origen.id)?.moneda ?? monedaDefecto;
+  }
+  if (origen.tipo === "tarjeta") {
+    return tarjetas.find((t) => t.id === origen.id)?.moneda ?? monedaDefecto;
+  }
+  return monedaDefecto;
+}
+
 export function codificarOrigen(origen: OrigenFondo): string {
   if (origen.tipo === "efectivo") return "efectivo";
   return `${origen.tipo}:${origen.id}`;

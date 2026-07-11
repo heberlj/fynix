@@ -83,7 +83,7 @@ export function FormularioCuenta({ onExito }: { onExito?: () => void } = {}) {
             type="text"
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
-            placeholder="Ej: Nómina, Ahorros, USD..."
+            placeholder="Ej: Nómina, Ahorros, DOP..."
             className={inputClass}
           />
         </label>

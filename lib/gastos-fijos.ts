@@ -108,10 +108,14 @@ export function gastosPorCategoriaFija(
 
 export function calcularGastosFijosEnPeriodo(
   gastos: GastoFijo[],
-  periodo: PeriodoQuincena
+  periodo: PeriodoQuincena,
+  moneda?: string
 ): number {
+  const gastosFiltrados = moneda
+    ? gastos.filter((g) => g.moneda === moneda)
+    : gastos;
   return redondear(
-    gastos.reduce((total, gasto) => {
+    gastosFiltrados.reduce((total, gasto) => {
       return gastoAplicaEnPeriodo(gasto, periodo) ? total + gasto.monto : total;
     }, 0)
   );

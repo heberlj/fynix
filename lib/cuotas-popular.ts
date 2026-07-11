@@ -148,9 +148,13 @@ export function calcularCuotasPopularEnPeriodo(
   cuotas: CuotaPopular[],
   tarjetas: TarjetaCredito[],
   periodo: PeriodoQuincena,
-  transacciones: Transaccion[] = []
+  transacciones: Transaccion[] = [],
+  moneda?: string
 ): number {
-  return cuotas.reduce((total, cuota) => {
+  const cuotasFiltradas = moneda
+    ? cuotas.filter((c) => c.moneda === moneda)
+    : cuotas;
+  return cuotasFiltradas.reduce((total, cuota) => {
     if (cuotaPopularCompletada(cuota)) return total;
     if (cuotaPagadaEnPeriodo(cuota.id, transacciones, periodo)) return total;
     const dia = diaPagoCuota(cuota, tarjetas);

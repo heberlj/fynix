@@ -11,9 +11,10 @@ import {
   disponibleLimiteCuotasPopular,
   tarjetaTieneCuotasPopular,
 } from "@/lib/cuotas-popular";
-import { decodificarOrigen } from "@/lib/transacciones";
+import { decodificarOrigen, monedaDeOrigen } from "@/lib/transacciones";
 import { formatearMoneda, periodoDeFecha } from "@/lib/quincenas";
 import { SelectorOrigenFondo } from "@/components/ui/SelectorOrigenFondo";
+import { SelectorMoneda } from "@/components/ui/SelectorMoneda";
 import {
   CamposCuotasPopular,
   type ValoresCuotasPopular,
@@ -31,11 +32,12 @@ const CUOTAS_INICIAL: ValoresCuotasPopular = {
 };
 
 export function FormularioTransaccion({ onExito }: { onExito?: () => void } = {}) {
-  const { agregarTransaccion, configuracion, tarjetas, cuotasPopular } =
+  const { agregarTransaccion, configuracion, tarjetas, cuotasPopular, cuentas } =
     useFinanzas();
   const [tipo, setTipo] = useState<"gasto" | "ingreso">("gasto");
   const [descripcion, setDescripcion] = useState("");
   const [monto, setMonto] = useState("");
+  const [moneda, setMoneda] = useState(configuracion.moneda);
   const [categoria, setCategoria] = useState<string>(CATEGORIAS_GASTO[0]);
   const [fecha, setFecha] = useState(fechaHoy());
   const [origenValor, setOrigenValor] = useState("efectivo");
@@ -76,6 +78,10 @@ export function FormularioTransaccion({ onExito }: { onExito?: () => void } = {}
     setOrigenValor(valor);
     setUsarCuotasPopular(false);
     setCuotasValores(CUOTAS_INICIAL);
+    const origenNuevo = decodificarOrigen(valor);
+    if (origenNuevo) {
+      setMoneda(monedaDeOrigen(origenNuevo, cuentas, tarjetas, configuracion.moneda));
+    }
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -95,6 +101,22 @@ export function FormularioTransaccion({ onExito }: { onExito?: () => void } = {}
     const origenDecodificado = decodificarOrigen(origenValor);
     if (!origenDecodificado) {
       setError("Selecciona de dónde sale o entra el dinero");
+      return;
+    }
+
+    const monedaOrigen = monedaDeOrigen(
+      origenDecodificado,
+      cuentas,
+      tarjetas,
+      configuracion.moneda
+    );
+    if (
+      origenDecodificado.tipo !== "efectivo" &&
+      moneda !== monedaOrigen
+    ) {
+      setError(
+        `La moneda debe coincidir con la del origen seleccionado (${monedaOrigen})`
+      );
       return;
     }
 
@@ -145,6 +167,7 @@ export function FormularioTransaccion({ onExito }: { onExito?: () => void } = {}
         tipo,
         categoria,
         fecha,
+        moneda,
         origen: origenDecodificado,
       },
       planCuotasPopular
@@ -152,6 +175,7 @@ export function FormularioTransaccion({ onExito }: { onExito?: () => void } = {}
 
     setDescripcion("");
     setMonto("");
+    setMoneda(configuracion.moneda);
     setFecha(fechaHoy());
     setUsarCuotasPopular(false);
     setCuotasValores(CUOTAS_INICIAL);
@@ -223,6 +247,11 @@ export function FormularioTransaccion({ onExito }: { onExito?: () => void } = {}
             placeholder="0.00"
             className={inputClass}
           />
+        </label>
+
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium text-foreground">Moneda</span>
+          <SelectorMoneda value={moneda} onChange={setMoneda} />
         </label>
 
         <label className="flex flex-col gap-1.5">

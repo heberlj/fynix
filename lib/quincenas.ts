@@ -193,7 +193,7 @@ export function asignarQuincena(
   return { quincena: periodo.quincena, mes: periodo.mes };
 }
 
-export function formatearMoneda(monto: number, moneda = "USD"): string {
+export function formatearMoneda(monto: number, moneda = "DOP"): string {
   return new Intl.NumberFormat("es-DO", {
     style: "currency",
     currency: moneda,

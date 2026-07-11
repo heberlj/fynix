@@ -285,6 +285,7 @@ export function FinanzasProvider({
           categoria: "Compras",
           fecha,
           quincena,
+          moneda: cuota.moneda,
           origen: origenPago,
           pagoCuotaPopularId: cuota.id,
         };

@@ -1,4 +1,4 @@
-import type { CuentaBancaria, CuotaPopular, EstadoFinanzas, GastoFijo, Prestamo, TarjetaCredito } from "@/types/finanzas";
+import type { CuentaBancaria, CuotaPopular, EstadoFinanzas, GastoFijo, Prestamo, TarjetaCredito, Transaccion } from "@/types/finanzas";
 import { CONFIGURACION_DEFAULT } from "@/types/finanzas";
 import { quincenaNumeroDeDia, tipoPresupuestoPorDefecto } from "@/lib/gastos-fijos";
 import { claveDatosUsuario } from "@/lib/auth";
@@ -127,10 +127,26 @@ function normalizarGastosFijos(
   });
 }
 
+function normalizarTransacciones(
+  transacciones: Transaccion[] = [],
+  monedaDefecto = CONFIGURACION_DEFAULT.moneda
+): Transaccion[] {
+  return transacciones.map((t) => ({
+    ...t,
+    moneda: t.moneda ?? monedaDefecto,
+  }));
+}
+
 export function normalizarEstado(parsed: Partial<EstadoFinanzas>): EstadoFinanzas {
+  const configuracion = {
+    ...CONFIGURACION_DEFAULT,
+    ...parsed.configuracion,
+  };
+
   return {
     ...estadoInicial(),
     ...parsed,
+    transacciones: normalizarTransacciones(parsed.transacciones, configuracion.moneda),
     tarjetas: normalizarTarjetas(parsed.tarjetas),
     prestamos: normalizarPrestamos(parsed.prestamos),
     cuotasPopular: normalizarCuotasPopular(parsed.cuotasPopular),
@@ -140,10 +156,7 @@ export function normalizarEstado(parsed: Partial<EstadoFinanzas>): EstadoFinanza
     ),
     cuentas: normalizarCuentas(parsed.cuentas),
     efectivo: parsed.efectivo ?? 0,
-    configuracion: {
-      ...CONFIGURACION_DEFAULT,
-      ...parsed.configuracion,
-    },
+    configuracion,
   };
 }
 

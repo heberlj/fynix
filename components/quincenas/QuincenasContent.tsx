@@ -49,9 +49,14 @@ export function QuincenasContent() {
           prestamos,
           cuotasPopular,
           gastosFijos,
-          periodo
+          periodo,
+          configuracion.moneda
         ),
-        transacciones: obtenerTransaccionesEnPeriodo(transacciones, periodo),
+        transacciones: obtenerTransaccionesEnPeriodo(
+          transacciones,
+          periodo,
+          configuracion.moneda
+        ),
         pagosTarjetas: obtenerPagosTarjetasDetalle(tarjetas, periodo),
         cuotasPrestamos: obtenerCuotasPrestamosDetalle(prestamos, periodo),
         cuotasPopular: obtenerCuotasPopularDetalle(cuotasPopular, tarjetas, periodo, transacciones),
@@ -68,6 +73,7 @@ export function QuincenasContent() {
       cuotasPopular,
       gastosFijos,
       quincenaActual,
+      configuracion.moneda,
     ]
   );
 

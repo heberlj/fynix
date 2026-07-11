@@ -43,7 +43,8 @@ export function DashboardContent() {
     prestamos,
     cuotasPopular,
     gastosFijos,
-    quincenaActual
+    quincenaActual,
+    configuracion.moneda
   );
   const resumenAnterior = calcularResumenQuincena(
     transacciones,
@@ -51,7 +52,8 @@ export function DashboardContent() {
     prestamos,
     cuotasPopular,
     gastosFijos,
-    quincenaAnterior
+    quincenaAnterior,
+    configuracion.moneda
   );
   const compromisosActual =
     resumenActual.pagosTarjetas +
@@ -176,7 +178,8 @@ export function DashboardContent() {
                 prestamos,
                 cuotasPopular,
                 gastosFijos,
-                q
+                q,
+                configuracion.moneda
               );
               return (
                 <div

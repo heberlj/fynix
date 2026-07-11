@@ -13,6 +13,7 @@ export interface Transaccion {
   categoria: string;
   fecha: string;
   quincena: 1 | 2;
+  moneda: string;
   /** De dónde sale el gasto o a dónde entra el ingreso */
   origen?: OrigenFondo;
   /** Solo gastos con tarjeta: rotativo afecta deudaActual; cuotas crea un plan */
@@ -215,7 +216,7 @@ export interface EstadoFinanzas {
 
 export const CONFIGURACION_DEFAULT: ConfiguracionUsuario = {
   diasPago: [15, 30],
-  moneda: "USD",
+  moneda: "DOP",
   tema: "claro",
 };
 

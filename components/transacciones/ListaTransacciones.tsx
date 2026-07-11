@@ -48,12 +48,14 @@ export function ListaTransacciones({ transacciones }: ListaTransaccionesProps) {
   const totales = useMemo(() => {
     let ingresos = 0;
     let gastos = 0;
-    filtradas.forEach((t) => {
+    filtradas
+      .filter((t) => t.moneda === configuracion.moneda)
+      .forEach((t) => {
       if (t.tipo === "ingreso") ingresos += t.monto;
       else gastos += t.monto;
     });
     return { ingresos, gastos, balance: ingresos - gastos };
-  }, [filtradas]);
+  }, [filtradas, configuracion.moneda]);
 
   return (
     <div className="rounded-xl border border-border bg-surface shadow-sm">
@@ -188,6 +190,11 @@ export function ListaTransacciones({ transacciones }: ListaTransaccionesProps) {
                   <span className="shrink-0 rounded-full bg-background px-2 py-0.5 text-xs text-muted">
                     {t.categoria}
                   </span>
+                  {t.moneda !== configuracion.moneda && (
+                    <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+                      {t.moneda}
+                    </span>
+                  )}
                 </div>
                 <p className="mt-0.5 text-xs text-muted">
                   {formatearFecha(t.fecha)} · Q{t.quincena}
@@ -206,7 +213,7 @@ export function ListaTransacciones({ transacciones }: ListaTransaccionesProps) {
                 }`}
               >
                 {t.tipo === "ingreso" ? "+" : "−"}
-                {formatearMoneda(t.monto, configuracion.moneda)}
+                {formatearMoneda(t.monto, t.moneda)}
               </p>
 
               <button

@@ -57,6 +57,7 @@ export function estimarIngresoQuincena(
   configuracion: ConfiguracionUsuario,
   ingresoManual?: number | null
 ): number {
+  const moneda = configuracion.moneda;
   if (ingresoManual != null && ingresoManual > 0) {
     return ingresoManual;
   }
@@ -72,7 +73,8 @@ export function estimarIngresoQuincena(
         prestamos,
         cuotasPopular,
         gastosFijos,
-        cursor
+        cursor,
+        moneda
       );
       if (resumen.ingresosTotales > 0) {
         montos.push(resumen.ingresosTotales);
@@ -83,7 +85,7 @@ export function estimarIngresoQuincena(
 
   if (montos.length === 0) {
     const ingresos = transacciones
-      .filter((t) => t.tipo === "ingreso")
+      .filter((t) => t.tipo === "ingreso" && t.moneda === moneda)
       .slice(0, 6);
     if (ingresos.length === 0) return 0;
     const suma = ingresos.reduce((s, t) => s + t.monto, 0);
@@ -102,6 +104,7 @@ export function estimarGastosVariables(
   periodoObjetivo: PeriodoQuincena,
   configuracion: ConfiguracionUsuario
 ): number {
+  const moneda = configuracion.moneda;
   let cursor = obtenerQuincenaActual(configuracion);
   const montos: number[] = [];
 
@@ -113,7 +116,8 @@ export function estimarGastosVariables(
         prestamos,
         cuotasPopular,
         gastosFijos,
-        cursor
+        cursor,
+        moneda
       );
       const variables = Math.max(
         0,
@@ -430,7 +434,8 @@ export function calcularProyeccionProximoIngreso(
     prestamos,
     cuotasPopular,
     gastosFijos,
-    periodo
+    periodo,
+    moneda
   );
   const compromisos =
     resumen.pagosTarjetas +

@@ -1,11 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useFinanzas } from "@/context/FinanzasContext";
 import { SelectorTema } from "@/components/ui/SelectorTema";
 import { Logo } from "@/components/ui/Logo";
-import { NAV_ITEMS } from "@/components/layout/navegacion";
+import {
+  NAV_CONFIGURACION,
+  NAV_DASHBOARD,
+  NAV_GRUPOS,
+  type NavItem,
+} from "@/components/layout/navegacion";
+import { TutorialGuia } from "@/components/tutorial/TutorialGuia";
 import { useAuth } from "@/context/AuthContext";
 import { aplicarTema } from "@/lib/tema";
 import type { TemaApp } from "@/types/finanzas";
@@ -16,11 +23,43 @@ interface SidebarProps {
   nombreUsuario?: string;
 }
 
+function enlaceActivo(pathname: string, href: string): boolean {
+  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+}
+
+function NavLink({
+  item,
+  pathname,
+  onCerrar,
+}: {
+  item: NavItem;
+  pathname: string;
+  onCerrar: () => void;
+}) {
+  const activo = enlaceActivo(pathname, item.href);
+
+  return (
+    <Link
+      href={item.href}
+      onClick={onCerrar}
+      className={`flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors lg:py-2.5 ${
+        activo
+          ? "bg-accent/10 text-accent"
+          : "text-muted hover:bg-surface-hover hover:text-foreground"
+      }`}
+    >
+      <span className="text-base">{item.icon}</span>
+      {item.label}
+    </Link>
+  );
+}
+
 export function Sidebar({ abierto, onCerrar, nombreUsuario }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { configuracion, actualizarConfiguracion } = useFinanzas();
   const { cerrarSesion } = useAuth();
+  const [tutorialAbierto, setTutorialAbierto] = useState(false);
 
   function cambiarTema(tema: TemaApp) {
     aplicarTema(tema);
@@ -74,32 +113,47 @@ export function Sidebar({ abierto, onCerrar, nombreUsuario }: SidebarProps) {
           </button>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-4">
-          {NAV_ITEMS.map((item) => {
-            const activo =
-              item.href === "/"
-                ? pathname === "/"
-                : pathname.startsWith(item.href);
+        <nav className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
+          <NavLink item={NAV_DASHBOARD} pathname={pathname} onCerrar={onCerrar} />
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onCerrar}
-                className={`flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors lg:py-2.5 ${
-                  activo
-                    ? "bg-accent/10 text-accent"
-                    : "text-muted hover:bg-surface-hover hover:text-foreground"
-                }`}
-              >
-                <span className="text-base">{item.icon}</span>
-                {item.label}
-              </Link>
-            );
-          })}
+          {NAV_GRUPOS.map((grupo) => (
+            <div key={grupo.titulo}>
+              <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted">
+                {grupo.titulo}
+              </p>
+              <div className="flex flex-col gap-0.5">
+                {grupo.items.map((item) => (
+                  <NavLink
+                    key={item.href}
+                    item={item}
+                    pathname={pathname}
+                    onCerrar={onCerrar}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
         </nav>
 
         <div className="mt-auto space-y-3 border-t border-border p-4">
+          <button
+            type="button"
+            onClick={() => {
+              setTutorialAbierto(true);
+              onCerrar();
+            }}
+            className="flex w-full items-center gap-3 rounded-lg border border-accent/30 bg-accent/5 px-3 py-2.5 text-sm font-medium text-accent transition-colors hover:bg-accent/10"
+          >
+            <span className="text-base">?</span>
+            Cómo usar Fynix
+          </button>
+
+          <NavLink
+            item={NAV_CONFIGURACION}
+            pathname={pathname}
+            onCerrar={onCerrar}
+          />
+
           {nombreUsuario && (
             <div className="rounded-lg bg-background px-3 py-2">
               <p className="text-[10px] uppercase tracking-wider text-muted">
@@ -115,9 +169,6 @@ export function Sidebar({ abierto, onCerrar, nombreUsuario }: SidebarProps) {
             onChange={cambiarTema}
             compacto
           />
-          <p className="text-xs text-muted">
-            Quincenas alineadas a tus días de pago
-          </p>
           <p className="text-[10px] text-muted/80">
             © 2026 Fynix. Todos los derechos reservados.
           </p>
@@ -134,6 +185,11 @@ export function Sidebar({ abierto, onCerrar, nombreUsuario }: SidebarProps) {
           </button>
         </div>
       </aside>
+
+      <TutorialGuia
+        abierto={tutorialAbierto}
+        onCerrar={() => setTutorialAbierto(false)}
+      />
     </>
   );
 }
