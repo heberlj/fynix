@@ -2,7 +2,7 @@
 
 import type { DatoCategoria } from "@/lib/graficos";
 import { colorCategoria } from "@/lib/graficos";
-import { formatearMoneda } from "@/lib/quincenas";
+import { GraficoCircular } from "@/components/ui/GraficoCircular";
 
 interface GraficoCategoriasProps {
   datos: DatoCategoria[];
@@ -15,39 +15,32 @@ export function GraficoCategorias({
   moneda,
   titulo = "Gastos por categoría",
 }: GraficoCategoriasProps) {
-  if (datos.length === 0) {
-    return (
-      <div className="flex h-48 items-center justify-center rounded-xl border border-border bg-surface p-6">
-        <p className="text-sm text-muted">Sin gastos para mostrar</p>
-      </div>
-    );
-  }
+  const segmentos = datos.map((dato, i) => ({
+    id: dato.categoria,
+    etiqueta: dato.categoria,
+    valor: dato.monto,
+    color: colorCategoria(i),
+    descripcion: `${dato.porcentaje.toFixed(1)}% del total de gastos del periodo.`,
+  }));
+
+  const total = datos.reduce((sum, d) => sum + d.monto, 0);
+  const top = datos[0];
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-6 shadow-sm">
-      <h3 className="text-base font-semibold text-foreground">{titulo}</h3>
-      <div className="mt-4 space-y-3">
-        {datos.map((dato, i) => (
-          <div key={dato.categoria}>
-            <div className="mb-1 flex justify-between text-sm">
-              <span className="font-medium text-foreground">{dato.categoria}</span>
-              <span className="text-muted">
-                {formatearMoneda(dato.monto, moneda)}{" "}
-                <span className="text-xs">({dato.porcentaje.toFixed(0)}%)</span>
-              </span>
-            </div>
-            <div className="h-2.5 overflow-hidden rounded-full bg-background">
-              <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{
-                  width: `${dato.porcentaje}%`,
-                  backgroundColor: colorCategoria(i),
-                }}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+    <GraficoCircular
+      segmentos={segmentos}
+      moneda={moneda}
+      titulo={titulo}
+      subtitulo="Cada porción representa cuánto gastaste en esa categoría durante el mes."
+      centroEtiqueta={top ? "Mayor gasto" : undefined}
+      centroValor={top ? top.categoria : undefined}
+      centroNota={
+        top
+          ? `${top.porcentaje.toFixed(0)}% del total`
+          : undefined
+      }
+      totalReferencia={total}
+      mensajeVacio="Sin gastos para mostrar en este periodo"
+    />
   );
 }

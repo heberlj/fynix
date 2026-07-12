@@ -5,6 +5,8 @@ import { useFinanzas } from "@/context/FinanzasContext";
 import { saldoPendiente } from "@/lib/prestamos";
 import { formatearMoneda } from "@/lib/quincenas";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { EncabezadoPagina } from "@/components/layout/EncabezadoPagina";
+import { AyudaPagina } from "@/components/ayuda/AyudaPagina";
 import { FormularioPrestamo } from "@/components/prestamos/FormularioPrestamo";
 import { ListaPrestamos } from "@/components/prestamos/ListaPrestamos";
 
@@ -36,76 +38,76 @@ export function PrestamosContent() {
   }
 
   return (
-    <PageContainer>
-      <header className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-xl font-bold text-foreground sm:text-2xl">Préstamos</h1>
-          <p className="mt-1 text-sm text-muted">
-            Registra tus préstamos y paga cuotas con transacciones. En Gastos fijos
-            aparecen solo como referencia para ver tu panorama mensual.
-          </p>
+    <AyudaPagina pagina="prestamos">
+      <PageContainer>
+        <EncabezadoPagina
+          titulo="Préstamos"
+          descripcion="Registra tus préstamos y paga cuotas con transacciones. En Gastos fijos aparecen solo como referencia para ver tu panorama mensual."
+          dataAyuda="acciones"
+          acciones={
+            !mostrarFormulario ? (
+              <button
+                type="button"
+                onClick={() => setMostrarFormulario(true)}
+                className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover sm:w-auto"
+              >
+                + Nuevo préstamo
+              </button>
+            ) : undefined
+          }
+        />
 
-          {totalesPorMoneda.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-4 text-sm">
-              {totalesPorMoneda.map(([moneda, totales]) => (
-                <div
-                  key={moneda}
-                  className="flex flex-wrap gap-3 rounded-lg border border-border bg-surface px-4 py-2"
-                >
-                  <span className="font-medium text-foreground">{moneda}</span>
-                  <span className="text-muted">
-                    Saldo pendiente:{" "}
-                    <span className="font-semibold text-gasto">
-                      {formatearMoneda(totales.pendiente, moneda)}
-                    </span>
+        {totalesPorMoneda.length > 0 && (
+          <div className="flex flex-wrap gap-4 text-sm">
+            {totalesPorMoneda.map(([moneda, totales]) => (
+              <div
+                key={moneda}
+                className="flex flex-wrap gap-3 rounded-lg border border-border bg-surface px-4 py-2"
+              >
+                <span className="font-medium text-foreground">{moneda}</span>
+                <span className="text-muted">
+                  Saldo pendiente:{" "}
+                  <span className="font-semibold text-gasto">
+                    {formatearMoneda(totales.pendiente, moneda)}
                   </span>
-                  <span className="text-muted">
-                    Cuotas mensuales:{" "}
-                    <span className="font-semibold text-foreground">
-                      {formatearMoneda(totales.cuotaMensual, moneda)}
-                    </span>
+                </span>
+                <span className="text-muted">
+                  Cuotas mensuales:{" "}
+                  <span className="font-semibold text-foreground">
+                    {formatearMoneda(totales.cuotaMensual, moneda)}
                   </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {!mostrarFormulario && (
-          <button
-            type="button"
-            onClick={() => setMostrarFormulario(true)}
-            className="w-full shrink-0 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover sm:w-auto"
-          >
-            + Nuevo préstamo
-          </button>
-        )}
-      </header>
-
-      <div
-        className={
-          mostrarFormulario
-            ? "grid gap-8 xl:grid-cols-[380px_1fr]"
-            : "grid gap-8"
-        }
-      >
-        {mostrarFormulario && (
-          <div className="space-y-4">
-            <button
-              type="button"
-              onClick={() => setMostrarFormulario(false)}
-              className="text-sm text-muted transition-colors hover:text-foreground"
-            >
-              ← Cancelar
-            </button>
-            <FormularioPrestamo onExito={() => setMostrarFormulario(false)} />
+                </span>
+              </div>
+            ))}
           </div>
         )}
-        <ListaPrestamos
-          prestamos={prestamos}
-          onAgregar={() => setMostrarFormulario(true)}
-        />
-      </div>
-    </PageContainer>
+
+        <div
+          data-ayuda="lista"
+          className={
+            mostrarFormulario
+              ? "grid gap-8 xl:grid-cols-[380px_1fr]"
+              : "grid gap-8"
+          }
+        >
+          {mostrarFormulario && (
+            <div className="space-y-4">
+              <button
+                type="button"
+                onClick={() => setMostrarFormulario(false)}
+                className="text-sm text-muted transition-colors hover:text-foreground"
+              >
+                ← Cancelar
+              </button>
+              <FormularioPrestamo onExito={() => setMostrarFormulario(false)} />
+            </div>
+          )}
+          <ListaPrestamos
+            prestamos={prestamos}
+            onAgregar={() => setMostrarFormulario(true)}
+          />
+        </div>
+      </PageContainer>
+    </AyudaPagina>
   );
 }

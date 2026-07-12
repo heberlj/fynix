@@ -11,6 +11,7 @@ interface StatCardProps {
   variante?: "default" | "ingreso" | "gasto" | "balance" | "disponible";
   subtitulo?: string;
   variacion?: VariacionStat;
+  className?: string;
 }
 
 const VARIANTES = {
@@ -28,6 +29,7 @@ export function StatCard({
   variante = "default",
   subtitulo,
   variacion,
+  className = "",
 }: StatCardProps) {
   const esDisponible = variante === "disponible";
   const positivo = valor >= 0;
@@ -45,9 +47,9 @@ export function StatCard({
     : "border-border bg-surface";
 
   return (
-    <div className={`rounded-xl border p-5 shadow-sm ${cardClass}`}>
+    <div className={`flex h-full flex-col rounded-xl border p-4 shadow-sm sm:p-5 ${cardClass} ${className}`}>
       <p className="text-sm font-medium text-muted">{titulo}</p>
-      <p className={`mt-2 text-2xl font-bold tracking-tight ${valorClass}`}>
+      <p className={`mt-1.5 text-xl font-bold tracking-tight sm:mt-2 sm:text-2xl ${valorClass}`}>
         {formatearMoneda(valor, moneda)}
       </p>
       {variacion && <IndicadorVariacion variacion={variacion} />}

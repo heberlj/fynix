@@ -114,3 +114,48 @@ export async function cerrarSesion(): Promise<void> {
   const supabase = crearClienteSupabase();
   await supabase.auth.signOut();
 }
+
+function urlRestablecerContrasena(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  return `${window.location.origin}/restablecer-contrasena`;
+}
+
+export async function solicitarRecuperacionContrasena(
+  email: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const correo = email.trim().toLowerCase();
+
+  if (!correo || !correo.includes("@")) {
+    return { ok: false, error: "Ingresa un correo válido" };
+  }
+
+  const supabase = crearClienteSupabase();
+  const { error } = await supabase.auth.resetPasswordForEmail(correo, {
+    redirectTo: urlRestablecerContrasena(),
+  });
+
+  if (error) {
+    return { ok: false, error: mensajeErrorAuth(error.message) };
+  }
+
+  return { ok: true };
+}
+
+export async function restablecerContrasena(
+  password: string
+): Promise<{ ok: true; sesion: SesionActiva | null } | { ok: false; error: string }> {
+  const errorContraseña = validarContraseña(password);
+  if (errorContraseña) {
+    return { ok: false, error: errorContraseña };
+  }
+
+  const supabase = crearClienteSupabase();
+  const { error } = await supabase.auth.updateUser({ password });
+
+  if (error) {
+    return { ok: false, error: mensajeErrorAuth(error.message) };
+  }
+
+  const { data } = await supabase.auth.getSession();
+  return { ok: true, sesion: mapearSesion(data.session) };
+}

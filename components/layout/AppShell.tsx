@@ -9,7 +9,12 @@ import { ThemeSync } from "@/components/layout/ThemeSync";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { FinanzasProvider } from "@/context/FinanzasContext";
 
-const RUTAS_AUTH = ["/login", "/registro"];
+const RUTAS_AUTH = [
+  "/login",
+  "/registro",
+  "/recuperar-contrasena",
+  "/restablecer-contrasena",
+];
 
 function AppRoutes({ children }: { children: React.ReactNode }) {
   const { sesion, cargado } = useAuth();
@@ -17,6 +22,7 @@ function AppRoutes({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [menuAbierto, setMenuAbierto] = useState(false);
   const esRutaAuth = RUTAS_AUTH.includes(pathname);
+  const esRestablecerContrasena = pathname === "/restablecer-contrasena";
 
   useEffect(() => {
     setMenuAbierto(false);
@@ -30,10 +36,10 @@ function AppRoutes({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (sesion && esRutaAuth) {
+    if (sesion && esRutaAuth && !esRestablecerContrasena) {
       router.replace("/");
     }
-  }, [cargado, sesion, esRutaAuth, router]);
+  }, [cargado, sesion, esRutaAuth, esRestablecerContrasena, router]);
 
   useEffect(() => {
     document.body.style.overflow = menuAbierto ? "hidden" : "";

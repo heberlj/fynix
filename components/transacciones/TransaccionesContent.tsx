@@ -4,6 +4,8 @@ import { useState } from "react";
 import type { Transaccion } from "@/types/finanzas";
 import { useFinanzas } from "@/context/FinanzasContext";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { EncabezadoPagina } from "@/components/layout/EncabezadoPagina";
+import { AyudaPagina } from "@/components/ayuda/AyudaPagina";
 import { Modal } from "@/components/ui/Modal";
 import { FormularioTransaccion } from "@/components/transacciones/FormularioTransaccion";
 import { GestionCategoriasTransacciones } from "@/components/transacciones/GestionCategoriasTransacciones";
@@ -44,44 +46,41 @@ export function TransaccionesContent() {
   );
 
   return (
-    <PageContainer>
-      <header className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-xl font-bold text-foreground sm:text-2xl">
-            Transacciones
-          </h1>
-          <p className="mt-1 text-sm text-muted">
-            Historial de gastos, ingresos y movimientos entre cuentas
-          </p>
-        </div>
-
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:shrink-0">
-          <button
-            type="button"
-            onClick={() => {
-              const abrir = !gestionarCategorias;
-              setGestionarCategorias(abrir);
-              if (abrir) cerrarFormulario();
-            }}
-            className="w-full rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-surface-hover sm:w-auto"
-          >
-            {gestionarCategorias ? "Cerrar categorías" : "Gestionar categorías"}
-          </button>
-          {!formularioAbierto && (
-            <button
-              type="button"
-              onClick={() => {
-                setMostrarFormulario(true);
-                setTransaccionEditando(null);
-                setGestionarCategorias(false);
-              }}
-              className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover sm:w-auto"
-            >
-              + Nueva transacción
-            </button>
-          )}
-        </div>
-      </header>
+    <AyudaPagina pagina="transacciones">
+      <PageContainer>
+        <EncabezadoPagina
+          titulo="Transacciones"
+          descripcion="Historial de gastos, ingresos y movimientos entre cuentas"
+          dataAyuda="acciones"
+          acciones={
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  const abrir = !gestionarCategorias;
+                  setGestionarCategorias(abrir);
+                  if (abrir) cerrarFormulario();
+                }}
+                className="w-full rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-surface-hover sm:w-auto"
+              >
+                {gestionarCategorias ? "Cerrar categorías" : "Gestionar categorías"}
+              </button>
+              {!formularioAbierto && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMostrarFormulario(true);
+                    setTransaccionEditando(null);
+                    setGestionarCategorias(false);
+                  }}
+                  className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover sm:w-auto"
+                >
+                  + Nueva transacción
+                </button>
+              )}
+            </>
+          }
+        />
 
       {gestionarCategorias && (
         <GestionCategoriasTransacciones
@@ -123,5 +122,6 @@ export function TransaccionesContent() {
         />
       </div>
     </PageContainer>
+    </AyudaPagina>
   );
 }

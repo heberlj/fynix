@@ -61,8 +61,11 @@ export function ListaTransacciones({
   );
 
   return (
-    <div className="rounded-xl border border-border bg-surface shadow-sm">
-      <div className="border-b border-border p-4 sm:p-6">
+    <div className="min-w-0 overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
+      <div
+        data-ayuda="filtros"
+        className="border-b border-border p-4 sm:p-6"
+      >
         <h2 className="text-base font-semibold text-foreground">
           Historial
         </h2>
@@ -137,7 +140,10 @@ export function ListaTransacciones({
         </div>
 
         {filtradas.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-4 text-xs">
+          <div
+            data-ayuda="totales"
+            className="mt-4 grid grid-cols-2 gap-2 text-xs sm:flex sm:flex-wrap sm:gap-4"
+          >
             <span className="text-muted">
               Ingresos:{" "}
               <span className="font-semibold text-ingreso">
@@ -189,95 +195,98 @@ export function ListaTransacciones({
           className="m-4 border-0 bg-transparent"
         />
       ) : (
-        <ul className="divide-y divide-border">
+        <ul data-ayuda="historial" className="divide-y divide-border">
           {filtradas.map((t) => (
             <li
               key={t.id}
-              className="flex items-center gap-4 px-6 py-4 transition-colors hover:bg-surface-hover"
+              className="flex flex-col gap-3 px-4 py-4 transition-colors hover:bg-surface-hover sm:flex-row sm:items-center sm:gap-4 sm:px-6"
             >
-              <div
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
-                  t.tipo === "ingreso"
-                    ? "bg-ingreso/10 text-ingreso"
-                    : t.tipo === "gasto"
-                      ? "bg-gasto/10 text-gasto"
-                      : "bg-accent/10 text-accent"
-                }`}
-              >
-                {t.tipo === "ingreso" ? "+" : t.tipo === "gasto" ? "−" : "⇄"}
-              </div>
+              <div className="flex min-w-0 items-start gap-3">
+                <div
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                    t.tipo === "ingreso"
+                      ? "bg-ingreso/10 text-ingreso"
+                      : t.tipo === "gasto"
+                        ? "bg-gasto/10 text-gasto"
+                        : "bg-accent/10 text-accent"
+                  }`}
+                >
+                  {t.tipo === "ingreso" ? "+" : t.tipo === "gasto" ? "−" : "⇄"}
+                </div>
 
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="truncate text-sm font-medium text-foreground">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground break-words">
                     {t.descripcion}
                   </p>
-                  <span className="shrink-0 rounded-full bg-background px-2 py-0.5 text-xs text-muted">
-                    {t.categoria}
-                  </span>
-                  {t.gastoFijoId && (
-                    <span className="shrink-0 rounded-full bg-ingreso/10 px-2 py-0.5 text-xs font-medium text-ingreso">
-                      Gasto fijo
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    <span className="rounded-full bg-background px-2 py-0.5 text-xs text-muted">
+                      {t.categoria}
                     </span>
-                  )}
-                  {t.moneda !== configuracion.moneda && (
-                    <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
-                      {t.moneda}
-                    </span>
-                  )}
-                </div>
-                <p className="mt-0.5 text-xs text-muted">
-                  {formatearFecha(t.fecha)} · Q{t.quincena}
-                  {t.gastoFijoId && (
-                    <>
-                      {" · "}
-                      {gastosFijos.find((g) => g.id === t.gastoFijoId)?.nombre ??
-                        "Gasto fijo"}
-                    </>
-                  )}
-                  {t.tipo === "transferencia" && t.origen && t.destino ? (
-                    <>
-                      {" · "}
-                      {etiquetaTransferencia(t.origen, t.destino, cuentas, tarjetas)}
-                      {t.tasaCambio && t.monedaOrigen && t.montoOrigen && (
-                        <>
-                          {" · "}
-                          {formatearMoneda(t.montoOrigen, t.monedaOrigen)} @{" "}
-                          {t.tasaCambio} {t.monedaOrigen}/{t.moneda}
-                        </>
-                      )}
-                    </>
-                  ) : (
-                    t.origen && (
+                    {t.gastoFijoId && (
+                      <span className="rounded-full bg-ingreso/10 px-2 py-0.5 text-xs font-medium text-ingreso">
+                        Gasto fijo
+                      </span>
+                    )}
+                    {t.moneda !== configuracion.moneda && (
+                      <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+                        {t.moneda}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-muted break-words">
+                    {formatearFecha(t.fecha)} · Q{t.quincena}
+                    {t.gastoFijoId && (
                       <>
                         {" · "}
-                        {etiquetaOrigen(t.origen, cuentas, tarjetas, t.modoPagoTarjeta)}
+                        {gastosFijos.find((g) => g.id === t.gastoFijoId)?.nombre ??
+                          "Gasto fijo"}
                       </>
-                    )
-                  )}
-                </p>
+                    )}
+                    {t.tipo === "transferencia" && t.origen && t.destino ? (
+                      <>
+                        {" · "}
+                        {etiquetaTransferencia(t.origen, t.destino, cuentas, tarjetas)}
+                        {t.tasaCambio && t.monedaOrigen && t.montoOrigen && (
+                          <>
+                            {" · "}
+                            {formatearMoneda(t.montoOrigen, t.monedaOrigen)} @{" "}
+                            {t.tasaCambio} {t.monedaOrigen}/{t.moneda}
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      t.origen && (
+                        <>
+                          {" · "}
+                          {etiquetaOrigen(t.origen, cuentas, tarjetas, t.modoPagoTarjeta)}
+                        </>
+                      )
+                    )}
+                  </p>
+                </div>
               </div>
 
-              <p
-                className={`shrink-0 text-sm font-semibold ${
-                  t.tipo === "ingreso"
-                    ? "text-ingreso"
-                    : t.tipo === "gasto"
-                      ? "text-gasto"
-                      : "text-accent"
-                }`}
-              >
-                {t.tipo === "transferencia"
-                  ? `−${formatearMoneda(
-                      t.montoOrigen != null && t.monedaOrigen
-                        ? t.montoOrigen
-                        : t.monto,
-                      t.monedaOrigen ?? t.moneda
-                    )}`
-                  : `${t.tipo === "ingreso" ? "+" : "−"}${formatearMoneda(t.monto, t.moneda)}`}
-              </p>
+              <div className="flex items-center justify-between gap-2 border-t border-border pt-3 sm:ml-auto sm:shrink-0 sm:border-0 sm:pt-0">
+                <p
+                  className={`text-sm font-semibold ${
+                    t.tipo === "ingreso"
+                      ? "text-ingreso"
+                      : t.tipo === "gasto"
+                        ? "text-gasto"
+                        : "text-accent"
+                  }`}
+                >
+                  {t.tipo === "transferencia"
+                    ? `−${formatearMoneda(
+                        t.montoOrigen != null && t.monedaOrigen
+                          ? t.montoOrigen
+                          : t.monto,
+                        t.monedaOrigen ?? t.moneda
+                      )}`
+                    : `${t.tipo === "ingreso" ? "+" : "−"}${formatearMoneda(t.monto, t.moneda)}`}
+                </p>
 
-              <div className="flex shrink-0 items-center gap-1">
+                <div className="flex shrink-0 items-center gap-1">
                 {onEditar && !t.cuotaPopularId && (
                   <button
                     type="button"
@@ -301,6 +310,7 @@ export function ListaTransacciones({
                 >
                   ✕
                 </button>
+              </div>
               </div>
             </li>
           ))}

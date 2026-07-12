@@ -10,6 +10,8 @@ import {
 import { totalPrestamosPorQuincena } from "@/lib/prestamos";
 import { formatearMoneda } from "@/lib/quincenas";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { EncabezadoPagina } from "@/components/layout/EncabezadoPagina";
+import { AyudaPagina } from "@/components/ayuda/AyudaPagina";
 import { FormularioGastoFijo } from "@/components/gastos-fijos/FormularioGastoFijo";
 import { GestionCategoriasGastosFijos } from "@/components/gastos-fijos/GestionCategoriasGastosFijos";
 import { ListaGastosFijos } from "@/components/gastos-fijos/ListaGastosFijos";
@@ -67,68 +69,65 @@ export function GastosFijosContent() {
   }
 
   return (
-    <PageContainer>
-      <header className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-xl font-bold text-foreground sm:text-2xl">Gastos fijos</h1>
-          <p className="mt-1 text-sm text-muted">
-            Pagos mensuales por quincena. Los préstamos aparecen aquí solo como
-            referencia para ver tu panorama; en el resto de la app siguen siendo
-            préstamos.
-          </p>
-
-          {totalesPorMoneda.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-4 text-sm">
-              {totalesPorMoneda.map(([moneda, total]) => (
-                <div
-                  key={moneda}
-                  className="rounded-lg border border-border bg-surface px-4 py-2"
+    <AyudaPagina pagina="gastos-fijos">
+      <PageContainer>
+        <EncabezadoPagina
+          titulo="Gastos fijos"
+          descripcion="Pagos mensuales por quincena. Los préstamos aparecen aquí solo como referencia para ver tu panorama; en el resto de la app siguen siendo préstamos."
+          dataAyuda="acciones"
+          acciones={
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  const abrir = !gestionarCategorias;
+                  setGestionarCategorias(abrir);
+                  if (abrir) setMostrarFormulario(false);
+                }}
+                className="w-full rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-surface-hover sm:w-auto"
+              >
+                {gestionarCategorias ? "Cerrar categorías" : "Gestionar categorías"}
+              </button>
+              {!mostrarFormulario && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMostrarFormulario(true);
+                    setGestionarCategorias(false);
+                  }}
+                  className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover sm:w-auto"
                 >
-                  <span className="font-medium text-foreground">{moneda}</span>
-                  <span className="ml-3 text-muted">
-                    Total mensual:{" "}
-                    <span className="font-semibold text-gasto">
-                      {formatearMoneda(total, moneda)}
-                    </span>
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                  + Nuevo gasto fijo
+                </button>
+              )}
+            </>
+          }
+        />
 
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:shrink-0">
-          <button
-            type="button"
-            onClick={() => {
-              const abrir = !gestionarCategorias;
-              setGestionarCategorias(abrir);
-              if (abrir) setMostrarFormulario(false);
-            }}
-            className="w-full rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-surface-hover sm:w-auto"
-          >
-            {gestionarCategorias ? "Cerrar categorías" : "Gestionar categorías"}
-          </button>
-          {!mostrarFormulario && (
-            <button
-              type="button"
-              onClick={() => {
-                setMostrarFormulario(true);
-                setGestionarCategorias(false);
-              }}
-              className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover sm:w-auto"
-            >
-              + Nuevo gasto fijo
-            </button>
-          )}
-        </div>
-      </header>
+        {totalesPorMoneda.length > 0 && (
+          <div className="flex flex-wrap gap-4 text-sm">
+            {totalesPorMoneda.map(([moneda, total]) => (
+              <div
+                key={moneda}
+                className="rounded-lg border border-border bg-surface px-4 py-2"
+              >
+                <span className="font-medium text-foreground">{moneda}</span>
+                <span className="ml-3 text-muted">
+                  Total mensual:{" "}
+                  <span className="font-semibold text-gasto">
+                    {formatearMoneda(total, moneda)}
+                  </span>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
 
       {gestionarCategorias && (
         <GestionCategoriasGastosFijos onCerrar={() => setGestionarCategorias(false)} />
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div data-ayuda="resumen" className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-border bg-surface p-4 sm:p-5">
           <p className="text-xs font-medium uppercase tracking-wide text-muted">Quincena 1</p>
           <p className="mt-1 text-2xl font-bold text-gasto">
@@ -212,6 +211,7 @@ export function GastosFijosContent() {
       )}
 
       <div
+        data-ayuda="lista"
         className={
           mostrarFormulario
             ? "grid gap-8 xl:grid-cols-[380px_1fr]"
@@ -236,5 +236,6 @@ export function GastosFijosContent() {
         />
       </div>
     </PageContainer>
+    </AyudaPagina>
   );
 }

@@ -9,6 +9,8 @@ import {
 import { formatearFecha } from "@/lib/fechas";
 import { formatearMoneda } from "@/lib/quincenas";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { EncabezadoPagina } from "@/components/layout/EncabezadoPagina";
+import { AyudaPagina } from "@/components/ayuda/AyudaPagina";
 import { StatCard } from "@/components/ui/StatCard";
 import { ListaSugerencias } from "@/components/presupuesto/ListaSugerencias";
 
@@ -107,42 +109,37 @@ export function PresupuestoContent() {
   const { moneda, periodo } = proyeccion;
 
   return (
-    <PageContainer>
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-foreground sm:text-2xl">
-            Presupuesto
-          </h1>
-          <p className="mt-1 text-sm text-muted">
-            Proyección para tu próximo ingreso ·{" "}
-            <span className="font-medium text-foreground">
-              {periodo.etiqueta}
-            </span>
-            {" "}
-            ({formatearFecha(periodo.inicio)} — {formatearFecha(periodo.fin)})
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setMostrarSugerencias(true)}
-            className="rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
-          >
-            ✦ Sugerir qué pagar
-          </button>
-          {hayCambios && (
-            <button
-              type="button"
-              onClick={limpiarPresupuesto}
-              className="rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-medium text-muted transition-colors hover:bg-surface-hover hover:text-foreground"
-            >
-              Limpiar
-            </button>
-          )}
-        </div>
-      </header>
+    <AyudaPagina pagina="presupuesto">
+      <PageContainer>
+        <EncabezadoPagina
+          titulo="Presupuesto"
+          descripcion={`Proyección para tu próximo ingreso · ${periodo.etiqueta} (${formatearFecha(periodo.inicio)} — ${formatearFecha(periodo.fin)})`}
+          acciones={
+            <>
+              <button
+                type="button"
+                onClick={() => setMostrarSugerencias(true)}
+                className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover sm:w-auto"
+              >
+                ✦ Sugerir qué pagar
+              </button>
+              {hayCambios && (
+                <button
+                  type="button"
+                  onClick={limpiarPresupuesto}
+                  className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-medium text-muted transition-colors hover:bg-surface-hover hover:text-foreground sm:w-auto"
+                >
+                  Limpiar
+                </button>
+              )}
+            </>
+          }
+        />
 
-      <section className="rounded-xl border border-border bg-surface p-4 shadow-sm sm:p-6">
+      <section
+        data-ayuda="proyeccion"
+        className="rounded-xl border border-border bg-surface p-4 shadow-sm sm:p-6"
+      >
         <h2 className="text-base font-semibold text-foreground">
           Próximo ingreso esperado
         </h2>
@@ -279,7 +276,10 @@ export function PresupuestoContent() {
       </section>
 
       {mostrarSugerencias && sugerencias && (
-        <section className="rounded-xl border border-accent/30 bg-surface p-4 shadow-sm ring-1 ring-accent/10 sm:p-6">
+        <section
+          data-ayuda="sugerencias"
+          className="rounded-xl border border-accent/30 bg-surface p-4 shadow-sm ring-1 ring-accent/10 sm:p-6"
+        >
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className="text-base font-semibold text-foreground">
@@ -340,5 +340,6 @@ export function PresupuestoContent() {
         </section>
       )}
     </PageContainer>
+    </AyudaPagina>
   );
 }

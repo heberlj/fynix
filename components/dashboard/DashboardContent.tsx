@@ -16,8 +16,11 @@ import {
   obtenerQuincenaAnterior,
 } from "@/lib/quincenas";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { EncabezadoPagina } from "@/components/layout/EncabezadoPagina";
+import { AyudaPagina } from "@/components/ayuda/AyudaPagina";
 import { StatCard } from "@/components/ui/StatCard";
 import { EstadoVacio } from "@/components/ui/EstadoVacio";
+import { GraficoResumenQuincena } from "@/components/dashboard/GraficoResumenQuincena";
 import { GraficoCategorias } from "@/components/ui/GraficoCategorias";
 import { GraficoEvolucion } from "@/components/ui/GraficoEvolucion";
 
@@ -87,86 +90,94 @@ export function DashboardContent() {
   })();
 
   return (
-    <PageContainer>
-      <header>
-        <h1 className="text-xl font-bold text-foreground sm:text-2xl">Dashboard</h1>
-        <p className="mt-1 text-sm text-muted">
-          Quincena actual:{" "}
-          <span className="font-medium text-foreground">
-            {quincenaActual.etiqueta}
-          </span>
-          {" · "}
-          Pagos los días{" "}
-          <span className="font-medium text-foreground">
-            {configuracion.diasPago.join(" y ")}
-          </span>
-          {" · "}
-          Quincenas del 1–15 y 16–fin de mes
-        </p>
-      </header>
+    <AyudaPagina pagina="dashboard">
+      <PageContainer>
+        <EncabezadoPagina
+          titulo="Dashboard"
+          descripcion={`Quincena actual: ${quincenaActual.etiqueta} · Pagos los días ${configuracion.diasPago.join(" y ")} · Quincenas del 1–15 y 16–fin de mes`}
+        />
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard
-          titulo="Patrimonio líquido"
-          valor={patrimonioLiquido}
+      <section
+        data-ayuda="resumen"
+        className="grid gap-4 sm:gap-6 lg:grid-cols-2 lg:items-stretch xl:grid-cols-[1.05fr_1fr]"
+      >
+        <GraficoResumenQuincena
+          ingresos={resumenActual.ingresosTotales}
+          gastos={resumenActual.gastosTotales}
+          compromisos={compromisosActual}
+          disponible={resumenActual.disponible}
           moneda={configuracion.moneda}
-          variante="balance"
-          subtitulo="Cuentas + efectivo − deuda tarjetas"
+          etiquetaQuincena={quincenaActual.etiqueta}
+          className="min-w-0 h-full"
         />
-        <StatCard
-          titulo="Ingresos"
-          valor={resumenActual.ingresosTotales}
-          moneda={configuracion.moneda}
-          variante="ingreso"
-          subtitulo="Quincena actual"
-          variacion={{
-            diferencia: resumenActual.ingresosTotales - resumenAnterior.ingresosTotales,
-            moneda: configuracion.moneda,
-            etiqueta: etiquetaVariacion,
-          }}
-        />
-        <StatCard
-          titulo="Gastos"
-          valor={resumenActual.gastosTotales}
-          moneda={configuracion.moneda}
-          variante="gasto"
-          subtitulo="Quincena actual"
-          variacion={{
-            diferencia: resumenActual.gastosTotales - resumenAnterior.gastosTotales,
-            moneda: configuracion.moneda,
-            invertirColor: true,
-            etiqueta: etiquetaVariacion,
-          }}
-        />
-        <StatCard
-          titulo="Compromisos"
-          valor={compromisosActual}
-          moneda={configuracion.moneda}
-          variante="gasto"
-          subtitulo="Tarjetas, préstamos, cuotas y fijos"
-          variacion={{
-            diferencia: compromisosActual - compromisosAnterior,
-            moneda: configuracion.moneda,
-            invertirColor: true,
-            etiqueta: etiquetaVariacion,
-          }}
-        />
-        <StatCard
-          titulo="Disponible"
-          valor={resumenActual.disponible}
-          moneda={configuracion.moneda}
-          variante="disponible"
-          subtitulo="Lo que te queda"
-          variacion={{
-            diferencia: resumenActual.disponible - resumenAnterior.disponible,
-            moneda: configuracion.moneda,
-            etiqueta: etiquetaVariacion,
-          }}
-        />
+
+        <div className="grid min-w-0 auto-rows-fr gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-2 lg:content-stretch">
+          <StatCard
+            titulo="Disponible"
+            valor={resumenActual.disponible}
+            moneda={configuracion.moneda}
+            variante="disponible"
+            subtitulo="Lo que te queda en la quincena actual"
+            variacion={{
+              diferencia: resumenActual.disponible - resumenAnterior.disponible,
+              moneda: configuracion.moneda,
+              etiqueta: etiquetaVariacion,
+            }}
+          />
+          <StatCard
+            titulo="Ingresos"
+            valor={resumenActual.ingresosTotales}
+            moneda={configuracion.moneda}
+            variante="ingreso"
+            subtitulo="Quincena actual"
+            variacion={{
+              diferencia: resumenActual.ingresosTotales - resumenAnterior.ingresosTotales,
+              moneda: configuracion.moneda,
+              etiqueta: etiquetaVariacion,
+            }}
+          />
+          <StatCard
+            titulo="Gastos"
+            valor={resumenActual.gastosTotales}
+            moneda={configuracion.moneda}
+            variante="gasto"
+            subtitulo="Gastos variables registrados"
+            variacion={{
+              diferencia: resumenActual.gastosTotales - resumenAnterior.gastosTotales,
+              moneda: configuracion.moneda,
+              invertirColor: true,
+              etiqueta: etiquetaVariacion,
+            }}
+          />
+          <StatCard
+            titulo="Compromisos"
+            valor={compromisosActual}
+            moneda={configuracion.moneda}
+            variante="gasto"
+            subtitulo="Tarjetas, préstamos, cuotas y fijos"
+            variacion={{
+              diferencia: compromisosActual - compromisosAnterior,
+              moneda: configuracion.moneda,
+              invertirColor: true,
+              etiqueta: etiquetaVariacion,
+            }}
+          />
+          <StatCard
+            titulo="Patrimonio líquido"
+            valor={patrimonioLiquido}
+            moneda={configuracion.moneda}
+            variante="balance"
+            subtitulo="Cuentas + efectivo − deuda tarjetas"
+            className="sm:col-span-2"
+          />
+        </div>
       </section>
 
       <section className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-border bg-surface p-6 shadow-sm">
+        <div
+          data-ayuda="quincenas"
+          className="rounded-xl border border-border bg-surface p-6 shadow-sm"
+        >
           <h2 className="text-base font-semibold text-foreground">
             Resumen del mes
           </h2>
@@ -242,7 +253,10 @@ export function DashboardContent() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-border bg-surface p-6 shadow-sm">
+        <div
+          data-ayuda="proximos-pagos"
+          className="rounded-xl border border-border bg-surface p-6 shadow-sm"
+        >
           <h2 className="text-base font-semibold text-foreground">
             Próximos pagos
           </h2>
@@ -310,7 +324,7 @@ export function DashboardContent() {
         </div>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-2">
+      <section data-ayuda="graficos" className="grid gap-6 lg:grid-cols-2">
         <GraficoCategorias
           datos={categoriasMes}
           moneda={configuracion.moneda}
@@ -319,5 +333,6 @@ export function DashboardContent() {
         <GraficoEvolucion datos={evolucion} moneda={configuracion.moneda} />
       </section>
     </PageContainer>
+    </AyudaPagina>
   );
 }

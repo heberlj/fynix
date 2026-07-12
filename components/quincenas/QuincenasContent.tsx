@@ -19,6 +19,8 @@ import {
 import { TarjetaQuincena } from "@/components/quincenas/TarjetaQuincena";
 import { ResumenQuincenaCards } from "@/components/quincenas/ResumenQuincenaCards";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { EncabezadoPagina } from "@/components/layout/EncabezadoPagina";
+import { AyudaPagina } from "@/components/ayuda/AyudaPagina";
 
 const selectClass =
   "rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent";
@@ -87,16 +89,14 @@ export function QuincenasContent() {
     mesSeleccionado;
 
   return (
-    <PageContainer>
-      <header>
-        <h1 className="text-xl font-bold text-foreground sm:text-2xl">Quincenas</h1>
-        <p className="mt-1 text-sm text-muted">
-          Q1: del 1 al 15 · Q2: del 16 al fin de mes. Tus pagos: días{" "}
-          {configuracion.diasPago.join(" y ")}
-        </p>
-      </header>
+    <AyudaPagina pagina="quincenas">
+      <PageContainer>
+        <EncabezadoPagina
+          titulo="Quincenas"
+          descripcion={`Q1: del 1 al 15 · Q2: del 16 al fin de mes. Tus pagos: días ${configuracion.diasPago.join(" y ")}`}
+        />
 
-      <div className="space-y-4">
+      <div data-ayuda="selector" className="space-y-4">
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium text-foreground">Mes</span>
           <select
@@ -112,7 +112,7 @@ export function QuincenasContent() {
           </select>
         </label>
 
-        <div>
+        <div data-ayuda="resumen">
           <p className="mb-1 text-sm font-medium text-foreground">
             Resumen por quincena · {etiquetaMes}
           </p>
@@ -145,7 +145,7 @@ export function QuincenasContent() {
           <p className="text-sm text-muted">No hay quincenas para este mes</p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div data-ayuda="detalle" className="space-y-6">
           {datosQuincenas.map(({ periodo, resumen, transacciones: txs, pagosTarjetas, cuotasPopular: cuotasPopularDetalle, gastosFijos: gastosFijosDetalle, esActual }) => (
             <TarjetaQuincena
               key={`${periodo.inicio}-${periodo.fin}`}
@@ -208,5 +208,6 @@ export function QuincenasContent() {
         </div>
       )}
     </PageContainer>
+    </AyudaPagina>
   );
 }

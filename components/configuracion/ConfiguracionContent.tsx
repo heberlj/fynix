@@ -9,6 +9,8 @@ import { SelectorTema } from "@/components/ui/SelectorTema";
 import { aplicarTema } from "@/lib/tema";
 import { validarDiasPago } from "@/lib/validar-configuracion";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { EncabezadoPagina } from "@/components/layout/EncabezadoPagina";
+import { AyudaPagina } from "@/components/ayuda/AyudaPagina";
 
 export function ConfiguracionContent() {
   const { configuracion, actualizarConfiguracion } = useFinanzas();
@@ -46,24 +48,26 @@ export function ConfiguracionContent() {
   }
 
   return (
-    <PageContainer>
-      <header>
-        <h1 className="text-xl font-bold text-foreground sm:text-2xl">Configuración</h1>
-        <p className="mt-1 text-sm text-muted">
-          Personaliza tu gestor de finanzas
-        </p>
-      </header>
+    <AyudaPagina pagina="configuracion">
+      <PageContainer>
+        <EncabezadoPagina
+          titulo="Configuración"
+          descripcion="Personaliza tu gestor de finanzas"
+        />
 
       <form
         onSubmit={handleSubmit}
+        data-ayuda="quincenas"
         className="max-w-lg rounded-xl border border-border bg-surface p-6 shadow-sm"
       >
         <h2 className="text-base font-semibold text-foreground">Apariencia</h2>
+        <div data-ayuda="preferencias">
         <p className="mt-1 text-xs text-muted">
           Elige entre modo claro, oscuro o seguir tu sistema
         </p>
         <div className="mt-4">
           <SelectorTema value={tema} onChange={handleTemaChange} />
+        </div>
         </div>
 
         <h2 className="mt-6 text-base font-semibold text-foreground">
@@ -132,7 +136,10 @@ export function ConfiguracionContent() {
         {error && <p className="mt-3 text-sm text-gasto">{error}</p>}
       </form>
 
-      <RespaldoDatos />
+      <div data-ayuda="respaldo">
+        <RespaldoDatos />
+      </div>
     </PageContainer>
+    </AyudaPagina>
   );
 }
