@@ -28,6 +28,7 @@ import { EstadoVacio } from "@/components/ui/EstadoVacio";
 interface ListaGastosFijosProps {
   gastosFijos: GastoFijo[];
   onAgregar?: () => void;
+  onRegistrarPago?: (gastoId: string) => void;
 }
 
 function TarjetaGasto({
@@ -35,14 +36,15 @@ function TarjetaGasto({
   editandoId,
   setEditandoId,
   pagadoEnQuincena,
+  onRegistrarPago,
 }: {
   gasto: GastoFijo;
   editandoId: string | null;
   setEditandoId: (id: string | null) => void;
   pagadoEnQuincena: boolean;
+  onRegistrarPago?: (gastoId: string) => void;
 }) {
-  const { actualizarGastoFijo, eliminarGastoFijo, registrarPagoGastoFijo } =
-    useFinanzas();
+  const { actualizarGastoFijo, eliminarGastoFijo } = useFinanzas();
   const estaEditando = editandoId === gasto.id;
   const dias = diasHastaCuota(gasto.diaPago);
 
@@ -89,7 +91,8 @@ function TarjetaGasto({
                   );
                   if (!ok) return;
                 }
-                registrarPagoGastoFijo(gasto.id);
+                if (!onRegistrarPago) return;
+                onRegistrarPago(gasto.id);
               }}
               className={`rounded-lg px-2 py-1 text-xs font-medium ${
                 pagadoEnQuincena
@@ -244,6 +247,7 @@ function ColumnaQuincena({
   moneda,
   transacciones,
   configuracion,
+  onRegistrarPago,
 }: {
   quincena: 1 | 2;
   gastos: GastoFijo[];
@@ -253,6 +257,7 @@ function ColumnaQuincena({
   moneda: string;
   transacciones: ReturnType<typeof useFinanzas>["transacciones"];
   configuracion: ReturnType<typeof useFinanzas>["configuracion"];
+  onRegistrarPago?: (gastoId: string) => void;
 }) {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const activos = gastos.filter((g) => g.activo);
@@ -314,6 +319,7 @@ function ColumnaQuincena({
                 transacciones,
                 periodoQuincena
               )}
+              onRegistrarPago={onRegistrarPago}
             />
           ))}
           {prestamos.length > 0 && (
@@ -346,6 +352,7 @@ function ColumnaQuincena({
 export function ListaGastosFijos({
   gastosFijos,
   onAgregar,
+  onRegistrarPago,
 }: ListaGastosFijosProps) {
   const { configuracion, transacciones, prestamos } = useFinanzas();
   const [categoriaFiltro, setCategoriaFiltro] = useState("todas");
@@ -368,16 +375,18 @@ export function ListaGastosFijos({
   );
 
   const totalesQ = useMemo(() => {
-    const sumarGastos = (q: 1 | 2) =>
-      filtrados
-        .filter((g) => g.activo && g.quincena === q)
-        .reduce((sum, g) => sum + g.monto, 0);
     const moneda = configuracion.moneda;
+    const sumarGastos = (q: 1 | 2, monedaFiltro: string) =>
+      filtrados
+        .filter(
+          (g) => g.activo && g.quincena === q && g.moneda === monedaFiltro
+        )
+        .reduce((sum, g) => sum + g.monto, 0);
     return {
-      q1: sumarGastos(1) + totalPrestamosPorQuincena(prestamos, 1, moneda),
-      q2: sumarGastos(2) + totalPrestamosPorQuincena(prestamos, 2, moneda),
-      gastosQ1: sumarGastos(1),
-      gastosQ2: sumarGastos(2),
+      q1: sumarGastos(1, moneda) + totalPrestamosPorQuincena(prestamos, 1, moneda),
+      q2: sumarGastos(2, moneda) + totalPrestamosPorQuincena(prestamos, 2, moneda),
+      gastosQ1: sumarGastos(1, moneda),
+      gastosQ2: sumarGastos(2, moneda),
       prestamosQ1: totalPrestamosPorQuincena(prestamos, 1, moneda),
       prestamosQ2: totalPrestamosPorQuincena(prestamos, 2, moneda),
     };
@@ -445,6 +454,7 @@ export function ListaGastosFijos({
               moneda={configuracion.moneda}
               transacciones={transacciones}
               configuracion={configuracion}
+              onRegistrarPago={onRegistrarPago}
             />
           );
         })}

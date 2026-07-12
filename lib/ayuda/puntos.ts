@@ -5,6 +5,20 @@ export interface PuntoAyuda {
 }
 
 export const AYUDA_POR_PAGINA: Record<string, PuntoAyuda[]> = {
+  home: [
+    {
+      id: "patrimonio",
+      titulo: "Cuentas, tarjetas y efectivo",
+      descripcion:
+        "Saldo disponible de cada fuente. Toca una para filtrar el gráfico por sus transacciones del mes.",
+    },
+    {
+      id: "grafico",
+      titulo: "Gráfico mensual",
+      descripcion:
+        "Ingresos, gastos y movimientos (transferencias) del mes según transacciones. Filtra por tipo o por la cuenta/tarjeta seleccionada arriba.",
+    },
+  ],
   dashboard: [
     {
       id: "resumen",
@@ -61,13 +75,13 @@ export const AYUDA_POR_PAGINA: Record<string, PuntoAyuda[]> = {
     {
       id: "acciones",
       titulo: "Nueva cuenta",
-      descripcion: "Registra cuentas de ahorro o corriente para llevar saldos y registrar movimientos.",
+      descripcion: "Registra cuentas de ahorro o corriente. Personaliza color e icono para cómo se verán en Home.",
     },
     {
       id: "lista",
       titulo: "Tus cuentas",
       descripcion:
-        "Cada cuenta muestra banco, saldo y moneda. Edita o elimina desde los botones de cada tarjeta.",
+        "Cada cuenta muestra banco y saldo. Al editar puedes cambiar el color y el icono que aparecen en Home.",
     },
     {
       id: "efectivo",

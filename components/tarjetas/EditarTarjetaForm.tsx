@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useFinanzas } from "@/context/FinanzasContext";
 import { useAuth } from "@/context/AuthContext";
-import type { TarjetaCredito } from "@/types/finanzas";
+import type { ColorHome, TarjetaCredito } from "@/types/finanzas";
 import {
   almacenarNumeroTarjeta,
   detectarMarca,
@@ -18,6 +18,10 @@ import {
 import { InputNumeroTarjetaSeguro } from "@/components/tarjetas/InputNumeroTarjetaSeguro";
 import { TarjetaVisual } from "@/components/tarjetas/TarjetaVisual";
 import { SelectorMoneda } from "@/components/ui/SelectorMoneda";
+import { SelectorBanco } from "@/components/ui/SelectorBanco";
+import { bancoPermitido } from "@/lib/bancos";
+import { PersonalizacionTarjetaHome } from "@/components/ui/PersonalizacionTarjetaHome";
+import { colorHomeTarjeta } from "@/lib/personalizacion-home";
 
 const inputClass =
   "rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent";
@@ -57,6 +61,7 @@ export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProp
       : ""
   );
   const [error, setError] = useState("");
+  const [colorHome, setColorHome] = useState<ColorHome>(colorHomeTarjeta(tarjeta));
 
   const marcaDetectada = useMemo(
     () => (digitosTarjeta ? detectarMarca(digitosTarjeta) : tarjeta.marca),
@@ -100,8 +105,8 @@ export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProp
     const marca = digitosTarjeta ? marcaDetectada : tarjeta.marca;
     const cvvFinal = cvv ? cvv.replace(/\D/g, "") : tarjeta.cvv;
 
-    if (!banco.trim()) {
-      setError("El banco es obligatorio");
+    if (!banco || !bancoPermitido(banco, tarjeta.banco)) {
+      setError("Selecciona un banco de la lista");
       return;
     }
     if (!titular.trim()) {
@@ -178,7 +183,7 @@ export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProp
         : null;
 
     actualizarTarjeta(tarjeta.id, {
-      banco: banco.trim(),
+      banco,
       nombreTarjeta: nombreTarjeta.trim() || "Crédito",
       titular: titular.trim().toUpperCase(),
       ...(numeroTarjetaAlmacenado
@@ -194,6 +199,7 @@ export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProp
       diaCorte: Math.min(31, Math.max(1, Number(diaCorte))),
       diaPago: Math.min(31, Math.max(1, Number(diaPago))),
       moneda,
+      colorHome,
       extensionCuotasPopular: cuotasPopularActivo
         ? {
             limiteAprobado: limiteCuotasNum,
@@ -227,15 +233,7 @@ export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProp
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-foreground">Banco</span>
-              <input
-                type="text"
-                value={banco}
-                onChange={(e) => setBanco(e.target.value)}
-                className={inputClass}
-              />
-            </label>
+            <SelectorBanco value={banco} onChange={setBanco} />
 
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium text-foreground">
@@ -421,6 +419,8 @@ export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProp
               )}
             </div>
           </div>
+
+          <PersonalizacionTarjetaHome color={colorHome} onChange={setColorHome} />
 
           {error && <p className="text-sm text-gasto">{error}</p>}
 

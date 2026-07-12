@@ -16,7 +16,7 @@ import {
 } from "@/lib/cuotas-popular";
 import { calcularGastosFijosEnPeriodo, obtenerGastosFijosDetalle } from "@/lib/gastos-fijos";
 import { calcularCuotasPrestamosEnPeriodo } from "@/lib/prestamos";
-import { montoSalidaMovimiento } from "@/lib/cambio";
+import { montoGastoIngresoEnMoneda, montoSalidaMovimiento } from "@/lib/cambio";
 import { esPagoATarjeta } from "@/lib/transacciones";
 import { fechaEnPeriodo } from "@/lib/quincenas";
 
@@ -108,10 +108,13 @@ export function calcularResumenQuincena(
   let gastosTotales = 0;
 
   transaccionesFiltradas.forEach((t) => {
-    if (t.tipo === "ingreso" && (!moneda || t.moneda === moneda)) {
-      ingresosTotales += t.monto;
-    } else if (t.tipo === "gasto" && (!moneda || t.moneda === moneda)) {
-      gastosTotales += t.monto;
+    if (t.tipo === "ingreso" || t.tipo === "gasto") {
+      const montoEnMoneda = moneda
+        ? montoGastoIngresoEnMoneda(t, moneda)
+        : t.monto;
+      if (montoEnMoneda == null) return;
+      if (t.tipo === "ingreso") ingresosTotales += montoEnMoneda;
+      else gastosTotales += montoEnMoneda;
     }
   });
 

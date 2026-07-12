@@ -12,15 +12,18 @@ import { formatearMoneda } from "@/lib/quincenas";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { EncabezadoPagina } from "@/components/layout/EncabezadoPagina";
 import { AyudaPagina } from "@/components/ayuda/AyudaPagina";
+import { Modal } from "@/components/ui/Modal";
 import { FormularioGastoFijo } from "@/components/gastos-fijos/FormularioGastoFijo";
 import { GestionCategoriasGastosFijos } from "@/components/gastos-fijos/GestionCategoriasGastosFijos";
 import { ListaGastosFijos } from "@/components/gastos-fijos/ListaGastosFijos";
+import { FormularioTransaccion } from "@/components/transacciones/FormularioTransaccion";
 
 export function GastosFijosContent() {
   const { gastosFijos, prestamos, configuracion, cargado } = useFinanzas();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [gestionarCategorias, setGestionarCategorias] = useState(false);
   const [vistaCategoria, setVistaCategoria] = useState<"todas" | "1" | "2">("todas");
+  const [pagoGastoFijoId, setPagoGastoFijoId] = useState<string | null>(null);
 
   const totalesPorMoneda = useMemo(
     () => Array.from(totalMensualPorMoneda(gastosFijos).entries()),
@@ -210,31 +213,43 @@ export function GastosFijosContent() {
         </div>
       )}
 
-      <div
-        data-ayuda="lista"
-        className={
-          mostrarFormulario
-            ? "grid gap-8 xl:grid-cols-[380px_1fr]"
-            : "grid gap-8"
-        }
-      >
-        {mostrarFormulario && (
-          <div className="space-y-4">
-            <button
-              type="button"
-              onClick={() => setMostrarFormulario(false)}
-              className="text-sm text-muted transition-colors hover:text-foreground"
-            >
-              ← Cancelar
-            </button>
-            <FormularioGastoFijo onExito={() => setMostrarFormulario(false)} />
-          </div>
-        )}
+      <div data-ayuda="lista">
         <ListaGastosFijos
           gastosFijos={gastosFijos}
-          onAgregar={() => setMostrarFormulario(true)}
+          onAgregar={() => {
+            setMostrarFormulario(true);
+            setGestionarCategorias(false);
+          }}
+          onRegistrarPago={(id) => setPagoGastoFijoId(id)}
         />
       </div>
+
+      <Modal
+        abierto={mostrarFormulario}
+        onCerrar={() => setMostrarFormulario(false)}
+        titulo="Nuevo gasto fijo"
+        variant="centro"
+      >
+        <FormularioGastoFijo
+          enModal
+          onExito={() => setMostrarFormulario(false)}
+        />
+      </Modal>
+
+      <Modal
+        abierto={pagoGastoFijoId != null}
+        onCerrar={() => setPagoGastoFijoId(null)}
+        titulo="Registrar pago"
+        variant="centro"
+        tamano="amplio"
+      >
+        <FormularioTransaccion
+          enModal
+          gastoFijoInicialId={pagoGastoFijoId ?? undefined}
+          onExito={() => setPagoGastoFijoId(null)}
+          onCancelar={() => setPagoGastoFijoId(null)}
+        />
+      </Modal>
     </PageContainer>
     </AyudaPagina>
   );

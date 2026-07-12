@@ -259,6 +259,13 @@ export function ListaTransacciones({
                         <>
                           {" · "}
                           {etiquetaOrigen(t.origen, cuentas, tarjetas, t.modoPagoTarjeta)}
+                          {t.tasaCambio && t.monedaOrigen && t.montoOrigen && (
+                            <>
+                              {" · "}
+                              {formatearMoneda(t.montoOrigen, t.monedaOrigen)} @{" "}
+                              {t.tasaCambio} {t.monedaOrigen}/{t.moneda}
+                            </>
+                          )}
                         </>
                       )
                     )}

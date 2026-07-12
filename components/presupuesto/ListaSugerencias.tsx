@@ -35,9 +35,14 @@ const ETIQUETAS_PRIORIDAD: Record<
 interface ListaSugerenciasProps {
   items: ItemSugerenciaPago[];
   moneda: string;
+  onPagarGastoFijo?: (gastoId: string) => void;
 }
 
-export function ListaSugerencias({ items, moneda }: ListaSugerenciasProps) {
+export function ListaSugerencias({
+  items,
+  moneda,
+  onPagarGastoFijo,
+}: ListaSugerenciasProps) {
   const {
     registrarPagoTarjeta,
     registrarPagoPrestamo,
@@ -58,7 +63,11 @@ export function ListaSugerencias({ items, moneda }: ListaSugerenciasProps) {
         registrarCuotaPopularPagada(item.entidadId);
         break;
       case "gasto-fijo":
-        registrarPagoGastoFijo(item.entidadId);
+        if (onPagarGastoFijo) {
+          onPagarGastoFijo(item.entidadId);
+        } else {
+          registrarPagoGastoFijo(item.entidadId);
+        }
         break;
     }
   }

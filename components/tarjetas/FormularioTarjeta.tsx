@@ -17,12 +17,20 @@ import {
 import { InputNumeroTarjetaSeguro } from "@/components/tarjetas/InputNumeroTarjetaSeguro";
 import { TarjetaVisual } from "@/components/tarjetas/TarjetaVisual";
 import { SelectorMoneda } from "@/components/ui/SelectorMoneda";
+import { SelectorBanco } from "@/components/ui/SelectorBanco";
+import { esBancoCertificado } from "@/lib/bancos";
+import { PersonalizacionTarjetaHome } from "@/components/ui/PersonalizacionTarjetaHome";
+import type { ColorHome } from "@/types/finanzas";
+import { colorHomePorIndice } from "@/lib/personalizacion-home";
 
 const inputClass =
   "rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent";
 
-export function FormularioTarjeta({ onExito }: { onExito?: () => void } = {}) {
-  const { agregarTarjeta, configuracion } = useFinanzas();
+export function FormularioTarjeta({
+  onExito,
+  enModal = false,
+}: { onExito?: () => void; enModal?: boolean } = {}) {
+  const { agregarTarjeta, configuracion, tarjetas } = useFinanzas();
   const { sesion } = useAuth();
 
   const [banco, setBanco] = useState("");
@@ -40,6 +48,9 @@ export function FormularioTarjeta({ onExito }: { onExito?: () => void } = {}) {
   const [limiteCuotasPopular, setLimiteCuotasPopular] = useState("");
   const [digitosCuotasPopular, setDigitosCuotasPopular] = useState("");
   const [sobregiroCuotasPopular, setSobregiroCuotasPopular] = useState("");
+  const [colorHome, setColorHome] = useState<ColorHome>(
+    colorHomePorIndice(tarjetas.length + 3)
+  );
   const [error, setError] = useState("");
 
   const marca = useMemo(
@@ -75,8 +86,8 @@ export function FormularioTarjeta({ onExito }: { onExito?: () => void } = {}) {
     const limiteNum = parseFloat(limite);
     const deudaNum = parseFloat(deudaActual) || 0;
 
-    if (!banco.trim()) {
-      setError("El banco es obligatorio");
+    if (!banco || !esBancoCertificado(banco)) {
+      setError("Selecciona un banco de la lista");
       return;
     }
     if (!titular.trim()) {
@@ -131,7 +142,7 @@ export function FormularioTarjeta({ onExito }: { onExito?: () => void } = {}) {
       : null;
 
     agregarTarjeta({
-      banco: banco.trim(),
+      banco,
       nombreTarjeta: nombreTarjeta.trim() || "Crédito",
       titular: titular.trim().toUpperCase(),
       ...numeroAlmacenado,
@@ -143,6 +154,7 @@ export function FormularioTarjeta({ onExito }: { onExito?: () => void } = {}) {
       diaCorte: Math.min(31, Math.max(1, Number(diaCorte))),
       diaPago: Math.min(31, Math.max(1, Number(diaPago))),
       moneda,
+      colorHome,
       extensionCuotasPopular: cuotasPopularActivo
         ? {
             limiteAprobado: limiteCuotasNum,
@@ -178,27 +190,24 @@ export function FormularioTarjeta({ onExito }: { onExito?: () => void } = {}) {
 
       <form
         onSubmit={handleSubmit}
-        className="rounded-xl border border-border bg-surface p-6 shadow-sm"
+        className={
+          enModal
+            ? ""
+            : "rounded-xl border border-border bg-surface p-6 shadow-sm"
+        }
       >
-        <h2 className="text-base font-semibold text-foreground">
-          Registrar tarjeta
-        </h2>
-        <p className="mt-1 text-xs text-muted">
+        {!enModal && (
+          <h2 className="text-base font-semibold text-foreground">
+            Registrar tarjeta
+          </h2>
+        )}
+        <p className={`text-xs text-muted ${enModal ? "" : "mt-1"}`}>
           Los 4 primeros y últimos dígitos quedan visibles para identificar la
           tarjeta; el bloque central se cifra en tu dispositivo
         </p>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-foreground">Banco</span>
-            <input
-              type="text"
-              value={banco}
-              onChange={(e) => setBanco(e.target.value)}
-              placeholder="Ej: Chase, BBVA..."
-              className={inputClass}
-            />
-          </label>
+          <SelectorBanco value={banco} onChange={setBanco} />
 
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium text-foreground">
@@ -390,6 +399,8 @@ export function FormularioTarjeta({ onExito }: { onExito?: () => void } = {}) {
             )}
           </div>
         </div>
+
+        <PersonalizacionTarjetaHome color={colorHome} onChange={setColorHome} />
 
         {error && <p className="mt-3 text-sm text-gasto">{error}</p>}
 

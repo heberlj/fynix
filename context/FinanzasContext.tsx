@@ -549,9 +549,30 @@ export function FinanzasProvider({
         const gasto = prev.gastosFijos.find((g) => g.id === gastoFijoId);
         if (!gasto || !gasto.activo) return prev;
 
+        const tarjeta = prev.tarjetas.find((t) => t.moneda === gasto.moneda);
+        const cuenta = prev.cuentas.find((c) => c.moneda === gasto.moneda);
+        let origen;
+        if (tarjeta) {
+          origen = { tipo: "tarjeta" as const, id: tarjeta.id };
+        } else if (cuenta) {
+          origen = { tipo: "cuenta" as const, id: cuenta.id };
+        } else if (gasto.moneda === prev.configuracion.moneda) {
+          origen = origenPorDefectoPago(prev.cuentas, gasto.moneda);
+        } else {
+          return prev;
+        }
+
+        const monedaOrigen =
+          origen.tipo === "tarjeta"
+            ? prev.tarjetas.find((t) => t.id === origen.id)?.moneda
+            : origen.tipo === "cuenta"
+              ? prev.cuentas.find((c) => c.id === origen.id)?.moneda
+              : prev.configuracion.moneda;
+
+        if (monedaOrigen !== gasto.moneda) return prev;
+
         const fechaPago = fecha ?? fechaHoy();
         const { quincena } = asignarQuincena(fechaPago, prev.configuracion);
-        const origen = origenPorDefectoPago(prev.cuentas, gasto.moneda);
 
         const transaccion: Transaccion = {
           id: generarId(),

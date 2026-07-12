@@ -9,7 +9,7 @@ import { Logo } from "@/components/ui/Logo";
 import { NavIcon } from "@/components/ui/NavIcon";
 import {
   NAV_CONFIGURACION,
-  NAV_DASHBOARD,
+  NAV_HOME,
   NAV_GRUPOS,
   type NavItem,
 } from "@/components/layout/navegacion";
@@ -117,7 +117,7 @@ export function Sidebar({ abierto, onCerrar, nombreUsuario }: SidebarProps) {
         </div>
 
         <nav className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
-          <NavLink item={NAV_DASHBOARD} pathname={pathname} onCerrar={onCerrar} />
+          <NavLink item={NAV_HOME} pathname={pathname} onCerrar={onCerrar} />
 
           {NAV_GRUPOS.map((grupo) => (
             <div key={grupo.titulo}>

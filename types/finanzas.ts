@@ -51,6 +51,30 @@ export interface ExtensionCuotasPopular {
 
 export type TipoCuentaBancaria = "ahorro" | "corriente";
 
+/** Paleta para tarjetas compactas en Home */
+export type ColorHome =
+  | "azul"
+  | "verde"
+  | "morado"
+  | "naranja"
+  | "rosa"
+  | "teal"
+  | "pizarra"
+  | "rojo"
+  | "indigo"
+  | "amarillo";
+
+/** Iconos disponibles para cuentas en Home (tarjetas usan "tarjeta" por defecto) */
+export type IconoHomeCuenta =
+  | "cuenta"
+  | "banco"
+  | "ahorro"
+  | "monedas"
+  | "cartera"
+  | "estrella";
+
+export type IconoHome = IconoHomeCuenta | "tarjeta" | "efectivo";
+
 export interface CuentaBancaria {
   id: string;
   banco: string;
@@ -59,6 +83,8 @@ export interface CuentaBancaria {
   saldoActual: number;
   moneda: string;
   ultimosCuatro: string;
+  colorHome?: ColorHome;
+  iconoHome?: IconoHomeCuenta;
 }
 
 export type MarcaTarjeta = "visa" | "mastercard" | "desconocida";
@@ -83,6 +109,7 @@ export interface TarjetaCredito {
   moneda: string;
   /** Extensión opcional: plan Cuotas Popular con límite aprobado propio */
   extensionCuotasPopular?: ExtensionCuotasPopular;
+  colorHome?: ColorHome;
 }
 
 export type TipoTasaInteres = "anual" | "mensual";

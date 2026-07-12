@@ -13,7 +13,10 @@ import { SelectorMoneda } from "@/components/ui/SelectorMoneda";
 const inputClass =
   "rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent";
 
-export function FormularioGastoFijo({ onExito }: { onExito?: () => void } = {}) {
+export function FormularioGastoFijo({
+  onExito,
+  enModal = false,
+}: { onExito?: () => void; enModal?: boolean } = {}) {
   const { agregarGastoFijo, configuracion } = useFinanzas();
   const categorias = obtenerCategoriasGastosFijos(configuracion);
 
@@ -91,10 +94,16 @@ export function FormularioGastoFijo({ onExito }: { onExito?: () => void } = {}) 
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-xl border border-border bg-surface p-4 shadow-sm sm:p-6"
+      className={
+        enModal
+          ? ""
+          : "rounded-xl border border-border bg-surface p-4 shadow-sm sm:p-6"
+      }
     >
-      <h2 className="text-base font-semibold text-foreground">Nuevo gasto fijo</h2>
-      <p className="mt-1 text-xs text-muted">
+      {!enModal && (
+        <h2 className="text-base font-semibold text-foreground">Nuevo gasto fijo</h2>
+      )}
+      <p className={`text-xs text-muted ${enModal ? "" : "mt-1"}`}>
         Asigna cada gasto a la quincena en la que lo pagas o presupuestas
       </p>
 

@@ -1,4 +1,5 @@
 export type NavIconName =
+  | "home"
   | "dashboard"
   | "transacciones"
   | "gastos-fijos"
@@ -28,13 +29,12 @@ export function NavIcon({ name, className = "h-[18px] w-[18px]" }: NavIconProps)
   };
 
   switch (name) {
+    case "home":
     case "dashboard":
       return (
         <svg {...props}>
-          <rect x="3" y="3" width="7" height="9" rx="1.5" />
-          <rect x="14" y="3" width="7" height="5" rx="1.5" />
-          <rect x="14" y="12" width="7" height="9" rx="1.5" />
-          <rect x="3" y="16" width="7" height="5" rx="1.5" />
+          <path d="M4 10.5 12 4l8 6.5" />
+          <path d="M6 9.5V19a1 1 0 0 0 1 1h3v-5h4v5h3a1 1 0 0 0 1-1V9.5" />
         </svg>
       );
     case "transacciones":

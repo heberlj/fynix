@@ -27,6 +27,29 @@ export function etiquetaTasaCambio(
   return `${monedaOrigen} por 1 ${monedaDestino}`;
 }
 
+/** Monto de gasto/ingreso contabilizado en monedaReferencia */
+export function montoGastoIngresoEnMoneda(
+  transaccion: Pick<
+    Transaccion,
+    "tipo" | "monto" | "moneda" | "montoOrigen" | "monedaOrigen"
+  >,
+  monedaReferencia: string
+): number | null {
+  if (transaccion.tipo !== "gasto" && transaccion.tipo !== "ingreso") {
+    return null;
+  }
+  if (transaccion.moneda === monedaReferencia) {
+    return transaccion.monto;
+  }
+  if (
+    transaccion.monedaOrigen === monedaReferencia &&
+    transaccion.montoOrigen != null
+  ) {
+    return transaccion.montoOrigen;
+  }
+  return null;
+}
+
 /** Monto que sale del origen, expresado en monedaReferencia (para totales) */
 export function montoSalidaMovimiento(
   transaccion: Pick<
@@ -64,10 +87,12 @@ export function totalesTransaccionesEnMoneda(
   let movimientos = 0;
 
   transacciones.forEach((t) => {
-    if (t.tipo === "ingreso" && t.moneda === monedaReferencia) {
-      ingresos += t.monto;
-    } else if (t.tipo === "gasto" && t.moneda === monedaReferencia) {
-      gastos += t.monto;
+    if (t.tipo === "ingreso") {
+      const monto = montoGastoIngresoEnMoneda(t, monedaReferencia);
+      if (monto != null) ingresos += monto;
+    } else if (t.tipo === "gasto") {
+      const monto = montoGastoIngresoEnMoneda(t, monedaReferencia);
+      if (monto != null) gastos += monto;
     } else if (t.tipo === "transferencia" && esPagoATarjeta(t)) {
       const salida = montoSalidaMovimiento(t, monedaReferencia);
       if (salida != null) movimientos += salida;

@@ -10,13 +10,19 @@ function redondear(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+function montoAfectaLiquido(
+  transaccion: Pick<Transaccion, "monto" | "montoOrigen">
+): number {
+  return transaccion.montoOrigen ?? transaccion.monto;
+}
+
 /** Delta para cuentas y efectivo: positivo suma, negativo resta */
 function deltaLiquido(
-  transaccion: Pick<Transaccion, "tipo" | "monto">,
+  transaccion: Pick<Transaccion, "tipo" | "monto" | "montoOrigen">,
   direccion: 1 | -1
 ): number {
   const signo = transaccion.tipo === "ingreso" ? 1 : -1;
-  return redondear(signo * transaccion.monto * direccion);
+  return redondear(signo * montoAfectaLiquido(transaccion) * direccion);
 }
 
 /** Delta para deuda de tarjeta: gasto aumenta deuda, ingreso la reduce */

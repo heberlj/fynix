@@ -6,6 +6,8 @@ import type { Prestamo, TipoTasaInteres } from "@/types/finanzas";
 import { calcularCuotaConInteres } from "@/lib/prestamos";
 import { formatearMoneda } from "@/lib/quincenas";
 import { SelectorMoneda } from "@/components/ui/SelectorMoneda";
+import { SelectorBanco } from "@/components/ui/SelectorBanco";
+import { bancoPermitido } from "@/lib/bancos";
 
 const inputClass =
   "rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent";
@@ -63,8 +65,8 @@ export function EditarPrestamoForm({ prestamo, onCancelar }: EditarPrestamoFormP
     const cuotasTotalNum = parseInt(cuotasTotales, 10);
     const cuotasPagadasNum = parseInt(cuotasPagadas, 10) || 0;
 
-    if (!entidad.trim()) {
-      setError("La entidad es obligatoria");
+    if (!entidad || !bancoPermitido(entidad, prestamo.entidad)) {
+      setError("Selecciona un banco de la lista");
       return;
     }
     if (!montoPrestado || isNaN(prestadoNum) || prestadoNum <= 0) {
@@ -89,7 +91,7 @@ export function EditarPrestamoForm({ prestamo, onCancelar }: EditarPrestamoFormP
     }
 
     actualizarPrestamo(prestamo.id, {
-      entidad: entidad.trim(),
+      entidad,
       descripcion: descripcion.trim(),
       montoPrestado: prestadoNum,
       montoTotal: Math.round(cuotaNum * cuotasTotalNum * 100) / 100,
@@ -111,10 +113,12 @@ export function EditarPrestamoForm({ prestamo, onCancelar }: EditarPrestamoFormP
       <h4 className="text-sm font-semibold text-foreground">Editar préstamo</h4>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="flex flex-col gap-1.5 sm:col-span-2">
-          <span className="text-sm font-medium text-foreground">Entidad</span>
-          <input type="text" value={entidad} onChange={(e) => setEntidad(e.target.value)} className={inputClass} />
-        </label>
+        <SelectorBanco
+          value={entidad}
+          onChange={setEntidad}
+          etiqueta="Banco"
+          className="sm:col-span-2"
+        />
 
         <label className="flex flex-col gap-1.5 sm:col-span-2">
           <span className="text-sm font-medium text-foreground">Descripción</span>

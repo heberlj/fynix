@@ -11,11 +11,14 @@ export interface NavGrupo {
   items: NavItem[];
 }
 
-export const NAV_DASHBOARD: NavItem = {
+export const NAV_HOME: NavItem = {
   href: "/",
-  label: "Dashboard",
-  icon: "dashboard",
+  label: "Home",
+  icon: "home",
 };
+
+/** @deprecated Usar NAV_HOME */
+export const NAV_DASHBOARD = NAV_HOME;
 
 export const NAV_GRUPOS: NavGrupo[] = [
   {
@@ -44,7 +47,7 @@ export const NAV_CONFIGURACION: NavItem = {
 };
 
 const TODAS_LAS_RUTAS: NavItem[] = [
-  NAV_DASHBOARD,
+  NAV_HOME,
   ...NAV_GRUPOS.flatMap((g) => g.items),
   NAV_CONFIGURACION,
 ];

@@ -2,8 +2,12 @@
 
 import { useState } from "react";
 import { useFinanzas } from "@/context/FinanzasContext";
-import type { CuentaBancaria, TipoCuentaBancaria } from "@/types/finanzas";
+import type { CuentaBancaria, ColorHome, IconoHomeCuenta, TipoCuentaBancaria } from "@/types/finanzas";
 import { SelectorMoneda } from "@/components/ui/SelectorMoneda";
+import { SelectorBanco } from "@/components/ui/SelectorBanco";
+import { bancoPermitido, esBancoCertificado } from "@/lib/bancos";
+import { PersonalizacionCuentaHome } from "@/components/ui/PersonalizacionCuentaHome";
+import { colorHomeCuenta, iconoHomeCuenta } from "@/lib/personalizacion-home";
 
 const inputClass =
   "rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent";
@@ -22,6 +26,8 @@ export function EditarCuentaForm({ cuenta, onCancelar }: EditarCuentaFormProps) 
   const [saldoActual, setSaldoActual] = useState(String(cuenta.saldoActual));
   const [ultimosCuatro, setUltimosCuatro] = useState(cuenta.ultimosCuatro);
   const [moneda, setMoneda] = useState(cuenta.moneda);
+  const [colorHome, setColorHome] = useState<ColorHome>(colorHomeCuenta(cuenta));
+  const [iconoHome, setIconoHome] = useState<IconoHomeCuenta>(iconoHomeCuenta(cuenta));
   const [error, setError] = useState("");
 
   function handleSubmit(e: React.FormEvent) {
@@ -29,8 +35,8 @@ export function EditarCuentaForm({ cuenta, onCancelar }: EditarCuentaFormProps) 
     setError("");
 
     const saldoNum = parseFloat(saldoActual);
-    if (!banco.trim()) {
-      setError("El banco es obligatorio");
+    if (!banco || !bancoPermitido(banco, cuenta.banco)) {
+      setError("Selecciona un banco de la lista");
       return;
     }
     if (!nombre.trim()) {
@@ -43,12 +49,14 @@ export function EditarCuentaForm({ cuenta, onCancelar }: EditarCuentaFormProps) 
     }
 
     actualizarCuenta(cuenta.id, {
-      banco: banco.trim(),
+      banco,
       nombre: nombre.trim(),
       tipo,
       saldoActual: saldoNum,
       moneda,
       ultimosCuatro: ultimosCuatro.replace(/\D/g, "").slice(-4),
+      colorHome,
+      iconoHome,
     });
 
     onCancelar();
@@ -62,10 +70,7 @@ export function EditarCuentaForm({ cuenta, onCancelar }: EditarCuentaFormProps) 
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="flex flex-col gap-1.5 sm:col-span-2">
-          <span className="text-sm font-medium text-foreground">Banco</span>
-          <input type="text" value={banco} onChange={(e) => setBanco(e.target.value)} className={inputClass} />
-        </label>
+        <SelectorBanco value={banco} onChange={setBanco} className="sm:col-span-2" />
 
         <label className="flex flex-col gap-1.5 sm:col-span-2">
           <span className="text-sm font-medium text-foreground">Nombre</span>
@@ -101,6 +106,15 @@ export function EditarCuentaForm({ cuenta, onCancelar }: EditarCuentaFormProps) 
             className={inputClass}
           />
         </label>
+
+        <div className="sm:col-span-2">
+          <PersonalizacionCuentaHome
+            color={colorHome}
+            icono={iconoHome}
+            onColorChange={setColorHome}
+            onIconoChange={setIconoHome}
+          />
+        </div>
       </div>
 
       {error && <p className="text-sm text-gasto">{error}</p>}

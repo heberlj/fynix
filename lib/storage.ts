@@ -1,7 +1,13 @@
-import type { CuentaBancaria, CuotaPopular, EstadoFinanzas, GastoFijo, Prestamo, TarjetaCredito, Transaccion } from "@/types/finanzas";
+import type { ColorHome, CuentaBancaria, CuotaPopular, EstadoFinanzas, GastoFijo, IconoHomeCuenta, Prestamo, TarjetaCredito, Transaccion } from "@/types/finanzas";
 import { CONFIGURACION_DEFAULT } from "@/types/finanzas";
 import { quincenaNumeroDeDia, tipoPresupuestoPorDefecto } from "@/lib/gastos-fijos";
 import { crearClienteSupabase } from "@/lib/supabase/client";
+import {
+  ICONO_HOME_CUENTA_DEFAULT,
+  colorHomePorIndice,
+  esColorHome,
+  esIconoHomeCuenta,
+} from "@/lib/personalizacion-home";
 
 const TARJETA_DEFAULT: Omit<TarjetaCredito, "id" | "banco" | "nombreTarjeta" | "limite" | "diaCorte" | "diaPago" | "deudaActual"> = {
   titular: "",
@@ -23,11 +29,12 @@ function inferirPrimerosCuatro(tarjeta: TarjetaCredito): string {
 }
 
 function normalizarTarjetas(tarjetas: TarjetaCredito[] = []): TarjetaCredito[] {
-  return tarjetas.map((t) => {
+  return tarjetas.map((t, indice) => {
     const base = {
       ...TARJETA_DEFAULT,
       ...t,
       primerosCuatro: inferirPrimerosCuatro({ ...TARJETA_DEFAULT, ...t }),
+      colorHome: esColorHome(t.colorHome) ? t.colorHome : colorHomePorIndice(indice + 3),
     };
     if (!base.extensionCuotasPopular) return base;
 
@@ -112,7 +119,7 @@ function normalizarCuotasPopular(cuotas: CuotaPopular[] = []): CuotaPopular[] {
 }
 
 function normalizarCuentas(cuentas: CuentaBancaria[] = []): CuentaBancaria[] {
-  return cuentas.map((c) => ({
+  return cuentas.map((c, indice) => ({
     ...c,
     banco: c.banco ?? "",
     nombre: c.nombre ?? "",
@@ -120,6 +127,8 @@ function normalizarCuentas(cuentas: CuentaBancaria[] = []): CuentaBancaria[] {
     saldoActual: c.saldoActual ?? 0,
     moneda: c.moneda ?? CONFIGURACION_DEFAULT.moneda,
     ultimosCuatro: c.ultimosCuatro ?? "",
+    colorHome: esColorHome(c.colorHome) ? c.colorHome : colorHomePorIndice(indice),
+    iconoHome: esIconoHomeCuenta(c.iconoHome) ? c.iconoHome : ICONO_HOME_CUENTA_DEFAULT,
   }));
 }
 

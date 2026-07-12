@@ -5,6 +5,7 @@ import { useFinanzas } from "@/context/FinanzasContext";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { EncabezadoPagina } from "@/components/layout/EncabezadoPagina";
 import { AyudaPagina } from "@/components/ayuda/AyudaPagina";
+import { Modal } from "@/components/ui/Modal";
 import { FormularioTarjeta } from "@/components/tarjetas/FormularioTarjeta";
 import { ListaTarjetas } from "@/components/tarjetas/ListaTarjetas";
 import { formatearMoneda } from "@/lib/quincenas";
@@ -79,31 +80,25 @@ export function TarjetasContent() {
           </div>
         )}
 
-        <div
-          data-ayuda="lista"
-          className={
-            mostrarFormulario
-              ? "grid gap-8 xl:grid-cols-[400px_1fr]"
-              : "grid gap-8"
-          }
-        >
-          {mostrarFormulario && (
-            <div className="space-y-4">
-              <button
-                type="button"
-                onClick={() => setMostrarFormulario(false)}
-                className="text-sm text-muted transition-colors hover:text-foreground"
-              >
-                ← Cancelar
-              </button>
-              <FormularioTarjeta onExito={() => setMostrarFormulario(false)} />
-            </div>
-          )}
+        <div data-ayuda="lista">
           <ListaTarjetas
             tarjetas={tarjetas}
             onAgregar={() => setMostrarFormulario(true)}
           />
         </div>
+
+        <Modal
+          abierto={mostrarFormulario}
+          onCerrar={() => setMostrarFormulario(false)}
+          titulo="Nueva tarjeta"
+          variant="centro"
+          tamano="amplio"
+        >
+          <FormularioTarjeta
+            enModal
+            onExito={() => setMostrarFormulario(false)}
+          />
+        </Modal>
       </PageContainer>
     </AyudaPagina>
   );

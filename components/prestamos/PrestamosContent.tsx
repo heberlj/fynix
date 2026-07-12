@@ -7,6 +7,7 @@ import { formatearMoneda } from "@/lib/quincenas";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { EncabezadoPagina } from "@/components/layout/EncabezadoPagina";
 import { AyudaPagina } from "@/components/ayuda/AyudaPagina";
+import { Modal } from "@/components/ui/Modal";
 import { FormularioPrestamo } from "@/components/prestamos/FormularioPrestamo";
 import { ListaPrestamos } from "@/components/prestamos/ListaPrestamos";
 
@@ -82,31 +83,25 @@ export function PrestamosContent() {
           </div>
         )}
 
-        <div
-          data-ayuda="lista"
-          className={
-            mostrarFormulario
-              ? "grid gap-8 xl:grid-cols-[380px_1fr]"
-              : "grid gap-8"
-          }
-        >
-          {mostrarFormulario && (
-            <div className="space-y-4">
-              <button
-                type="button"
-                onClick={() => setMostrarFormulario(false)}
-                className="text-sm text-muted transition-colors hover:text-foreground"
-              >
-                ← Cancelar
-              </button>
-              <FormularioPrestamo onExito={() => setMostrarFormulario(false)} />
-            </div>
-          )}
+        <div data-ayuda="lista">
           <ListaPrestamos
             prestamos={prestamos}
             onAgregar={() => setMostrarFormulario(true)}
           />
         </div>
+
+        <Modal
+          abierto={mostrarFormulario}
+          onCerrar={() => setMostrarFormulario(false)}
+          titulo="Nuevo préstamo"
+          variant="centro"
+          tamano="amplio"
+        >
+          <FormularioPrestamo
+            enModal
+            onExito={() => setMostrarFormulario(false)}
+          />
+        </Modal>
       </PageContainer>
     </AyudaPagina>
   );

@@ -2,14 +2,24 @@
 
 import { useState } from "react";
 import { useFinanzas } from "@/context/FinanzasContext";
-import type { TipoCuentaBancaria } from "@/types/finanzas";
+import type { ColorHome, IconoHomeCuenta, TipoCuentaBancaria } from "@/types/finanzas";
 import { SelectorMoneda } from "@/components/ui/SelectorMoneda";
+import { SelectorBanco } from "@/components/ui/SelectorBanco";
+import { esBancoCertificado } from "@/lib/bancos";
+import { PersonalizacionCuentaHome } from "@/components/ui/PersonalizacionCuentaHome";
+import {
+  colorHomePorIndice,
+  ICONO_HOME_CUENTA_DEFAULT,
+} from "@/lib/personalizacion-home";
 
 const inputClass =
   "rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent";
 
-export function FormularioCuenta({ onExito }: { onExito?: () => void } = {}) {
-  const { agregarCuenta, configuracion } = useFinanzas();
+export function FormularioCuenta({
+  onExito,
+  enModal = false,
+}: { onExito?: () => void; enModal?: boolean } = {}) {
+  const { agregarCuenta, configuracion, cuentas } = useFinanzas();
 
   const [banco, setBanco] = useState("");
   const [nombre, setNombre] = useState("");
@@ -17,6 +27,12 @@ export function FormularioCuenta({ onExito }: { onExito?: () => void } = {}) {
   const [saldoActual, setSaldoActual] = useState("");
   const [ultimosCuatro, setUltimosCuatro] = useState("");
   const [moneda, setMoneda] = useState(configuracion.moneda);
+  const [colorHome, setColorHome] = useState<ColorHome>(
+    colorHomePorIndice(cuentas.length)
+  );
+  const [iconoHome, setIconoHome] = useState<IconoHomeCuenta>(
+    ICONO_HOME_CUENTA_DEFAULT
+  );
   const [error, setError] = useState("");
 
   function handleSubmit(e: React.FormEvent) {
@@ -25,8 +41,8 @@ export function FormularioCuenta({ onExito }: { onExito?: () => void } = {}) {
 
     const saldoNum = parseFloat(saldoActual) || 0;
 
-    if (!banco.trim()) {
-      setError("El banco es obligatorio");
+    if (!banco || !esBancoCertificado(banco)) {
+      setError("Selecciona un banco de la lista");
       return;
     }
     if (!nombre.trim()) {
@@ -39,12 +55,14 @@ export function FormularioCuenta({ onExito }: { onExito?: () => void } = {}) {
     }
 
     agregarCuenta({
-      banco: banco.trim(),
+      banco,
       nombre: nombre.trim(),
       tipo,
       saldoActual: saldoNum,
       moneda,
       ultimosCuatro: ultimosCuatro.replace(/\D/g, "").slice(-4),
+      colorHome,
+      iconoHome,
     });
 
     setBanco("");
@@ -52,30 +70,33 @@ export function FormularioCuenta({ onExito }: { onExito?: () => void } = {}) {
     setTipo("ahorro");
     setSaldoActual("");
     setUltimosCuatro("");
+    setColorHome(colorHomePorIndice(cuentas.length + 1));
+    setIconoHome(ICONO_HOME_CUENTA_DEFAULT);
     onExito?.();
   }
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-xl border border-border bg-surface p-4 shadow-sm sm:p-6"
+      className={
+        enModal
+          ? ""
+          : "rounded-xl border border-border bg-surface p-4 shadow-sm sm:p-6"
+      }
     >
-      <h2 className="text-base font-semibold text-foreground">Nueva cuenta</h2>
-      <p className="mt-1 text-xs text-muted">
+      {!enModal && (
+        <h2 className="text-base font-semibold text-foreground">Nueva cuenta</h2>
+      )}
+      <p className={`text-xs text-muted ${enModal ? "" : "mt-1"}`}>
         El saldo se actualizará automáticamente al registrar ingresos y gastos
       </p>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <label className="flex flex-col gap-1.5 sm:col-span-2">
-          <span className="text-sm font-medium text-foreground">Banco</span>
-          <input
-            type="text"
-            value={banco}
-            onChange={(e) => setBanco(e.target.value)}
-            placeholder="Ej: Banco Popular, Banreservas..."
-            className={inputClass}
-          />
-        </label>
+        <SelectorBanco
+          value={banco}
+          onChange={setBanco}
+          className="sm:col-span-2"
+        />
 
         <label className="flex flex-col gap-1.5 sm:col-span-2">
           <span className="text-sm font-medium text-foreground">Nombre de la cuenta</span>
@@ -130,6 +151,15 @@ export function FormularioCuenta({ onExito }: { onExito?: () => void } = {}) {
             className={inputClass}
           />
         </label>
+
+        <div className="sm:col-span-2">
+          <PersonalizacionCuentaHome
+            color={colorHome}
+            icono={iconoHome}
+            onColorChange={setColorHome}
+            onIconoChange={setIconoHome}
+          />
+        </div>
       </div>
 
       {error && <p className="mt-3 text-sm text-gasto">{error}</p>}

@@ -12,7 +12,9 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { EncabezadoPagina } from "@/components/layout/EncabezadoPagina";
 import { AyudaPagina } from "@/components/ayuda/AyudaPagina";
 import { StatCard } from "@/components/ui/StatCard";
+import { Modal } from "@/components/ui/Modal";
 import { ListaSugerencias } from "@/components/presupuesto/ListaSugerencias";
+import { FormularioTransaccion } from "@/components/transacciones/FormularioTransaccion";
 
 const inputClass =
   "rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent";
@@ -32,6 +34,7 @@ export function PresupuestoContent() {
 
   const [ingresoManual, setIngresoManual] = useState("");
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
+  const [pagoGastoFijoId, setPagoGastoFijoId] = useState<string | null>(null);
 
   const hayCambios = ingresoManual.trim() !== "" || mostrarSugerencias;
 
@@ -319,7 +322,11 @@ export function PresupuestoContent() {
           </div>
 
           <div className="mt-6">
-            <ListaSugerencias items={sugerencias.items} moneda={moneda} />
+            <ListaSugerencias
+              items={sugerencias.items}
+              moneda={moneda}
+              onPagarGastoFijo={(id) => setPagoGastoFijoId(id)}
+            />
           </div>
 
           <p className="mt-6 text-xs text-muted">
@@ -339,6 +346,21 @@ export function PresupuestoContent() {
           </div>
         </section>
       )}
+
+      <Modal
+        abierto={pagoGastoFijoId != null}
+        onCerrar={() => setPagoGastoFijoId(null)}
+        titulo="Registrar pago"
+        variant="centro"
+        tamano="amplio"
+      >
+        <FormularioTransaccion
+          enModal
+          gastoFijoInicialId={pagoGastoFijoId ?? undefined}
+          onExito={() => setPagoGastoFijoId(null)}
+          onCancelar={() => setPagoGastoFijoId(null)}
+        />
+      </Modal>
     </PageContainer>
     </AyudaPagina>
   );

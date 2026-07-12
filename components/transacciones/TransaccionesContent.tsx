@@ -37,14 +37,6 @@ export function TransaccionesContent() {
     );
   }
 
-  const formulario = (
-    <FormularioTransaccion
-      transaccion={transaccionEditando ?? undefined}
-      onExito={cerrarFormulario}
-      onCancelar={cerrarFormulario}
-    />
-  );
-
   return (
     <AyudaPagina pagina="transacciones">
       <PageContainer>
@@ -82,30 +74,12 @@ export function TransaccionesContent() {
           }
         />
 
-      {gestionarCategorias && (
-        <GestionCategoriasTransacciones
-          onCerrar={() => setGestionarCategorias(false)}
-        />
-      )}
-
-      <Modal
-        abierto={formularioAbierto}
-        onCerrar={cerrarFormulario}
-        titulo={tituloFormulario}
-      >
-        <div className="lg:hidden">{formulario}</div>
-      </Modal>
-
-      <div
-        className={
-          formularioAbierto
-            ? "grid gap-8 lg:grid-cols-[380px_1fr]"
-            : "grid gap-8"
-        }
-      >
-        {formularioAbierto && (
-          <div className="hidden lg:block">{formulario}</div>
+        {gestionarCategorias && (
+          <GestionCategoriasTransacciones
+            onCerrar={() => setGestionarCategorias(false)}
+          />
         )}
+
         <ListaTransacciones
           transacciones={transacciones}
           onNueva={() => {
@@ -120,8 +94,22 @@ export function TransaccionesContent() {
             setGestionarCategorias(false);
           }}
         />
-      </div>
-    </PageContainer>
+
+        <Modal
+          abierto={formularioAbierto}
+          onCerrar={cerrarFormulario}
+          titulo={tituloFormulario}
+          variant="centro"
+          tamano="amplio"
+        >
+          <FormularioTransaccion
+            enModal
+            transaccion={transaccionEditando ?? undefined}
+            onExito={cerrarFormulario}
+            onCancelar={cerrarFormulario}
+          />
+        </Modal>
+      </PageContainer>
     </AyudaPagina>
   );
 }

@@ -9,11 +9,16 @@ import {
 } from "@/lib/prestamos";
 import { formatearMoneda } from "@/lib/quincenas";
 import { SelectorMoneda } from "@/components/ui/SelectorMoneda";
+import { SelectorBanco } from "@/components/ui/SelectorBanco";
+import { esBancoCertificado } from "@/lib/bancos";
 
 const inputClass =
   "rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent";
 
-export function FormularioPrestamo({ onExito }: { onExito?: () => void } = {}) {
+export function FormularioPrestamo({
+  onExito,
+  enModal = false,
+}: { onExito?: () => void; enModal?: boolean } = {}) {
   const { agregarPrestamo, configuracion } = useFinanzas();
 
   const [entidad, setEntidad] = useState("");
@@ -68,8 +73,8 @@ export function FormularioPrestamo({ onExito }: { onExito?: () => void } = {}) {
     const cuotasTotalNum = parseInt(cuotasTotales, 10);
     const cuotasPagadasNum = parseInt(cuotasPagadas, 10) || 0;
 
-    if (!entidad.trim()) {
-      setError("La entidad es obligatoria");
+    if (!entidad || !esBancoCertificado(entidad)) {
+      setError("Selecciona un banco de la lista");
       return;
     }
     if (!montoPrestado || isNaN(prestadoNum) || prestadoNum <= 0) {
@@ -96,7 +101,7 @@ export function FormularioPrestamo({ onExito }: { onExito?: () => void } = {}) {
     const montoTotal = Math.round(cuotaNum * cuotasTotalNum * 100) / 100;
 
     agregarPrestamo({
-      entidad: entidad.trim(),
+      entidad,
       descripcion: descripcion.trim(),
       montoPrestado: prestadoNum,
       montoTotal,
@@ -126,24 +131,26 @@ export function FormularioPrestamo({ onExito }: { onExito?: () => void } = {}) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-xl border border-border bg-surface p-4 shadow-sm sm:p-6"
+      className={
+        enModal
+          ? ""
+          : "rounded-xl border border-border bg-surface p-4 shadow-sm sm:p-6"
+      }
     >
-      <h2 className="text-base font-semibold text-foreground">Nuevo préstamo</h2>
-      <p className="mt-1 text-xs text-muted">
+      {!enModal && (
+        <h2 className="text-base font-semibold text-foreground">Nuevo préstamo</h2>
+      )}
+      <p className={`text-xs text-muted ${enModal ? "" : "mt-1"}`}>
         Incluye tasa de interés para calcular la cuota automáticamente
       </p>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <label className="flex flex-col gap-1.5 sm:col-span-2">
-          <span className="text-sm font-medium text-foreground">Entidad</span>
-          <input
-            type="text"
-            value={entidad}
-            onChange={(e) => setEntidad(e.target.value)}
-            placeholder="Ej: Banco Popular, Cooperativa..."
-            className={inputClass}
-          />
-        </label>
+        <SelectorBanco
+          value={entidad}
+          onChange={setEntidad}
+          etiqueta="Banco"
+          className="sm:col-span-2"
+        />
 
         <label className="flex flex-col gap-1.5 sm:col-span-2">
           <span className="text-sm font-medium text-foreground">Descripción</span>

@@ -48,11 +48,13 @@ export function FormularioTransaccion({
   onCancelar,
   gastoFijoInicialId,
   transaccion,
+  enModal = false,
 }: {
   onExito?: () => void;
   onCancelar?: () => void;
   gastoFijoInicialId?: string;
   transaccion?: Transaccion;
+  enModal?: boolean;
 } = {}) {
   const modoEdicion = Boolean(transaccion);
   const {
@@ -131,6 +133,15 @@ export function FormularioTransaccion({
     Boolean(destino) &&
     movimientoConCambio(monedaOrigenTransferencia, monedaDestinoTransferencia);
 
+  const monedaOrigenPago = origen
+    ? monedaDeOrigen(origen, cuentas, tarjetas, configuracion.moneda)
+    : configuracion.moneda;
+
+  const requiereTasaCambioGastoIngreso =
+    tipo !== "transferencia" &&
+    Boolean(origen) &&
+    movimientoConCambio(monedaOrigenPago, moneda);
+
   const puedeTransferir = cuentas.length >= 1 || tarjetas.length > 0;
 
   const montoNumerico = parseFloat(monto) || 0;
@@ -140,6 +151,11 @@ export function FormularioTransaccion({
     if (!requiereTasaCambio || tasaNum <= 0) return montoNumerico;
     return calcularMontoOrigen(montoNumerico, tasaNum);
   }, [requiereTasaCambio, tasaNum, montoNumerico]);
+
+  const montoDebitoGastoIngreso = useMemo(() => {
+    if (!requiereTasaCambioGastoIngreso || tasaNum <= 0) return null;
+    return calcularMontoOrigen(montoNumerico, tasaNum);
+  }, [requiereTasaCambioGastoIngreso, tasaNum, montoNumerico]);
 
   const limiteDisponible = useMemo(() => {
     if (!tarjetaSeleccionada) return 0;
@@ -199,7 +215,25 @@ export function FormularioTransaccion({
     setMonto(String(gasto.monto));
     setCategoria(gasto.categoria);
     setMoneda(gasto.moneda);
-  }, [gastoFijoId, gastosFijos, tipo]);
+
+    if (gastoFijoInicialId === gastoFijoId && !modoEdicion) {
+      const tarjeta = tarjetas.find((t) => t.moneda === gasto.moneda);
+      const cuenta = cuentas.find((c) => c.moneda === gasto.moneda);
+      if (tarjeta) {
+        setOrigenValor(codificarOrigen({ tipo: "tarjeta", id: tarjeta.id }));
+      } else if (cuenta) {
+        setOrigenValor(codificarOrigen({ tipo: "cuenta", id: cuenta.id }));
+      }
+    }
+  }, [
+    gastoFijoId,
+    gastosFijos,
+    tipo,
+    gastoFijoInicialId,
+    modoEdicion,
+    tarjetas,
+    cuentas,
+  ]);
 
   function cambiarTipo(nuevoTipo: "gasto" | "ingreso" | "transferencia") {
     setTipo(nuevoTipo);
@@ -220,10 +254,6 @@ export function FormularioTransaccion({
     setUsarCuotasPopular(false);
     setCuotasValores(CUOTAS_INICIAL);
     setTasaCambio("");
-    const origenNuevo = decodificarOrigen(valor);
-    if (origenNuevo && tipo !== "transferencia") {
-      setMoneda(monedaDeOrigen(origenNuevo, cuentas, tarjetas, configuracion.moneda));
-    }
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -365,14 +395,40 @@ export function FormularioTransaccion({
       tarjetas,
       configuracion.moneda
     );
-    if (
-      origenDecodificado.tipo !== "efectivo" &&
-      moneda !== monedaOrigen
-    ) {
+
+    if (origenDecodificado.tipo === "tarjeta" && moneda !== monedaOrigen) {
       setError(
-        `La moneda debe coincidir con la del origen seleccionado (${monedaOrigen})`
+        `Para pagar con tarjeta, la moneda del ${tipo} debe ser ${monedaOrigen}. Elige una cuenta en otra moneda e indica la tasa.`
       );
       return;
+    }
+
+    let montoOrigenFinal: number | undefined;
+    let tasaCambioFinal: number | undefined;
+
+    if (movimientoConCambio(monedaOrigen, moneda)) {
+      if (!tasaCambio || isNaN(tasaNum) || tasaNum <= 0) {
+        setError(
+          `Ingresa la tasa del día (${etiquetaTasaCambio(monedaOrigen, moneda)})`
+        );
+        return;
+      }
+      montoOrigenFinal = calcularMontoOrigen(montoNumerico, tasaNum);
+      tasaCambioFinal = tasaNum;
+    }
+
+    const debitoOrigen = montoOrigenFinal ?? montoNumerico;
+
+    if (!modoEdicion && origenDecodificado.tipo === "efectivo" && debitoOrigen > efectivo) {
+      setError("No tienes suficiente efectivo");
+      return;
+    }
+    if (!modoEdicion && origenDecodificado.tipo === "cuenta") {
+      const cuenta = cuentas.find((c) => c.id === origenDecodificado.id);
+      if (!cuenta || debitoOrigen > cuenta.saldoActual) {
+        setError("Saldo insuficiente en la cuenta seleccionada");
+        return;
+      }
     }
 
     let planCuotasPopular;
@@ -426,6 +482,9 @@ export function FormularioTransaccion({
       categoria,
       fecha,
       moneda,
+      monedaOrigen: montoOrigenFinal != null ? monedaOrigen : undefined,
+      montoOrigen: montoOrigenFinal,
+      tasaCambio: tasaCambioFinal,
       origen: origenDecodificado,
       gastoFijoId:
         tipo === "gasto" && gastoFijoId && !transaccion?.prestamoId
@@ -460,12 +519,18 @@ export function FormularioTransaccion({
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-xl border border-border bg-surface p-4 shadow-sm sm:p-6 lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none"
+      className={
+        enModal
+          ? ""
+          : "rounded-xl border border-border bg-surface p-4 shadow-sm sm:p-6 lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none"
+      }
     >
-      <h2 className="text-base font-semibold text-foreground">
-        {modoEdicion ? "Editar transacción" : "Nueva transacción"}
-      </h2>
-      <p className="mt-1 text-xs text-muted">
+      {!enModal && (
+        <h2 className="text-base font-semibold text-foreground">
+          {modoEdicion ? "Editar transacción" : "Nueva transacción"}
+        </h2>
+      )}
+      <p className={`text-xs text-muted ${enModal ? "" : "mt-1"}`}>
         {modoEdicion
           ? "Ajusta los datos; los saldos se recalculan automáticamente"
           : "La quincena se asigna automáticamente según tu configuración"}
@@ -480,6 +545,7 @@ export function FormularioTransaccion({
               : "Movimiento"}
         </p>
       ) : (
+      !gastoFijoInicialId && (
       <div className="mt-4 flex rounded-lg border border-border p-1">
         <button
           type="button"
@@ -515,6 +581,7 @@ export function FormularioTransaccion({
           Mover dinero
         </button>
       </div>
+      )
       )}
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -557,7 +624,16 @@ export function FormularioTransaccion({
         {tipo !== "transferencia" && (
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium text-foreground">Moneda</span>
-            <SelectorMoneda value={moneda} onChange={setMoneda} />
+            {gastoFijoId ? (
+              <input
+                type="text"
+                value={moneda}
+                readOnly
+                className={`${inputClass} bg-background text-muted`}
+              />
+            ) : (
+              <SelectorMoneda value={moneda} onChange={setMoneda} />
+            )}
           </label>
         )}
 
@@ -602,7 +678,8 @@ export function FormularioTransaccion({
 
         {tipo === "gasto" &&
           gastosFijosActivos.length > 0 &&
-          !transaccion?.prestamoId && (
+          !transaccion?.prestamoId &&
+          !gastoFijoInicialId && (
           <label className="flex flex-col gap-1.5 sm:col-span-2">
             <span className="text-sm font-medium text-foreground">
               Gasto fijo (opcional)
@@ -695,11 +772,57 @@ export function FormularioTransaccion({
             )}
           </>
         ) : (
-          <SelectorOrigenFondo
-            value={origenValor}
-            onChange={cambiarOrigen}
-            tipo={tipo}
-          />
+          <>
+            <SelectorOrigenFondo
+              value={origenValor}
+              onChange={cambiarOrigen}
+              tipo={tipo}
+            />
+
+            {requiereTasaCambioGastoIngreso && (
+              <>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-sm font-medium text-foreground">
+                    Tasa del día ({etiquetaTasaCambio(monedaOrigenPago, moneda)})
+                  </span>
+                  <input
+                    type="number"
+                    min="0.0001"
+                    step="0.0001"
+                    value={tasaCambio}
+                    onChange={(e) => setTasaCambio(e.target.value)}
+                    placeholder="Ej: 58.50"
+                    className={inputClass}
+                  />
+                </label>
+
+                <div className="rounded-lg border border-accent/20 bg-accent/5 px-4 py-3 text-xs text-muted sm:col-span-2">
+                  {montoDebitoGastoIngreso != null && montoNumerico > 0 ? (
+                    <p>
+                      Se debitarán{" "}
+                      <span className="font-semibold text-foreground">
+                        {formatearMoneda(montoDebitoGastoIngreso, monedaOrigenPago)}
+                      </span>
+                      {" "}de tu{" "}
+                      {origen?.tipo === "efectivo" ? "efectivo" : "cuenta"} por un{" "}
+                      {tipo === "gasto" ? "gasto" : "ingreso"} de{" "}
+                      <span className="font-semibold text-foreground">
+                        {formatearMoneda(montoNumerico, moneda)}
+                      </span>
+                      .
+                    </p>
+                  ) : (
+                    <p>
+                      Ingresa el monto en {moneda} y la tasa del día para calcular
+                      cuánto saldrá de tu{" "}
+                      {origen?.tipo === "efectivo" ? "efectivo" : "cuenta"} en{" "}
+                      {monedaOrigenPago}.
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+          </>
         )}
 
         {tipo === "transferencia" && !puedeTransferir && (
