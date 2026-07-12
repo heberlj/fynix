@@ -17,7 +17,11 @@ import {
   registrarUsuario,
 } from "@/lib/auth";
 import { limpiarDatosLocalesAntiguos } from "@/lib/limpiar-datos-locales";
-import { crearClienteSupabase } from "@/lib/supabase/client";
+import {
+  crearClienteSupabase,
+  supabaseConfigurado,
+} from "@/lib/supabase/client";
+import { ErrorConfiguracionSupabase } from "@/components/auth/ErrorConfiguracionSupabase";
 
 interface AuthContextValue {
   sesion: SesionActiva | null;
@@ -39,11 +43,23 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [sesion, setSesion] = useState<SesionActiva | null>(null);
   const [cargado, setCargado] = useState(false);
+  const [configOk] = useState(() => supabaseConfigurado());
 
   useEffect(() => {
+    if (!configOk) {
+      setCargado(true);
+      return;
+    }
+
     limpiarDatosLocalesAntiguos();
 
-    const supabase = crearClienteSupabase();
+    let supabase;
+    try {
+      supabase = crearClienteSupabase();
+    } catch {
+      setCargado(true);
+      return;
+    }
 
     void obtenerSesion().then((activa) => {
       setSesion(activa);
@@ -73,7 +89,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [configOk]);
+
+  if (!configOk) {
+    return <ErrorConfiguracionSupabase />;
+  }
 
   const login = useCallback(async (email: string, password: string) => {
     const resultado = await iniciarSesion({ email, password });
