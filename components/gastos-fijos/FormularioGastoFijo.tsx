@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useFinanzas } from "@/context/FinanzasContext";
-import { CATEGORIAS_GASTO } from "@/types/finanzas";
-import { quincenaNumeroDeDia, tipoPresupuestoPorDefecto } from "@/lib/gastos-fijos";
+import {
+  obtenerCategoriasGastosFijos,
+  quincenaNumeroDeDia,
+  tipoPresupuestoPorDefecto,
+} from "@/lib/gastos-fijos";
 import type { TipoPresupuestoGasto } from "@/types/finanzas";
 import { SelectorMoneda } from "@/components/ui/SelectorMoneda";
 
@@ -12,15 +15,16 @@ const inputClass =
 
 export function FormularioGastoFijo({ onExito }: { onExito?: () => void } = {}) {
   const { agregarGastoFijo, configuracion } = useFinanzas();
+  const categorias = obtenerCategoriasGastosFijos(configuracion);
 
   const [nombre, setNombre] = useState("");
   const [monto, setMonto] = useState("");
-  const [categoria, setCategoria] = useState<string>(CATEGORIAS_GASTO[0]);
+  const [categoria, setCategoria] = useState<string>(categorias[0] ?? "Otros");
   const [diaPago, setDiaPago] = useState("1");
   const [quincena, setQuincena] = useState<"1" | "2">("1");
   const [quincenaManual, setQuincenaManual] = useState(false);
   const [tipoPresupuesto, setTipoPresupuesto] = useState<TipoPresupuestoGasto>(
-    tipoPresupuestoPorDefecto(CATEGORIAS_GASTO[0])
+    tipoPresupuestoPorDefecto(categorias[0] ?? "Otros")
   );
   const [tipoManual, setTipoManual] = useState(false);
   const [moneda, setMoneda] = useState(configuracion.moneda);
@@ -31,9 +35,9 @@ export function FormularioGastoFijo({ onExito }: { onExito?: () => void } = {}) 
     if (quincenaManual) return;
     const diaNum = parseInt(diaPago, 10);
     if (isNaN(diaNum) || diaNum < 1 || diaNum > 31) return;
-    const q = quincenaNumeroDeDia(diaNum, configuracion);
+    const q = quincenaNumeroDeDia(diaNum);
     setQuincena(String(q) as "1" | "2");
-  }, [diaPago, configuracion, quincenaManual]);
+  }, [diaPago, quincenaManual]);
 
   useEffect(() => {
     if (tipoManual) return;
@@ -74,11 +78,11 @@ export function FormularioGastoFijo({ onExito }: { onExito?: () => void } = {}) 
 
     setNombre("");
     setMonto("");
-    setCategoria(CATEGORIAS_GASTO[0]);
+    setCategoria(categorias[0] ?? "Otros");
     setDiaPago("1");
     setQuincena("1");
     setQuincenaManual(false);
-    setTipoPresupuesto(tipoPresupuestoPorDefecto(CATEGORIAS_GASTO[0]));
+    setTipoPresupuesto(tipoPresupuestoPorDefecto(categorias[0] ?? "Otros"));
     setTipoManual(false);
     setNotas("");
     onExito?.();
@@ -131,7 +135,7 @@ export function FormularioGastoFijo({ onExito }: { onExito?: () => void } = {}) 
             onChange={(e) => setCategoria(e.target.value)}
             className={inputClass}
           >
-            {CATEGORIAS_GASTO.map((cat) => (
+            {categorias.map((cat) => (
               <option key={cat} value={cat}>
                 {cat}
               </option>
@@ -161,8 +165,8 @@ export function FormularioGastoFijo({ onExito }: { onExito?: () => void } = {}) 
             }}
             className={inputClass}
           >
-            <option value="1">Q1 (días {configuracion.diasPago[0]}–{configuracion.diasPago[1] - 1})</option>
-            <option value="2">Q2 (día {configuracion.diasPago[1]} en adelante)</option>
+            <option value="1">Q1 (días 1–15)</option>
+            <option value="2">Q2 (días 16–fin de mes)</option>
           </select>
           <span className="text-xs text-muted">
             Se sugiere según el día de pago. Puedes cambiarla manualmente.

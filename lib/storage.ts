@@ -1,10 +1,11 @@
 import type { CuentaBancaria, CuotaPopular, EstadoFinanzas, GastoFijo, Prestamo, TarjetaCredito, Transaccion } from "@/types/finanzas";
 import { CONFIGURACION_DEFAULT } from "@/types/finanzas";
 import { quincenaNumeroDeDia, tipoPresupuestoPorDefecto } from "@/lib/gastos-fijos";
-import { claveDatosUsuario } from "@/lib/auth";
+import { crearClienteSupabase } from "@/lib/supabase/client";
 
 const TARJETA_DEFAULT: Omit<TarjetaCredito, "id" | "banco" | "nombreTarjeta" | "limite" | "diaCorte" | "diaPago" | "deudaActual"> = {
   titular: "",
+  primerosCuatro: "••••",
   ultimosCuatro: "0000",
   numeroEnmascarado: "•••• •••• •••• 0000",
   marca: "desconocida",
@@ -13,11 +14,36 @@ const TARJETA_DEFAULT: Omit<TarjetaCredito, "id" | "banco" | "nombreTarjeta" | "
   moneda: CONFIGURACION_DEFAULT.moneda,
 };
 
+function inferirPrimerosCuatro(tarjeta: TarjetaCredito): string {
+  if (tarjeta.primerosCuatro && /^\d{4}$/.test(tarjeta.primerosCuatro)) {
+    return tarjeta.primerosCuatro;
+  }
+  const match = tarjeta.numeroEnmascarado.match(/^(\d{4})/);
+  return match?.[1] ?? tarjeta.primerosCuatro ?? "••••";
+}
+
 function normalizarTarjetas(tarjetas: TarjetaCredito[] = []): TarjetaCredito[] {
-  return tarjetas.map((t) => ({
-    ...TARJETA_DEFAULT,
-    ...t,
-  }));
+  return tarjetas.map((t) => {
+    const base = {
+      ...TARJETA_DEFAULT,
+      ...t,
+      primerosCuatro: inferirPrimerosCuatro({ ...TARJETA_DEFAULT, ...t }),
+    };
+    if (!base.extensionCuotasPopular) return base;
+
+    const ext = base.extensionCuotasPopular;
+    return {
+      ...base,
+      extensionCuotasPopular: {
+        limiteAprobado: ext.limiteAprobado ?? 0,
+        numeroEnmascarado:
+          ext.numeroEnmascarado ?? "•••• •••• •••• 0000",
+        primerosCuatro: ext.primerosCuatro ?? "••••",
+        ultimosCuatro: ext.ultimosCuatro ?? "0000",
+        sobregiro: ext.sobregiro ?? 0,
+      },
+    };
+  });
 }
 
 const PRESTAMO_DEFAULT: Omit<
@@ -70,6 +96,8 @@ function normalizarCuotasPopular(cuotas: CuotaPopular[] = []): CuotaPopular[] {
     return {
       ...c,
       descripcion: c.descripcion ?? "",
+      numeroEnmascarado: c.numeroEnmascarado ?? "•••• •••• •••• 0000",
+      ultimosCuatro: c.ultimosCuatro ?? "0000",
       moneda: c.moneda ?? CONFIGURACION_DEFAULT.moneda,
       fechaInicio: c.fechaInicio ?? new Date().toISOString().slice(0, 10),
       montoCompra: c.montoCompra ?? montoTotal,
@@ -104,11 +132,7 @@ function normalizarGastosFijos(
     const diaPago = legacy.diaPago ?? 1;
     const quincena =
       legacy.quincena ??
-      quincenaNumeroDeDia(diaPago, {
-        diasPago,
-        moneda: legacy.moneda ?? CONFIGURACION_DEFAULT.moneda,
-        tema: "claro",
-      });
+      quincenaNumeroDeDia(diaPago);
 
     return {
       ...g,
@@ -134,6 +158,9 @@ function normalizarTransacciones(
   return transacciones.map((t) => ({
     ...t,
     moneda: t.moneda ?? monedaDefecto,
+    montoOrigen: t.montoOrigen,
+    monedaOrigen: t.monedaOrigen,
+    tasaCambio: t.tasaCambio,
   }));
 }
 
@@ -141,6 +168,18 @@ export function normalizarEstado(parsed: Partial<EstadoFinanzas>): EstadoFinanza
   const configuracion = {
     ...CONFIGURACION_DEFAULT,
     ...parsed.configuracion,
+    categoriasGastosFijos:
+      parsed.configuracion?.categoriasGastosFijos?.length
+        ? parsed.configuracion.categoriasGastosFijos
+        : CONFIGURACION_DEFAULT.categoriasGastosFijos,
+    categoriasGasto:
+      parsed.configuracion?.categoriasGasto?.length
+        ? parsed.configuracion.categoriasGasto
+        : CONFIGURACION_DEFAULT.categoriasGasto,
+    categoriasIngreso:
+      parsed.configuracion?.categoriasIngreso?.length
+        ? parsed.configuracion.categoriasIngreso
+        : CONFIGURACION_DEFAULT.categoriasIngreso,
   };
 
   return {
@@ -173,35 +212,76 @@ export function estadoInicial(): EstadoFinanzas {
   };
 }
 
-export function cargarEstado(usuarioId: string): EstadoFinanzas {
-  if (typeof window === "undefined") return estadoInicial();
-  if (!usuarioId) return estadoInicial();
+export async function cargarEstado(usuarioId: string): Promise<EstadoFinanzas> {
+  if (typeof window === "undefined" || !usuarioId) return estadoInicial();
 
   try {
-    const clave = claveDatosUsuario(usuarioId);
-    const raw = localStorage.getItem(clave);
+    const supabase = crearClienteSupabase();
+    const { data, error } = await supabase
+      .from("estado_finanzas")
+      .select("datos")
+      .eq("usuario_id", usuarioId)
+      .maybeSingle();
 
-    if (!raw) return estadoInicial();
-    const parsed = JSON.parse(raw) as EstadoFinanzas;
-    return normalizarEstado(parsed);
+    if (error || !data?.datos || typeof data.datos !== "object") {
+      return estadoInicial();
+    }
+
+    const datos = data.datos as EstadoFinanzas;
+    const vacio =
+      !datos.transacciones?.length &&
+      !datos.tarjetas?.length &&
+      !datos.prestamos?.length &&
+      !datos.cuotasPopular?.length &&
+      !datos.gastosFijos?.length &&
+      !datos.cuentas?.length &&
+      (datos.efectivo ?? 0) === 0;
+
+    if (vacio && Object.keys(datos).length <= 1) {
+      return estadoInicial();
+    }
+
+    return normalizarEstado(datos);
   } catch {
     return estadoInicial();
   }
 }
 
-export function guardarEstado(estado: EstadoFinanzas, usuarioId: string): void {
+export async function guardarEstado(
+  estado: EstadoFinanzas,
+  usuarioId: string
+): Promise<void> {
   if (typeof window === "undefined" || !usuarioId) return;
-  localStorage.setItem(claveDatosUsuario(usuarioId), JSON.stringify(estado));
+
+  const supabase = crearClienteSupabase();
+  const { error } = await supabase.from("estado_finanzas").upsert({
+    usuario_id: usuarioId,
+    datos: estado,
+    actualizado_en: new Date().toISOString(),
+  });
+
+  if (error) {
+    console.error("Error al guardar en Supabase:", error.message);
+  }
 }
 
-/** Crea almacenamiento vacío para un usuario nuevo si aún no tiene datos */
-export function inicializarDatosUsuario(usuarioId: string): void {
+/** Asegura fila vacía en la nube para usuarios nuevos */
+export async function inicializarDatosUsuario(usuarioId: string): Promise<void> {
   if (typeof window === "undefined" || !usuarioId) return;
 
-  const clave = claveDatosUsuario(usuarioId);
-  if (localStorage.getItem(clave)) return;
+  const supabase = crearClienteSupabase();
+  const { data } = await supabase
+    .from("estado_finanzas")
+    .select("usuario_id")
+    .eq("usuario_id", usuarioId)
+    .maybeSingle();
 
-  localStorage.setItem(clave, JSON.stringify(estadoInicial()));
+  if (data) return;
+
+  await supabase.from("estado_finanzas").insert({
+    usuario_id: usuarioId,
+    datos: estadoInicial(),
+  });
 }
 
 export function generarId(): string {

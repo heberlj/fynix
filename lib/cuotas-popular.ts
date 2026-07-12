@@ -5,10 +5,47 @@ import type {
   TarjetaCredito,
   Transaccion,
 } from "@/types/finanzas";
+import { enmascararNumero } from "@/lib/tarjetas";
 import { fechaEnPeriodo, periodoDeFecha } from "@/lib/quincenas";
 import { calcularCuotaConInteres } from "@/lib/prestamos";
 
 export { calcularCuotaConInteres };
+
+export interface ResumenEstadoCuotasPopular {
+  limiteAprobado: number;
+  balanceFecha: number;
+  disponibleConSobregiro: number;
+  fechaCorte: string;
+  balanceCorte: number;
+  pagoMinimo: number;
+  fechaVencimiento: string;
+  cuotasVencidas: number;
+  numeroEnmascarado: string;
+  ultimosCuatro: string;
+}
+
+function redondear(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+function proximoDiaDelMes(dia: number, desde: Date = new Date()): string {
+  const anio = desde.getFullYear();
+  const mes = desde.getMonth();
+  const ultimo = new Date(anio, mes + 1, 0).getDate();
+  const diaEfectivo = Math.min(dia, ultimo);
+  const fecha = new Date(anio, mes, diaEfectivo);
+
+  if (fecha < new Date(desde.getFullYear(), desde.getMonth(), desde.getDate())) {
+    const sigMes = mes + 1;
+    const sigAnio = sigMes > 11 ? anio + 1 : anio;
+    const sigMesNorm = sigMes % 12;
+    const ultimoSig = new Date(sigAnio, sigMesNorm + 1, 0).getDate();
+    const diaSig = Math.min(dia, ultimoSig);
+    return `${sigAnio}-${String(sigMesNorm + 1).padStart(2, "0")}-${String(diaSig).padStart(2, "0")}`;
+  }
+
+  return `${anio}-${String(mes + 1).padStart(2, "0")}-${String(diaEfectivo).padStart(2, "0")}`;
+}
 
 export function tarjetaTieneCuotasPopular(tarjeta: TarjetaCredito): boolean {
   return (tarjeta.extensionCuotasPopular?.limiteAprobado ?? 0) > 0;
@@ -30,7 +67,114 @@ export function disponibleLimiteCuotasPopular(
   const limite = tarjeta.extensionCuotasPopular?.limiteAprobado ?? 0;
   if (limite <= 0) return 0;
   const uso = usoCuotasPopularTarjeta(cuotas, tarjeta.id);
-  return Math.max(0, Math.round((limite - uso) * 100) / 100);
+  return Math.max(0, redondear(limite - uso));
+}
+
+export function disponibleConSobregiroCuotasPopular(
+  tarjeta: TarjetaCredito,
+  cuotas: CuotaPopular[]
+): number {
+  const ext = tarjeta.extensionCuotasPopular;
+  if (!ext) return 0;
+  const limiteTotal = ext.limiteAprobado + (ext.sobregiro ?? 0);
+  const uso = usoCuotasPopularTarjeta(cuotas, tarjeta.id);
+  return Math.max(0, redondear(limiteTotal - uso));
+}
+
+export function cuotasVencidasPlan(
+  cuota: CuotaPopular,
+  tarjetas: TarjetaCredito[]
+): number {
+  if (cuotaPopularCompletada(cuota)) return 0;
+
+  const diaPago = diaPagoCuota(cuota, tarjetas);
+  const inicio = new Date(cuota.fechaInicio + "T12:00:00");
+  const hoy = new Date();
+  hoy.setHours(12, 0, 0, 0);
+
+  let cuotasDebian = 0;
+  let year = inicio.getFullYear();
+  let month = inicio.getMonth();
+
+  for (let i = 0; i < 600; i++) {
+    const ultimoDia = new Date(year, month + 1, 0).getDate();
+    const diaEfectivo = Math.min(diaPago, ultimoDia);
+    const fechaPago = new Date(year, month, diaEfectivo);
+    fechaPago.setHours(12, 0, 0, 0);
+
+    if (fechaPago >= inicio && fechaPago <= hoy) {
+      cuotasDebian++;
+    }
+    if (fechaPago > hoy) break;
+    if (cuotasDebian >= cuota.cuotasTotales) break;
+
+    month++;
+    if (month > 11) {
+      month = 0;
+      year++;
+    }
+  }
+
+  return Math.max(0, cuotasDebian - cuota.cuotasPagadas);
+}
+
+export function cuotasVencidasTarjeta(
+  cuotas: CuotaPopular[],
+  tarjetaId: string,
+  tarjetas: TarjetaCredito[]
+): number {
+  return cuotas
+    .filter((c) => c.tarjetaId === tarjetaId && !cuotaPopularCompletada(c))
+    .reduce((sum, c) => sum + cuotasVencidasPlan(c, tarjetas), 0);
+}
+
+export function pagoMinimoCuotasPopular(
+  cuotas: CuotaPopular[],
+  tarjetaId: string,
+  transacciones: Transaccion[]
+): number {
+  const hoy = new Date();
+  const mesActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}`;
+
+  return redondear(
+    cuotas
+      .filter((c) => c.tarjetaId === tarjetaId && !cuotaPopularCompletada(c))
+      .reduce((sum, c) => {
+        const pagadoEsteMes = transacciones.some(
+          (t) =>
+            t.pagoCuotaPopularId === c.id && t.fecha.startsWith(mesActual)
+        );
+        return pagadoEsteMes ? sum : sum + c.montoCuota;
+      }, 0)
+  );
+}
+
+export function resumenEstadoCuotasPopular(
+  tarjeta: TarjetaCredito,
+  cuotas: CuotaPopular[],
+  tarjetas: TarjetaCredito[],
+  transacciones: Transaccion[]
+): ResumenEstadoCuotasPopular | null {
+  const ext = tarjeta.extensionCuotasPopular;
+  if (!ext?.limiteAprobado) return null;
+
+  const balanceFecha = usoCuotasPopularTarjeta(cuotas, tarjeta.id);
+  const fechaCorte = proximoDiaDelMes(tarjeta.diaCorte);
+  const fechaVencimiento = proximoDiaDelMes(tarjeta.diaPago);
+
+  return {
+    limiteAprobado: ext.limiteAprobado,
+    balanceFecha,
+    disponibleConSobregiro: disponibleConSobregiroCuotasPopular(tarjeta, cuotas),
+    fechaCorte,
+    balanceCorte: balanceFecha,
+    pagoMinimo: pagoMinimoCuotasPopular(cuotas, tarjeta.id, transacciones),
+    fechaVencimiento,
+    cuotasVencidas: cuotasVencidasTarjeta(cuotas, tarjeta.id, tarjetas),
+    numeroEnmascarado:
+      ext.numeroEnmascarado ?? enmascararNumero("0000000000000000"),
+    ultimosCuatro: ext.ultimosCuatro ?? "0000",
+  };
 }
 
 export function obtenerTarjeta(

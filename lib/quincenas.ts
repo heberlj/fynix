@@ -4,10 +4,6 @@ function ultimoDiaDelMes(anio: number, mes: number): number {
   return new Date(anio, mes, 0).getDate();
 }
 
-function diaEfectivo(anio: number, mes: number, dia: number): number {
-  return Math.min(dia, ultimoDiaDelMes(anio, mes));
-}
-
 function aFechaISO(anio: number, mes: number, dia: number): string {
   return `${anio}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
 }
@@ -18,16 +14,6 @@ function mesAnterior(anio: number, mes: number) {
 
 function mesSiguiente(anio: number, mes: number) {
   return mes === 12 ? { anio: anio + 1, mes: 1 } : { anio, mes: mes + 1 };
-}
-
-function restarUnDia(anio: number, mes: number, dia: number) {
-  const fecha = new Date(anio, mes - 1, dia);
-  fecha.setDate(fecha.getDate() - 1);
-  return {
-    anio: fecha.getFullYear(),
-    mes: fecha.getMonth() + 1,
-    dia: fecha.getDate(),
-  };
 }
 
 const MESES_CORTOS = [
@@ -59,39 +45,29 @@ function crearPeriodo(
   };
 }
 
-/** Determina el periodo de pago al que pertenece una fecha */
+function periodoQuincenaCalendario(
+  anio: number,
+  mes: number,
+  quincena: 1 | 2
+): PeriodoQuincena {
+  if (quincena === 1) {
+    return crearPeriodo(1, { anio, mes, dia: 1 }, { anio, mes, dia: 15 });
+  }
+  const ultimoDia = ultimoDiaDelMes(anio, mes);
+  return crearPeriodo(2, { anio, mes, dia: 16 }, { anio, mes, dia: ultimoDia });
+}
+
+/** Quincenas de calendario: Q1 del 1 al 15, Q2 del 16 al fin de mes */
 export function periodoDeFecha(
   fecha: string,
-  diasPago: [number, number]
+  _diasPago?: [number, number]
 ): PeriodoQuincena {
-  const [p1, p2] = [...diasPago].sort((a, b) => a - b) as [number, number];
   const [anio, mes, dia] = fecha.split("-").map(Number);
-
-  if (dia >= p2) {
-    const inicio = { anio, mes, dia: diaEfectivo(anio, mes, p2) };
-    const siguiente = mesSiguiente(anio, mes);
-    const fin = restarUnDia(siguiente.anio, siguiente.mes, diaEfectivo(siguiente.anio, siguiente.mes, p1));
-    return crearPeriodo(2, inicio, fin);
-  }
-
-  if (dia >= p1) {
-    const inicio = { anio, mes, dia: diaEfectivo(anio, mes, p1) };
-    const fin = restarUnDia(anio, mes, diaEfectivo(anio, mes, p2));
-    return crearPeriodo(1, inicio, fin);
-  }
-
-  const anterior = mesAnterior(anio, mes);
-  const inicio = {
-    anio: anterior.anio,
-    mes: anterior.mes,
-    dia: diaEfectivo(anterior.anio, anterior.mes, p2),
-  };
-  const fin = restarUnDia(anio, mes, diaEfectivo(anio, mes, p1));
-  return crearPeriodo(2, inicio, fin);
+  return periodoQuincenaCalendario(anio, mes, dia <= 15 ? 1 : 2);
 }
 
 export function obtenerQuincenaActual(
-  configuracion: ConfiguracionUsuario,
+  _configuracion?: ConfiguracionUsuario,
   referencia: Date = new Date()
 ): PeriodoQuincena {
   const hoy = aFechaISO(
@@ -99,37 +75,35 @@ export function obtenerQuincenaActual(
     referencia.getMonth() + 1,
     referencia.getDate()
   );
-  return periodoDeFecha(hoy, configuracion.diasPago);
+  return periodoDeFecha(hoy);
 }
 
 export function obtenerQuincenaAnterior(
   periodo: PeriodoQuincena,
-  diasPago: [number, number]
+  _diasPago?: [number, number]
 ): PeriodoQuincena {
-  const [anio, mes, dia] = periodo.inicio.split("-").map(Number);
-  const fecha = new Date(anio, mes - 1, dia);
-  fecha.setDate(fecha.getDate() - 1);
-  const anterior = aFechaISO(
-    fecha.getFullYear(),
-    fecha.getMonth() + 1,
-    fecha.getDate()
-  );
-  return periodoDeFecha(anterior, diasPago);
+  const [anio, mes] = periodo.inicio.split("-").map(Number);
+
+  if (periodo.quincena === 1) {
+    const anterior = mesAnterior(anio, mes);
+    return periodoQuincenaCalendario(anterior.anio, anterior.mes, 2);
+  }
+
+  return periodoQuincenaCalendario(anio, mes, 1);
 }
 
 export function obtenerQuincenaSiguiente(
   periodo: PeriodoQuincena,
-  diasPago: [number, number]
+  _diasPago?: [number, number]
 ): PeriodoQuincena {
-  const [finAnio, finMes, finDia] = periodo.fin.split("-").map(Number);
-  const unDiaMas = new Date(finAnio, finMes - 1, finDia);
-  unDiaMas.setDate(unDiaMas.getDate() + 1);
-  const inicioSiguiente = aFechaISO(
-    unDiaMas.getFullYear(),
-    unDiaMas.getMonth() + 1,
-    unDiaMas.getDate()
-  );
-  return periodoDeFecha(inicioSiguiente, diasPago);
+  const [anio, mes] = periodo.inicio.split("-").map(Number);
+
+  if (periodo.quincena === 1) {
+    return periodoQuincenaCalendario(anio, mes, 2);
+  }
+
+  const siguiente = mesSiguiente(anio, mes);
+  return periodoQuincenaCalendario(siguiente.anio, siguiente.mes, 1);
 }
 
 export function obtenerAmbasQuincenas(
@@ -137,44 +111,22 @@ export function obtenerAmbasQuincenas(
   referencia: Date = new Date()
 ): [PeriodoQuincena, PeriodoQuincena] {
   const actual = obtenerQuincenaActual(configuracion, referencia);
-  const siguiente = obtenerQuincenaSiguiente(actual, configuracion.diasPago);
-
-  if (actual.quincena === 1) {
-    return [actual, siguiente];
-  }
-  return [siguiente, actual];
+  const [anio, mes] = actual.inicio.split("-").map(Number);
+  const q1 = periodoQuincenaCalendario(anio, mes, 1);
+  const q2 = periodoQuincenaCalendario(anio, mes, 2);
+  return [q1, q2];
 }
 
-/** Quincenas cuyo periodo intersecta con un mes calendario */
+/** Quincenas del mes calendario (1–15 y 16–fin) */
 export function obtenerQuincenasDelMes(
   mes: string,
-  diasPago: [number, number]
+  _diasPago?: [number, number]
 ): PeriodoQuincena[] {
   const [anio, mesNum] = mes.split("-").map(Number);
-  const ultimoDia = ultimoDiaDelMes(anio, mesNum);
-  const inicioMes = `${mes}-01`;
-  const finMes = `${mes}-${String(ultimoDia).padStart(2, "0")}`;
-
-  const claves = new Set<string>();
-  const periodos: PeriodoQuincena[] = [];
-
-  function agregar(fecha: string) {
-    const periodo = periodoDeFecha(fecha, diasPago);
-    if (periodo.fin < inicioMes || periodo.inicio > finMes) return;
-    const clave = `${periodo.inicio}_${periodo.fin}`;
-    if (claves.has(clave)) return;
-    claves.add(clave);
-    periodos.push(periodo);
-  }
-
-  agregar(inicioMes);
-  agregar(finMes);
-
-  const [p1, p2] = [...diasPago].sort((a, b) => a - b);
-  agregar(aFechaISO(anio, mesNum, diaEfectivo(anio, mesNum, p1)));
-  agregar(aFechaISO(anio, mesNum, diaEfectivo(anio, mesNum, p2)));
-
-  return periodos.sort((a, b) => a.inicio.localeCompare(b.inicio));
+  return [
+    periodoQuincenaCalendario(anio, mesNum, 1),
+    periodoQuincenaCalendario(anio, mesNum, 2),
+  ];
 }
 
 export function periodosSonIguales(a: PeriodoQuincena, b: PeriodoQuincena): boolean {
@@ -187,9 +139,9 @@ export function fechaEnPeriodo(fecha: string, periodo: PeriodoQuincena): boolean
 
 export function asignarQuincena(
   fecha: string,
-  configuracion: ConfiguracionUsuario
+  _configuracion?: ConfiguracionUsuario
 ): { quincena: 1 | 2; mes: string } {
-  const periodo = periodoDeFecha(fecha, configuracion.diasPago);
+  const periodo = periodoDeFecha(fecha);
   return { quincena: periodo.quincena, mes: periodo.mes };
 }
 

@@ -1,27 +1,48 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useFinanzas } from "@/context/FinanzasContext";
 import type { GastoFijo } from "@/types/finanzas";
-import { diasHastaCuota } from "@/lib/prestamos";
-import { agruparGastosPorQuincena, etiquetaTipoPresupuesto } from "@/lib/gastos-fijos";
-import { formatearMoneda } from "@/lib/quincenas";
+import {
+  diasHastaCuota,
+  prestamoTienePagoEnPeriodo,
+  type PrestamoVistaGastosFijos,
+} from "@/lib/prestamos";
+import {
+  agruparGastosPorQuincena,
+  etiquetaTipoPresupuesto,
+  gastoFijoCubiertoEnPeriodo,
+} from "@/lib/gastos-fijos";
+import {
+  agruparPrestamosPorQuincena,
+  prestamosParaVistaGastosFijos,
+  totalPrestamosPorQuincena,
+} from "@/lib/prestamos";
+import { formatearMoneda, obtenerQuincenasDelMes, periodoDeFecha } from "@/lib/quincenas";
+import { fechaHoy, mesActual } from "@/lib/fechas";
+import { confirmarAccion, confirmarEliminacion } from "@/lib/confirmar";
 import { EditarGastoFijoForm } from "@/components/gastos-fijos/EditarGastoFijoForm";
+import { EstadoVacio } from "@/components/ui/EstadoVacio";
 
 interface ListaGastosFijosProps {
   gastosFijos: GastoFijo[];
+  onAgregar?: () => void;
 }
 
 function TarjetaGasto({
   gasto,
   editandoId,
   setEditandoId,
+  pagadoEnQuincena,
 }: {
   gasto: GastoFijo;
   editandoId: string | null;
   setEditandoId: (id: string | null) => void;
+  pagadoEnQuincena: boolean;
 }) {
-  const { actualizarGastoFijo, eliminarGastoFijo } = useFinanzas();
+  const { actualizarGastoFijo, eliminarGastoFijo, registrarPagoGastoFijo } =
+    useFinanzas();
   const estaEditando = editandoId === gasto.id;
   const dias = diasHastaCuota(gasto.diaPago);
 
@@ -57,7 +78,28 @@ function TarjetaGasto({
           <p className="mt-1 text-xs text-muted">Día {gasto.diaPago} · {gasto.moneda}</p>
         </div>
 
-        <div className="flex shrink-0 gap-2">
+        <div className="flex shrink-0 flex-wrap gap-2">
+          {gasto.activo && (
+            <button
+              type="button"
+              onClick={() => {
+                if (pagadoEnQuincena) {
+                  const ok = confirmarAccion(
+                    `Ya hay un pago registrado para "${gasto.nombre}" en esta quincena. ¿Registrar otro?`
+                  );
+                  if (!ok) return;
+                }
+                registrarPagoGastoFijo(gasto.id);
+              }}
+              className={`rounded-lg px-2 py-1 text-xs font-medium ${
+                pagadoEnQuincena
+                  ? "text-muted hover:text-foreground"
+                  : "bg-accent/10 text-accent hover:bg-accent/20"
+              }`}
+            >
+              {pagadoEnQuincena ? "Registrar otro pago" : "Registrar pago"}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => actualizarGastoFijo(gasto.id, { activo: !gasto.activo })}
@@ -75,6 +117,9 @@ function TarjetaGasto({
           <button
             type="button"
             onClick={() => {
+              if (!confirmarEliminacion(gasto.nombre, "el gasto fijo")) {
+                return;
+              }
               if (editandoId === gasto.id) setEditandoId(null);
               eliminarGastoFijo(gasto.id);
             }}
@@ -87,9 +132,16 @@ function TarjetaGasto({
 
       {!estaEditando && (
         <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
-          <p className="text-lg font-bold text-gasto">
-            {formatearMoneda(gasto.monto, gasto.moneda)}
-          </p>
+          <div>
+            <p className="text-lg font-bold text-gasto">
+              {formatearMoneda(gasto.monto, gasto.moneda)}
+            </p>
+            {pagadoEnQuincena && (
+              <p className="mt-0.5 text-xs font-medium text-ingreso">
+                Pagado en esta quincena
+              </p>
+            )}
+          </div>
           {gasto.activo && (
             <p className="text-xs text-muted">
               Pago en{" "}
@@ -108,21 +160,110 @@ function TarjetaGasto({
   );
 }
 
+function TarjetaPrestamo({
+  prestamo,
+  pagadoEnQuincena,
+}: {
+  prestamo: PrestamoVistaGastosFijos;
+  pagadoEnQuincena: boolean;
+}) {
+  const { registrarPagoPrestamo } = useFinanzas();
+  const dias = diasHastaCuota(prestamo.diaPago);
+  const numeroCuota = prestamo.cuotasPagadas + 1;
+
+  return (
+    <div className="rounded-xl border border-dashed border-accent/40 bg-accent/5 p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-semibold text-foreground">{prestamo.entidad}</h3>
+            <span className="rounded-full bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent">
+              Préstamo
+            </span>
+            <span className="rounded-full bg-surface px-2 py-0.5 text-xs text-muted">
+              Cuota {numeroCuota}/{prestamo.cuotasTotales}
+            </span>
+          </div>
+          {prestamo.descripcion && (
+            <p className="mt-0.5 text-xs text-muted">{prestamo.descripcion}</p>
+          )}
+          <p className="mt-1 text-xs text-muted">
+            Día {prestamo.diaPago} · {prestamo.moneda} · solo referencia en esta vista
+          </p>
+        </div>
+
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => registrarPagoPrestamo(prestamo.id)}
+            className={`rounded-lg px-2 py-1 text-xs font-medium ${
+              pagadoEnQuincena
+                ? "text-muted hover:text-foreground"
+                : "bg-accent/10 text-accent hover:bg-accent/20"
+            }`}
+          >
+            {pagadoEnQuincena ? "Registrar otro pago" : "Registrar pago"}
+          </button>
+          <Link
+            href="/prestamos"
+            className="rounded-lg px-2 py-1 text-xs font-medium text-muted hover:text-foreground"
+          >
+            Ver préstamo
+          </Link>
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-lg font-bold text-gasto">
+            {formatearMoneda(prestamo.montoCuota, prestamo.moneda)}
+          </p>
+          {pagadoEnQuincena && (
+            <p className="mt-0.5 text-xs font-medium text-ingreso">
+              Pagado en esta quincena
+            </p>
+          )}
+        </div>
+        <p className="text-xs text-muted">
+          Pago en{" "}
+          <span className="font-semibold text-foreground">
+            {dias === 0 ? "hoy" : `${dias} día${dias !== 1 ? "s" : ""}`}
+          </span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function ColumnaQuincena({
   quincena,
   gastos,
-  total,
+  prestamos,
+  totalGastos,
+  totalPrestamos,
   moneda,
-  diasPago,
+  transacciones,
+  configuracion,
 }: {
   quincena: 1 | 2;
   gastos: GastoFijo[];
-  total: number;
+  prestamos: PrestamoVistaGastosFijos[];
+  totalGastos: number;
+  totalPrestamos: number;
   moneda: string;
-  diasPago: [number, number];
+  transacciones: ReturnType<typeof useFinanzas>["transacciones"];
+  configuracion: ReturnType<typeof useFinanzas>["configuracion"];
 }) {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const activos = gastos.filter((g) => g.activo);
+  const total = totalGastos + totalPrestamos;
+  const periodoQuincena = useMemo(() => {
+    const periodos = obtenerQuincenasDelMes(mesActual(), configuracion.diasPago);
+    return (
+      periodos.find((p) => p.quincena === quincena) ??
+      periodoDeFecha(fechaHoy(), configuracion.diasPago)
+    );
+  }, [configuracion.diasPago, quincena]);
 
   return (
     <div className="rounded-xl border border-border bg-surface p-4 shadow-sm sm:p-6">
@@ -131,25 +272,34 @@ function ColumnaQuincena({
           <h2 className="text-base font-semibold text-foreground">Quincena {quincena}</h2>
           <p className="mt-0.5 text-xs text-muted">
             {quincena === 1
-              ? `Del día ${diasPago[0]} al ${diasPago[1] - 1}`
-              : `Desde el día ${diasPago[1]} del mes`}
+              ? "Del día 1 al 15"
+              : "Del día 16 al fin de mes"}
           </p>
         </div>
         <div className="text-right">
-          <p className="text-xs text-muted">Total activos</p>
+          <p className="text-xs text-muted">Total en vista</p>
           <p className="text-lg font-bold text-gasto">{formatearMoneda(total, moneda)}</p>
+          {totalPrestamos > 0 && (
+            <p className="mt-0.5 text-xs text-muted">
+              Gastos: {formatearMoneda(totalGastos, moneda)} · Préstamos:{" "}
+              {formatearMoneda(totalPrestamos, moneda)}
+            </p>
+          )}
         </div>
       </div>
 
       <p className="mt-2 text-xs text-muted">
         {activos.length} gasto{activos.length !== 1 ? "s" : ""} activo
         {activos.length !== 1 ? "s" : ""}
-        {gastos.length > activos.length && ` · ${gastos.length - activos.length} pausado${gastos.length - activos.length !== 1 ? "s" : ""}`}
+        {gastos.length > activos.length &&
+          ` · ${gastos.length - activos.length} pausado${gastos.length - activos.length !== 1 ? "s" : ""}`}
+        {prestamos.length > 0 &&
+          ` · ${prestamos.length} préstamo${prestamos.length !== 1 ? "s" : ""} (referencia)`}
       </p>
 
-      {gastos.length === 0 ? (
+      {gastos.length === 0 && prestamos.length === 0 ? (
         <p className="mt-6 rounded-lg border border-dashed border-border py-8 text-center text-sm text-muted">
-          Sin gastos en esta quincena
+          Sin gastos ni préstamos en esta quincena
         </p>
       ) : (
         <div className="mt-4 space-y-3">
@@ -159,16 +309,45 @@ function ColumnaQuincena({
               gasto={gasto}
               editandoId={editandoId}
               setEditandoId={setEditandoId}
+              pagadoEnQuincena={gastoFijoCubiertoEnPeriodo(
+                gasto,
+                transacciones,
+                periodoQuincena
+              )}
             />
           ))}
+          {prestamos.length > 0 && (
+            <>
+              {gastos.length > 0 && (
+                <p className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted">
+                  Préstamos (solo referencia)
+                </p>
+              )}
+              {prestamos.map((prestamo) => (
+                <TarjetaPrestamo
+                  key={prestamo.id}
+                  prestamo={prestamo}
+                  pagadoEnQuincena={prestamoTienePagoEnPeriodo(
+                    transacciones,
+                    prestamo.id,
+                    periodoQuincena,
+                    prestamo.moneda
+                  )}
+                />
+              ))}
+            </>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-export function ListaGastosFijos({ gastosFijos }: ListaGastosFijosProps) {
-  const { configuracion } = useFinanzas();
+export function ListaGastosFijos({
+  gastosFijos,
+  onAgregar,
+}: ListaGastosFijosProps) {
+  const { configuracion, transacciones, prestamos } = useFinanzas();
   const [categoriaFiltro, setCategoriaFiltro] = useState("todas");
 
   const categorias = useMemo(() => {
@@ -183,22 +362,37 @@ export function ListaGastosFijos({ gastosFijos }: ListaGastosFijosProps) {
 
   const grupos = useMemo(() => agruparGastosPorQuincena(filtrados), [filtrados]);
 
+  const gruposPrestamos = useMemo(
+    () => agruparPrestamosPorQuincena(prestamos),
+    [prestamos]
+  );
+
   const totalesQ = useMemo(() => {
-    const sumar = (q: 1 | 2) =>
+    const sumarGastos = (q: 1 | 2) =>
       filtrados
         .filter((g) => g.activo && g.quincena === q)
         .reduce((sum, g) => sum + g.monto, 0);
-    return { q1: sumar(1), q2: sumar(2) };
-  }, [filtrados]);
+    const moneda = configuracion.moneda;
+    return {
+      q1: sumarGastos(1) + totalPrestamosPorQuincena(prestamos, 1, moneda),
+      q2: sumarGastos(2) + totalPrestamosPorQuincena(prestamos, 2, moneda),
+      gastosQ1: sumarGastos(1),
+      gastosQ2: sumarGastos(2),
+      prestamosQ1: totalPrestamosPorQuincena(prestamos, 1, moneda),
+      prestamosQ2: totalPrestamosPorQuincena(prestamos, 2, moneda),
+    };
+  }, [filtrados, prestamos, configuracion.moneda]);
 
-  if (gastosFijos.length === 0) {
+  const hayPrestamos = prestamosParaVistaGastosFijos(prestamos).length > 0;
+
+  if (gastosFijos.length === 0 && !hayPrestamos) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-surface px-6 py-16 text-center">
-        <p className="text-sm text-muted">No tienes gastos fijos registrados</p>
-        <p className="mt-1 text-xs text-muted">
-          Agrega alquiler, servicios, suscripciones y otros pagos mensuales
-        </p>
-      </div>
+      <EstadoVacio
+        titulo="No tienes gastos fijos registrados"
+        descripcion="Agrega alquiler, servicios, suscripciones y otros pagos mensuales."
+        accionEtiqueta="+ Nuevo gasto fijo"
+        onAccion={onAgregar}
+      />
     );
   }
 
@@ -235,16 +429,25 @@ export function ListaGastosFijos({ gastosFijos }: ListaGastosFijosProps) {
       )}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {grupos.map(({ quincena, gastos }) => (
-          <ColumnaQuincena
-            key={quincena}
-            quincena={quincena}
-            gastos={gastos}
-            total={quincena === 1 ? totalesQ.q1 : totalesQ.q2}
-            moneda={configuracion.moneda}
-            diasPago={configuracion.diasPago}
-          />
-        ))}
+        {grupos.map(({ quincena, gastos }) => {
+          const prestamosQuincena =
+            gruposPrestamos.find((g) => g.quincena === quincena)?.prestamos ?? [];
+          return (
+            <ColumnaQuincena
+              key={quincena}
+              quincena={quincena}
+              gastos={gastos}
+              prestamos={prestamosQuincena}
+              totalGastos={quincena === 1 ? totalesQ.gastosQ1 : totalesQ.gastosQ2}
+              totalPrestamos={
+                quincena === 1 ? totalesQ.prestamosQ1 : totalesQ.prestamosQ2
+              }
+              moneda={configuracion.moneda}
+              transacciones={transacciones}
+              configuracion={configuracion}
+            />
+          );
+        })}
       </div>
     </div>
   );

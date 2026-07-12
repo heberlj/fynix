@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useFinanzas } from "@/context/FinanzasContext";
 import {
   calcularResumenQuincena,
@@ -16,6 +17,7 @@ import {
 } from "@/lib/quincenas";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { StatCard } from "@/components/ui/StatCard";
+import { EstadoVacio } from "@/components/ui/EstadoVacio";
 import { GraficoCategorias } from "@/components/ui/GraficoCategorias";
 import { GraficoEvolucion } from "@/components/ui/GraficoEvolucion";
 
@@ -98,6 +100,8 @@ export function DashboardContent() {
           <span className="font-medium text-foreground">
             {configuracion.diasPago.join(" y ")}
           </span>
+          {" · "}
+          Quincenas del 1–15 y 16–fin de mes
         </p>
       </header>
 
@@ -247,13 +251,32 @@ export function DashboardContent() {
           </p>
 
           {proximosPagos.length === 0 ? (
-            <div className="mt-8 flex flex-col items-center justify-center py-8 text-center">
-              <p className="text-sm text-muted">
-                No hay pagos registrados aún
-              </p>
-              <p className="mt-1 text-xs text-muted">
-                Agrega tarjetas o préstamos en las próximas partes
-              </p>
+            <div className="mt-6">
+              <EstadoVacio
+                titulo="No hay pagos registrados aún"
+                descripcion="Agrega tarjetas, préstamos o gastos fijos para ver tus próximos compromisos."
+                className="border-0 bg-transparent py-8"
+              />
+              <div className="flex flex-wrap justify-center gap-3 text-sm">
+                <Link
+                  href="/tarjetas"
+                  className="font-medium text-accent hover:underline"
+                >
+                  Ir a Tarjetas
+                </Link>
+                <Link
+                  href="/prestamos"
+                  className="font-medium text-accent hover:underline"
+                >
+                  Ir a Préstamos
+                </Link>
+                <Link
+                  href="/gastos-fijos"
+                  className="font-medium text-accent hover:underline"
+                >
+                  Ir a Gastos fijos
+                </Link>
+              </div>
             </div>
           ) : (
             <ul className="mt-5 space-y-3">

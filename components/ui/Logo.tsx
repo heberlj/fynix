@@ -11,11 +11,11 @@ export function Logo({ variante = "completo", className = "" }: LogoProps) {
   if (variante === "compacto") {
     return (
       <Image
-        src="/logo.png"
+        src="/icon.png"
         alt="Fynix"
         width={36}
         height={36}
-        className={`h-9 w-9 rounded-lg object-cover object-top ${className}`}
+        className={`h-9 w-9 object-contain ${className}`}
         priority
       />
     );
@@ -23,11 +23,11 @@ export function Logo({ variante = "completo", className = "" }: LogoProps) {
 
   return (
     <Image
-      src="/logo.png"
+      src="/icon.png"
       alt="Fynix — Tu dinero, tu futuro"
-      width={220}
-      height={220}
-      className={`mx-auto h-auto w-full max-w-[200px] ${className}`}
+      width={120}
+      height={120}
+      className={`mx-auto h-auto w-full max-w-[100px] object-contain ${className}`}
       priority
     />
   );

@@ -4,11 +4,13 @@ import { useEffect, useMemo } from "react";
 import type { TipoTasaInteres } from "@/types/finanzas";
 import { calcularCuotaConInteres } from "@/lib/cuotas-popular";
 import { formatearMoneda } from "@/lib/quincenas";
+import { formatearNumeroTarjeta } from "@/lib/tarjetas";
 
 const inputClass =
   "rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent";
 
 export interface ValoresCuotasPopular {
+  numeroReferencia: string;
   tasaInteres: string;
   tipoTasa: TipoTasaInteres;
   cuotasTotales: string;
@@ -69,6 +71,26 @@ export function CamposCuotasPopular({
       </p>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <label className="flex flex-col gap-1.5 sm:col-span-2">
+          <span className="text-sm font-medium text-foreground">
+            Número de referencia (16 dígitos)
+          </span>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={valores.numeroReferencia}
+            onChange={(e) =>
+              onChange({
+                ...valores,
+                numeroReferencia: formatearNumeroTarjeta(e.target.value),
+              })
+            }
+            placeholder="0000 0000 0000 0000"
+            maxLength={19}
+            className={inputClass}
+          />
+        </label>
+
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium text-foreground">
             Tasa de interés (%)

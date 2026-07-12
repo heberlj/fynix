@@ -32,11 +32,75 @@ export function aplicarEfectoTransaccion(
   estado: EstadoFinanzas,
   transaccion: Pick<
     Transaccion,
-    "tipo" | "monto" | "origen" | "modoPagoTarjeta"
+    | "tipo"
+    | "monto"
+    | "montoOrigen"
+    | "origen"
+    | "destino"
+    | "modoPagoTarjeta"
   >,
   direccion: 1 | -1
 ): EstadoFinanzas {
   if (!transaccion.origen) return estado;
+
+  if (transaccion.tipo === "transferencia") {
+    if (!transaccion.destino) return estado;
+
+    const montoDestino = redondear(transaccion.monto * direccion);
+    const montoDebitoOrigen = redondear(
+      (transaccion.montoOrigen ?? transaccion.monto) * direccion
+    );
+    let result = estado;
+
+    if (transaccion.origen.tipo === "efectivo") {
+      result = {
+        ...result,
+        efectivo: redondear(result.efectivo - montoDebitoOrigen),
+      };
+    } else if (transaccion.origen.tipo === "cuenta") {
+      const cuentaId = transaccion.origen.id;
+      result = {
+        ...result,
+        cuentas: result.cuentas.map((c) =>
+          c.id === cuentaId
+            ? { ...c, saldoActual: redondear(c.saldoActual - montoDebitoOrigen) }
+            : c
+        ),
+      };
+    }
+
+    if (transaccion.destino.tipo === "tarjeta") {
+      const tarjetaId = transaccion.destino.id;
+      result = {
+        ...result,
+        tarjetas: result.tarjetas.map((t) =>
+          t.id === tarjetaId
+            ? {
+                ...t,
+                deudaActual: Math.max(0, redondear(t.deudaActual - montoDestino)),
+              }
+            : t
+        ),
+      };
+    } else if (transaccion.destino.tipo === "efectivo") {
+      result = {
+        ...result,
+        efectivo: redondear(result.efectivo + montoDestino),
+      };
+    } else if (transaccion.destino.tipo === "cuenta") {
+      const cuentaId = transaccion.destino.id;
+      result = {
+        ...result,
+        cuentas: result.cuentas.map((c) =>
+          c.id === cuentaId
+            ? { ...c, saldoActual: redondear(c.saldoActual + montoDestino) }
+            : c
+        ),
+      };
+    }
+
+    return result;
+  }
 
   const { origen } = transaccion;
 
@@ -76,6 +140,15 @@ export function aplicarEfectoTransaccion(
         : t
     ),
   };
+}
+
+export function esPagoATarjeta(
+  transaccion: Pick<Transaccion, "tipo" | "destino">
+): boolean {
+  return (
+    transaccion.tipo === "transferencia" &&
+    transaccion.destino?.tipo === "tarjeta"
+  );
 }
 
 export function origenPorDefectoPago(
@@ -137,4 +210,13 @@ export function etiquetaOrigen(
   const sufijo =
     modoPagoTarjeta === "cuotas-popular" ? " · Cuotas Popular" : "";
   return `${tarjeta.banco} · ${tarjeta.nombreTarjeta} ·••• ${tarjeta.ultimosCuatro}${sufijo}`;
+}
+
+export function etiquetaTransferencia(
+  origen: OrigenFondo,
+  destino: OrigenFondo,
+  cuentas: CuentaBancaria[],
+  tarjetas: TarjetaCredito[]
+): string {
+  return `${etiquetaOrigen(origen, cuentas, tarjetas)} → ${etiquetaOrigen(destino, cuentas, tarjetas)}`;
 }

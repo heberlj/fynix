@@ -13,14 +13,22 @@ import type {
 } from "@/types/finanzas";
 import {
   calcularResumenQuincena,
-  obtenerCuotasPopularDetalle,
-  obtenerCuotasPrestamosDetalle,
   obtenerGastosFijosDetalle,
   obtenerPagosTarjetasDetalle,
+  pagoCaeEnPeriodo,
 } from "@/lib/calculos";
+import {
+  cuotaPopularCompletada,
+  cuotaPagadaEnPeriodo,
+  diaPagoCuota,
+  nombreCuotaPopular,
+} from "@/lib/cuotas-popular";
 import { totalCuentasPorMoneda } from "@/lib/cuentas";
 import { diasHastaPago } from "@/lib/tarjetas";
-import { diasHastaCuota } from "@/lib/prestamos";
+import {
+  diasHastaCuota,
+  montoCuotaPrestamoPendienteEnPeriodo,
+} from "@/lib/prestamos";
 import {
   obtenerQuincenaActual,
   obtenerQuincenaAnterior,
@@ -211,7 +219,8 @@ export function recolectarObligaciones(
       );
       const dias = diasHastaPago(p.dia);
       items.push({
-        id: `tarjeta-${p.nombre}`,
+        id: `tarjeta-${tarjeta?.id ?? p.nombre}`,
+        entidadId: tarjeta?.id,
         tipo: "tarjeta",
         nombre: p.nombre,
         monto: p.monto,
@@ -227,50 +236,62 @@ export function recolectarObligaciones(
       });
     });
 
-  obtenerCuotasPrestamosDetalle(prestamos, periodo)
-    .filter((p) => p.moneda === moneda)
-    .forEach((p, i) => {
-      const dias = diasHastaCuota(p.dia);
+  prestamos
+    .filter(
+      (p) =>
+        p.moneda === moneda &&
+        montoCuotaPrestamoPendienteEnPeriodo(p, transacciones, periodo, moneda) >
+          0
+    )
+    .forEach((p) => {
+      const dias = diasHastaCuota(p.diaPago);
       items.push({
-        id: `prestamo-${i}-${p.nombre}`,
+        id: `prestamo-${p.id}`,
+        entidadId: p.id,
         tipo: "prestamo",
-        nombre: p.nombre,
-        monto: p.monto,
+        nombre: p.entidad,
+        monto: p.montoCuota,
         moneda: p.moneda,
-        diaPago: p.dia,
+        diaPago: p.diaPago,
         diasRestantes: dias,
         puntuacion: puntuacionPrestamo(dias),
       });
     });
 
-  obtenerCuotasPopularDetalle(cuotasPopular, tarjetas, periodo, transacciones)
-    .filter((p) => p.moneda === moneda)
-    .forEach((p, i) => {
-      const dias = diasHastaCuota(p.dia);
+  cuotasPopular
+    .filter((c) => {
+      if (c.moneda !== moneda || cuotaPopularCompletada(c)) return false;
+      if (cuotaPagadaEnPeriodo(c.id, transacciones, periodo)) return false;
+      return pagoCaeEnPeriodo(diaPagoCuota(c, tarjetas), periodo);
+    })
+    .forEach((c) => {
+      const dias = diasHastaCuota(diaPagoCuota(c, tarjetas));
       items.push({
-        id: `cp-${i}-${p.nombre}`,
+        id: `cp-${c.id}`,
+        entidadId: c.id,
         tipo: "cuota-popular",
-        nombre: p.nombre,
-        monto: p.monto,
-        moneda: p.moneda,
-        diaPago: p.dia,
+        nombre: nombreCuotaPopular(c, tarjetas),
+        monto: c.montoCuota,
+        moneda: c.moneda,
+        diaPago: diaPagoCuota(c, tarjetas),
         diasRestantes: dias,
         puntuacion: puntuacionCuotaPopular(dias),
       });
     });
 
-  obtenerGastosFijosDetalle(gastosFijos, periodo)
-    .filter((p) => p.moneda === moneda)
+  obtenerGastosFijosDetalle(gastosFijos, periodo, transacciones)
+    .filter((p) => p.moneda === moneda && p.montoPendiente > 0)
     .forEach((p) => {
-      const gasto = gastosFijos.find((g) => g.nombre === p.nombre);
+      const gasto = gastosFijos.find((g) => g.id === p.id);
       const dias = diasHastaCuota(p.dia);
       const categoria = gasto?.categoria ?? p.categoria;
       const tipoPresupuesto = gasto?.tipoPresupuesto ?? "flexible";
       items.push({
-        id: `gf-${p.nombre}`,
+        id: `gf-${p.id}`,
+        entidadId: p.id,
         tipo: "gasto-fijo",
         nombre: p.nombre,
-        monto: p.monto,
+        monto: p.montoPendiente,
         moneda: p.moneda,
         diaPago: p.dia,
         diasRestantes: dias,

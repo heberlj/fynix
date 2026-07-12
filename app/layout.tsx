@@ -17,8 +17,8 @@ export const metadata: Metadata = {
   title: "Fynix",
   description: "Tu dinero, tu futuro. Gestor de finanzas personales.",
   icons: {
-    icon: "/logo.png",
-    apple: "/logo.png",
+    icon: "/icon.png",
+    apple: "/icon.png",
   },
 };
 
@@ -30,22 +30,9 @@ export const viewport: Viewport = {
 const scriptTema = `
 (function(){
   try {
-    var sesion = JSON.parse(localStorage.getItem('fynix-sesion') || 'null');
-    var raw = null;
-    if (sesion && sesion.usuarioId) {
-      raw = localStorage.getItem('fynix-data-' + sesion.usuarioId);
-    }
-    if (!raw) raw = localStorage.getItem('gestor-money-data');
-    var d = raw ? JSON.parse(raw) : {};
-    var pref = (d.configuracion && d.configuracion.tema) || 'claro';
-    if (pref !== 'claro' && pref !== 'oscuro' && pref !== 'sistema') pref = 'claro';
-    var visual = pref;
-    if (pref === 'sistema') {
-      visual = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro';
-    }
-    document.documentElement.setAttribute('data-theme-preference', pref);
-    document.documentElement.setAttribute('data-theme', visual);
-    document.documentElement.style.colorScheme = visual === 'oscuro' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme-preference', 'claro');
+    document.documentElement.setAttribute('data-theme', 'claro');
+    document.documentElement.style.colorScheme = 'light';
   } catch (e) {
     document.documentElement.setAttribute('data-theme-preference', 'claro');
     document.documentElement.setAttribute('data-theme', 'claro');

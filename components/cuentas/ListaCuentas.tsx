@@ -3,26 +3,29 @@
 import { useState } from "react";
 import { useFinanzas } from "@/context/FinanzasContext";
 import type { CuentaBancaria } from "@/types/finanzas";
-import { etiquetaTipoCuenta } from "@/lib/cuentas";
+import { etiquetaTipoCuenta, claseColorSaldoCuenta } from "@/lib/cuentas";
+import { confirmarEliminacion } from "@/lib/confirmar";
 import { formatearMoneda } from "@/lib/quincenas";
+import { EstadoVacio } from "@/components/ui/EstadoVacio";
 import { EditarCuentaForm } from "@/components/cuentas/EditarCuentaForm";
 
 interface ListaCuentasProps {
   cuentas: CuentaBancaria[];
+  onAgregar?: () => void;
 }
 
-export function ListaCuentas({ cuentas }: ListaCuentasProps) {
+export function ListaCuentas({ cuentas, onAgregar }: ListaCuentasProps) {
   const { eliminarCuenta } = useFinanzas();
   const [editandoId, setEditandoId] = useState<string | null>(null);
 
   if (cuentas.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-surface px-6 py-16 text-center">
-        <p className="text-sm text-muted">No tienes cuentas registradas</p>
-        <p className="mt-1 text-xs text-muted">
-          Usa el botón &quot;Nueva cuenta&quot; para agregar la primera
-        </p>
-      </div>
+      <EstadoVacio
+        titulo="No tienes cuentas registradas"
+        descripcion="Agrega tus cuentas bancarias para llevar el saldo y registrar movimientos."
+        accionEtiqueta="+ Nueva cuenta"
+        onAccion={onAgregar}
+      />
     );
   }
 
@@ -63,6 +66,14 @@ export function ListaCuentas({ cuentas }: ListaCuentasProps) {
                 <button
                   type="button"
                   onClick={() => {
+                    if (
+                      !confirmarEliminacion(
+                        `${cuenta.banco} · ${cuenta.nombre}`,
+                        "la cuenta"
+                      )
+                    ) {
+                      return;
+                    }
                     if (editandoId === cuenta.id) setEditandoId(null);
                     eliminarCuenta(cuenta.id);
                   }}
@@ -76,7 +87,9 @@ export function ListaCuentas({ cuentas }: ListaCuentasProps) {
             {!estaEditando && (
               <div className="mt-4">
                 <p className="text-xs text-muted">Saldo disponible</p>
-                <p className="text-2xl font-bold text-ingreso">
+                <p
+                  className={`text-2xl font-bold ${claseColorSaldoCuenta(cuenta.saldoActual)}`}
+                >
                   {formatearMoneda(cuenta.saldoActual, cuenta.moneda)}
                 </p>
               </div>

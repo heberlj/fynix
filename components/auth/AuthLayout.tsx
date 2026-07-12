@@ -14,7 +14,8 @@ export function AuthLayout({
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <Logo />
-          <p className="mt-4 text-sm text-muted">{subtitulo}</p>
+          <h1 className="mt-4 text-2xl font-bold text-foreground">Fynix</h1>
+          <p className="mt-1 text-sm text-muted">{subtitulo}</p>
         </div>
 
         <div className="rounded-xl border border-border bg-surface p-6 shadow-sm sm:p-8">

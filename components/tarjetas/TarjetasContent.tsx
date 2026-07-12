@@ -100,7 +100,10 @@ export function TarjetasContent() {
             <FormularioTarjeta onExito={() => setMostrarFormulario(false)} />
           </div>
         )}
-        <ListaTarjetas tarjetas={tarjetas} />
+        <ListaTarjetas
+          tarjetas={tarjetas}
+          onAgregar={() => setMostrarFormulario(true)}
+        />
       </div>
     </PageContainer>
   );

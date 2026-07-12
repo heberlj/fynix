@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useFinanzas } from "@/context/FinanzasContext";
-import type { GastoFijo } from "@/types/finanzas";
-import { CATEGORIAS_GASTO } from "@/types/finanzas";
-import { quincenaNumeroDeDia, tipoPresupuestoPorDefecto } from "@/lib/gastos-fijos";
-import type { TipoPresupuestoGasto } from "@/types/finanzas";
+import type { GastoFijo, TipoPresupuestoGasto } from "@/types/finanzas";
+import {
+  obtenerCategoriasGastosFijos,
+  quincenaNumeroDeDia,
+  tipoPresupuestoPorDefecto,
+} from "@/lib/gastos-fijos";
 import { SelectorMoneda } from "@/components/ui/SelectorMoneda";
 
 const inputClass =
@@ -18,6 +20,7 @@ interface EditarGastoFijoFormProps {
 
 export function EditarGastoFijoForm({ gasto, onCancelar }: EditarGastoFijoFormProps) {
   const { actualizarGastoFijo, configuracion } = useFinanzas();
+  const categorias = obtenerCategoriasGastosFijos(configuracion);
 
   const [nombre, setNombre] = useState(gasto.nombre);
   const [monto, setMonto] = useState(String(gasto.monto));
@@ -38,9 +41,9 @@ export function EditarGastoFijoForm({ gasto, onCancelar }: EditarGastoFijoFormPr
     if (quincenaManual) return;
     const diaNum = parseInt(diaPago, 10);
     if (isNaN(diaNum) || diaNum < 1 || diaNum > 31) return;
-    const q = quincenaNumeroDeDia(diaNum, configuracion);
+    const q = quincenaNumeroDeDia(diaNum);
     setQuincena(String(q) as "1" | "2");
-  }, [diaPago, configuracion, quincenaManual]);
+  }, [diaPago, quincenaManual]);
 
   useEffect(() => {
     if (tipoManual) return;
@@ -105,7 +108,7 @@ export function EditarGastoFijoForm({ gasto, onCancelar }: EditarGastoFijoFormPr
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium text-foreground">Categoría</span>
           <select value={categoria} onChange={(e) => setCategoria(e.target.value)} className={inputClass}>
-            {CATEGORIAS_GASTO.map((cat) => (
+            {categorias.map((cat) => (
               <option key={cat} value={cat}>
                 {cat}
               </option>

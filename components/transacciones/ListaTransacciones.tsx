@@ -7,24 +7,34 @@ import {
 } from "@/types/finanzas";
 import { formatearFecha, mesActual, opcionesMeses } from "@/lib/fechas";
 import { formatearMoneda } from "@/lib/quincenas";
-import { etiquetaOrigen } from "@/lib/transacciones";
+import { totalesTransaccionesEnMoneda } from "@/lib/cambio";
+import { confirmarEliminacion } from "@/lib/confirmar";
+import { etiquetaOrigen, etiquetaTransferencia } from "@/lib/transacciones";
+import { EstadoVacio } from "@/components/ui/EstadoVacio";
 
 const selectClass =
   "rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent";
 
 interface ListaTransaccionesProps {
   transacciones: Transaccion[];
+  onEditar?: (transaccion: Transaccion) => void;
+  onNueva?: () => void;
 }
 
-export function ListaTransacciones({ transacciones }: ListaTransaccionesProps) {
-  const { eliminarTransaccion, configuracion, cuentas, tarjetas } = useFinanzas();
+export function ListaTransacciones({
+  transacciones,
+  onEditar,
+  onNueva,
+}: ListaTransaccionesProps) {
+  const { eliminarTransaccion, configuracion, cuentas, tarjetas, gastosFijos } =
+    useFinanzas();
   const [mesFiltro, setMesFiltro] = useState(mesActual());
   const [quincenaFiltro, setQuincenaFiltro] = useState<"todas" | "1" | "2">(
     "todas"
   );
-  const [tipoFiltro, setTipoFiltro] = useState<"todos" | "ingreso" | "gasto">(
-    "todos"
-  );
+  const [tipoFiltro, setTipoFiltro] = useState<
+    "todos" | "ingreso" | "gasto" | "transferencia"
+  >("todos");
   const [categoriaFiltro, setCategoriaFiltro] = useState("todas");
 
   const categoriasDisponibles = useMemo(() => {
@@ -45,17 +55,10 @@ export function ListaTransacciones({ transacciones }: ListaTransaccionesProps) {
       .sort((a, b) => b.fecha.localeCompare(a.fecha));
   }, [transacciones, mesFiltro, quincenaFiltro, tipoFiltro, categoriaFiltro]);
 
-  const totales = useMemo(() => {
-    let ingresos = 0;
-    let gastos = 0;
-    filtradas
-      .filter((t) => t.moneda === configuracion.moneda)
-      .forEach((t) => {
-      if (t.tipo === "ingreso") ingresos += t.monto;
-      else gastos += t.monto;
-    });
-    return { ingresos, gastos, balance: ingresos - gastos };
-  }, [filtradas, configuracion.moneda]);
+  const totales = useMemo(
+    () => totalesTransaccionesEnMoneda(filtradas, configuracion.moneda),
+    [filtradas, configuracion.moneda]
+  );
 
   return (
     <div className="rounded-xl border border-border bg-surface shadow-sm">
@@ -103,13 +106,16 @@ export function ListaTransacciones({ transacciones }: ListaTransaccionesProps) {
             <select
               value={tipoFiltro}
               onChange={(e) =>
-                setTipoFiltro(e.target.value as "todos" | "ingreso" | "gasto")
+                setTipoFiltro(
+                  e.target.value as "todos" | "ingreso" | "gasto" | "transferencia"
+                )
               }
               className={selectClass}
             >
               <option value="todos">Todos</option>
               <option value="ingreso">Ingresos</option>
               <option value="gasto">Gastos</option>
+              <option value="transferencia">Movimientos</option>
             </select>
           </label>
 
@@ -145,6 +151,12 @@ export function ListaTransacciones({ transacciones }: ListaTransaccionesProps) {
               </span>
             </span>
             <span className="text-muted">
+              Movimientos:{" "}
+              <span className="font-semibold text-accent">
+                {formatearMoneda(totales.movimientos, configuracion.moneda)}
+              </span>
+            </span>
+            <span className="text-muted">
               Balance:{" "}
               <span
                 className={`font-semibold ${
@@ -159,12 +171,23 @@ export function ListaTransacciones({ transacciones }: ListaTransaccionesProps) {
       </div>
 
       {filtradas.length === 0 ? (
-        <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-          <p className="text-sm text-muted">No hay transacciones con estos filtros</p>
-          <p className="mt-1 text-xs text-muted">
-            Registra un gasto o ingreso usando el formulario
-          </p>
-        </div>
+        <EstadoVacio
+          titulo={
+            transacciones.length === 0
+              ? "Aún no hay transacciones"
+              : "No hay transacciones con estos filtros"
+          }
+          descripcion={
+            transacciones.length === 0
+              ? "Registra tu primer ingreso, gasto o movimiento entre cuentas."
+              : "Prueba otro mes o quita algún filtro."
+          }
+          accionEtiqueta={
+            transacciones.length === 0 ? "+ Nueva transacción" : undefined
+          }
+          onAccion={transacciones.length === 0 ? onNueva : undefined}
+          className="m-4 border-0 bg-transparent"
+        />
       ) : (
         <ul className="divide-y divide-border">
           {filtradas.map((t) => (
@@ -176,10 +199,12 @@ export function ListaTransacciones({ transacciones }: ListaTransaccionesProps) {
                 className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
                   t.tipo === "ingreso"
                     ? "bg-ingreso/10 text-ingreso"
-                    : "bg-gasto/10 text-gasto"
+                    : t.tipo === "gasto"
+                      ? "bg-gasto/10 text-gasto"
+                      : "bg-accent/10 text-accent"
                 }`}
               >
-                {t.tipo === "ingreso" ? "+" : "−"}
+                {t.tipo === "ingreso" ? "+" : t.tipo === "gasto" ? "−" : "⇄"}
               </div>
 
               <div className="min-w-0 flex-1">
@@ -190,6 +215,11 @@ export function ListaTransacciones({ transacciones }: ListaTransaccionesProps) {
                   <span className="shrink-0 rounded-full bg-background px-2 py-0.5 text-xs text-muted">
                     {t.categoria}
                   </span>
+                  {t.gastoFijoId && (
+                    <span className="shrink-0 rounded-full bg-ingreso/10 px-2 py-0.5 text-xs font-medium text-ingreso">
+                      Gasto fijo
+                    </span>
+                  )}
                   {t.moneda !== configuracion.moneda && (
                     <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
                       {t.moneda}
@@ -198,32 +228,80 @@ export function ListaTransacciones({ transacciones }: ListaTransaccionesProps) {
                 </div>
                 <p className="mt-0.5 text-xs text-muted">
                   {formatearFecha(t.fecha)} · Q{t.quincena}
-                  {t.origen && (
+                  {t.gastoFijoId && (
                     <>
                       {" · "}
-                      {etiquetaOrigen(t.origen, cuentas, tarjetas, t.modoPagoTarjeta)}
+                      {gastosFijos.find((g) => g.id === t.gastoFijoId)?.nombre ??
+                        "Gasto fijo"}
                     </>
+                  )}
+                  {t.tipo === "transferencia" && t.origen && t.destino ? (
+                    <>
+                      {" · "}
+                      {etiquetaTransferencia(t.origen, t.destino, cuentas, tarjetas)}
+                      {t.tasaCambio && t.monedaOrigen && t.montoOrigen && (
+                        <>
+                          {" · "}
+                          {formatearMoneda(t.montoOrigen, t.monedaOrigen)} @{" "}
+                          {t.tasaCambio} {t.monedaOrigen}/{t.moneda}
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    t.origen && (
+                      <>
+                        {" · "}
+                        {etiquetaOrigen(t.origen, cuentas, tarjetas, t.modoPagoTarjeta)}
+                      </>
+                    )
                   )}
                 </p>
               </div>
 
               <p
                 className={`shrink-0 text-sm font-semibold ${
-                  t.tipo === "ingreso" ? "text-ingreso" : "text-gasto"
+                  t.tipo === "ingreso"
+                    ? "text-ingreso"
+                    : t.tipo === "gasto"
+                      ? "text-gasto"
+                      : "text-accent"
                 }`}
               >
-                {t.tipo === "ingreso" ? "+" : "−"}
-                {formatearMoneda(t.monto, t.moneda)}
+                {t.tipo === "transferencia"
+                  ? `−${formatearMoneda(
+                      t.montoOrigen != null && t.monedaOrigen
+                        ? t.montoOrigen
+                        : t.monto,
+                      t.monedaOrigen ?? t.moneda
+                    )}`
+                  : `${t.tipo === "ingreso" ? "+" : "−"}${formatearMoneda(t.monto, t.moneda)}`}
               </p>
 
-              <button
-                type="button"
-                onClick={() => eliminarTransaccion(t.id)}
-                className="shrink-0 rounded-lg px-2 py-1 text-xs text-muted transition-colors hover:bg-gasto/10 hover:text-gasto"
-                title="Eliminar"
-              >
-                ✕
-              </button>
+              <div className="flex shrink-0 items-center gap-1">
+                {onEditar && !t.cuotaPopularId && (
+                  <button
+                    type="button"
+                    onClick={() => onEditar(t)}
+                    className="rounded-lg px-2 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent/10"
+                    title="Editar"
+                  >
+                    Editar
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!confirmarEliminacion(t.descripcion, "la transacción")) {
+                      return;
+                    }
+                    eliminarTransaccion(t.id);
+                  }}
+                  className="rounded-lg px-2 py-1 text-xs text-muted transition-colors hover:bg-gasto/10 hover:text-gasto"
+                  title="Eliminar"
+                >
+                  ✕
+                </button>
+              </div>
             </li>
           ))}
         </ul>

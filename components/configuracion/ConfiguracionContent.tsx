@@ -7,6 +7,7 @@ import { RespaldoDatos } from "@/components/configuracion/RespaldoDatos";
 import { SelectorMoneda } from "@/components/ui/SelectorMoneda";
 import { SelectorTema } from "@/components/ui/SelectorTema";
 import { aplicarTema } from "@/lib/tema";
+import { validarDiasPago } from "@/lib/validar-configuracion";
 import { PageContainer } from "@/components/layout/PageContainer";
 
 export function ConfiguracionContent() {
@@ -16,6 +17,7 @@ export function ConfiguracionContent() {
   const [moneda, setMoneda] = useState(configuracion.moneda);
   const [tema, setTema] = useState<TemaApp>(configuracion.tema ?? "claro");
   const [guardado, setGuardado] = useState(false);
+  const [error, setError] = useState("");
 
   function handleTemaChange(nuevoTema: TemaApp) {
     setTema(nuevoTema);
@@ -25,10 +27,14 @@ export function ConfiguracionContent() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const d1 = Math.min(31, Math.max(1, Number(dia1)));
-    const d2 = Math.min(31, Math.max(1, Number(dia2)));
-
-    if (d1 === d2) return;
+    setError("");
+    const d1 = Number(dia1);
+    const d2 = Number(dia2);
+    const errorDias = validarDiasPago(d1, d2);
+    if (errorDias) {
+      setError(errorDias);
+      return;
+    }
 
     actualizarConfiguracion({
       diasPago: [d1, d2],
@@ -64,8 +70,8 @@ export function ConfiguracionContent() {
           Días de pago
         </h2>
         <p className="mt-1 text-xs text-muted">
-          Por defecto se usan los días 15 y 30. Cada persona puede configurar
-          los suyos según cuándo recibe su salario.
+          Indica los días del mes en que recibes tu salario. Las quincenas del
+          calendario siempre van del 1 al 15 (Q1) y del 16 al fin de mes (Q2).
         </p>
 
         <div className="mt-5 grid grid-cols-2 gap-4">
@@ -108,9 +114,13 @@ export function ConfiguracionContent() {
         </label>
 
         <div className="mt-4 rounded-lg bg-accent/5 px-4 py-3 text-xs text-muted">
-          <p className="font-medium text-foreground">Ejemplo con días 15 y 30:</p>
-          <p className="mt-1">Q1: del 15 al 29 de cada ciclo</p>
-          <p>Q2: del 30 al 14 del ciclo siguiente</p>
+          <p className="font-medium text-foreground">Quincenas (calendario):</p>
+          <p className="mt-1">Q1: del 1 al 15 de cada mes</p>
+          <p>Q2: del 16 al 30/31 de cada mes</p>
+          <p className="mt-2 font-medium text-foreground">Tus días de pago:</p>
+          <p className="mt-1">
+            Se usan para referencia de ingresos (ej. días {dia1} y {dia2})
+          </p>
         </div>
 
         <button
@@ -119,6 +129,7 @@ export function ConfiguracionContent() {
         >
           {guardado ? "¡Guardado!" : "Guardar configuración"}
         </button>
+        {error && <p className="mt-3 text-sm text-gasto">{error}</p>}
       </form>
 
       <RespaldoDatos />

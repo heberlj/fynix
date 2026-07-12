@@ -3,9 +3,17 @@ import type {
   GastoFijo,
   PeriodoQuincena,
   TipoPresupuestoGasto,
+  Transaccion,
 } from "@/types/finanzas";
-import { CATEGORIAS_GASTO } from "@/types/finanzas";
-import { periodoDeFecha } from "@/lib/quincenas";
+import { CATEGORIAS_GASTOS_FIJOS_DEFAULT } from "@/types/finanzas";
+import { fechaEnPeriodo } from "@/lib/quincenas";
+
+export function obtenerCategoriasGastosFijos(
+  configuracion: ConfiguracionUsuario
+): string[] {
+  const cats = configuracion.categoriasGastosFijos;
+  return cats?.length ? cats : [...CATEGORIAS_GASTOS_FIJOS_DEFAULT];
+}
 
 const CATEGORIAS_FLEXIBLES_POR_DEFECTO = new Set<string>([
   "Suscripciones",
@@ -31,18 +39,8 @@ export function gastoFijoActivo(gasto: GastoFijo): boolean {
   return gasto.activo;
 }
 
-export function quincenaNumeroDeDia(
-  diaPago: number,
-  configuracion: ConfiguracionUsuario,
-  referencia: Date = new Date()
-): 1 | 2 {
-  const anio = referencia.getFullYear();
-  const mes = referencia.getMonth() + 1;
-  const ultimoDia = new Date(anio, mes, 0).getDate();
-  const dia = Math.min(diaPago, ultimoDia);
-  const fecha = `${anio}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
-  const periodo = periodoDeFecha(fecha, configuracion.diasPago);
-  return periodo.quincena;
+export function quincenaNumeroDeDia(diaPago: number): 1 | 2 {
+  return diaPago <= 15 ? 1 : 2;
 }
 
 export function quincenaDeGastoFijo(
@@ -106,42 +104,111 @@ export function gastosPorCategoriaFija(
     .sort((a, b) => b.monto - a.monto);
 }
 
+export function montoPagadoGastoFijoEnPeriodo(
+  transacciones: Transaccion[],
+  gastoFijoId: string,
+  periodo: PeriodoQuincena,
+  moneda?: string
+): number {
+  return redondear(
+    transacciones
+      .filter(
+        (t) =>
+          t.tipo === "gasto" &&
+          t.gastoFijoId === gastoFijoId &&
+          fechaEnPeriodo(t.fecha, periodo) &&
+          (!moneda || t.moneda === moneda)
+      )
+      .reduce((total, t) => total + t.monto, 0)
+  );
+}
+
+export function montoPendienteGastoFijoEnPeriodo(
+  gasto: GastoFijo,
+  transacciones: Transaccion[],
+  periodo: PeriodoQuincena,
+  moneda?: string
+): number {
+  if (!gastoAplicaEnPeriodo(gasto, periodo)) return 0;
+  if (moneda && gasto.moneda !== moneda) return 0;
+  const pagado = montoPagadoGastoFijoEnPeriodo(
+    transacciones,
+    gasto.id,
+    periodo,
+    moneda
+  );
+  return redondear(Math.max(0, gasto.monto - pagado));
+}
+
+export function gastoFijoCubiertoEnPeriodo(
+  gasto: GastoFijo,
+  transacciones: Transaccion[],
+  periodo: PeriodoQuincena,
+  moneda?: string
+): boolean {
+  return montoPendienteGastoFijoEnPeriodo(gasto, transacciones, periodo, moneda) <= 0;
+}
+
 export function calcularGastosFijosEnPeriodo(
   gastos: GastoFijo[],
   periodo: PeriodoQuincena,
-  moneda?: string
+  moneda?: string,
+  transacciones: Transaccion[] = []
 ): number {
   const gastosFiltrados = moneda
     ? gastos.filter((g) => g.moneda === moneda)
     : gastos;
   return redondear(
     gastosFiltrados.reduce((total, gasto) => {
-      return gastoAplicaEnPeriodo(gasto, periodo) ? total + gasto.monto : total;
+      return (
+        total +
+        montoPendienteGastoFijoEnPeriodo(gasto, transacciones, periodo, moneda)
+      );
     }, 0)
   );
 }
 
-export function obtenerGastosFijosDetalle(
-  gastos: GastoFijo[],
-  periodo: PeriodoQuincena
-): {
+export interface DetalleGastoFijoPeriodo {
+  id: string;
   nombre: string;
   monto: number;
+  montoPagado: number;
+  montoPendiente: number;
+  pagado: boolean;
   moneda: string;
   dia: number;
   categoria: string;
   quincena: 1 | 2;
-}[] {
+}
+
+export function obtenerGastosFijosDetalle(
+  gastos: GastoFijo[],
+  periodo: PeriodoQuincena,
+  transacciones: Transaccion[] = []
+): DetalleGastoFijoPeriodo[] {
   return gastos
     .filter((g) => gastoAplicaEnPeriodo(g, periodo))
-    .map((g) => ({
-      nombre: g.nombre,
-      monto: g.monto,
-      moneda: g.moneda,
-      dia: g.diaPago,
-      categoria: g.categoria,
-      quincena: g.quincena,
-    }))
+    .map((g) => {
+      const montoPagado = montoPagadoGastoFijoEnPeriodo(
+        transacciones,
+        g.id,
+        periodo,
+        g.moneda
+      );
+      const montoPendiente = redondear(Math.max(0, g.monto - montoPagado));
+      return {
+        id: g.id,
+        nombre: g.nombre,
+        monto: g.monto,
+        montoPagado,
+        montoPendiente,
+        pagado: montoPendiente <= 0,
+        moneda: g.moneda,
+        dia: g.diaPago,
+        categoria: g.categoria,
+        quincena: g.quincena,
+      };
+    })
     .sort((a, b) => a.dia - b.dia);
 }
 

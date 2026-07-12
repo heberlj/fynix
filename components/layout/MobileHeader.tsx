@@ -4,9 +4,10 @@ import { Logo } from "@/components/ui/Logo";
 
 interface MobileHeaderProps {
   onAbrirMenu: () => void;
+  tituloPagina: string;
 }
 
-export function MobileHeader({ onAbrirMenu }: MobileHeaderProps) {
+export function MobileHeader({ onAbrirMenu, tituloPagina }: MobileHeaderProps) {
   return (
     <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-surface/95 px-4 py-3 backdrop-blur-sm lg:hidden">
       <button
@@ -33,8 +34,8 @@ export function MobileHeader({ onAbrirMenu }: MobileHeaderProps) {
       <div className="flex min-w-0 flex-1 items-center gap-2.5">
         <Logo variante="compacto" className="h-8 w-8" />
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-foreground">Fynix</p>
-          <p className="truncate text-[11px] text-muted">Tu dinero, tu futuro</p>
+          <p className="truncate text-sm font-semibold text-foreground">{tituloPagina}</p>
+          <p className="truncate text-[11px] text-muted">Fynix</p>
         </div>
       </div>
     </header>

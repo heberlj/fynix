@@ -42,3 +42,14 @@ export const NAV_CONFIGURACION: NavItem = {
   label: "Configuración",
   icon: "configuracion",
 };
+
+const TODAS_LAS_RUTAS: NavItem[] = [
+  NAV_DASHBOARD,
+  ...NAV_GRUPOS.flatMap((g) => g.items),
+  NAV_CONFIGURACION,
+];
+
+export function tituloDeRuta(pathname: string): string {
+  const ruta = TODAS_LAS_RUTAS.find((item) => item.href === pathname);
+  return ruta?.label ?? "Fynix";
+}

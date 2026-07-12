@@ -16,10 +16,13 @@ import {
   totalIntereses,
 } from "@/lib/prestamos";
 import { formatearMoneda } from "@/lib/quincenas";
+import { confirmarEliminacion } from "@/lib/confirmar";
 import { EditarPrestamoForm } from "@/components/prestamos/EditarPrestamoForm";
+import { EstadoVacio } from "@/components/ui/EstadoVacio";
 
 interface ListaPrestamosProps {
   prestamos: Prestamo[];
+  onAgregar?: () => void;
 }
 
 function BarraProgreso({ prestamo }: { prestamo: Prestamo }) {
@@ -44,18 +47,18 @@ function BarraProgreso({ prestamo }: { prestamo: Prestamo }) {
   );
 }
 
-export function ListaPrestamos({ prestamos }: ListaPrestamosProps) {
-  const { configuracion, eliminarPrestamo, registrarCuotaPrestamo } = useFinanzas();
+export function ListaPrestamos({ prestamos, onAgregar }: ListaPrestamosProps) {
+  const { configuracion, eliminarPrestamo, registrarPagoPrestamo } = useFinanzas();
   const [editandoId, setEditandoId] = useState<string | null>(null);
 
   if (prestamos.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-surface px-6 py-16 text-center">
-        <p className="text-sm text-muted">No tienes préstamos registrados</p>
-        <p className="mt-1 text-xs text-muted">
-          Usa el botón &quot;Nuevo préstamo&quot; para registrar el primero
-        </p>
-      </div>
+      <EstadoVacio
+        titulo="No tienes préstamos registrados"
+        descripcion="Registra tus préstamos para llevar cuotas, saldo pendiente y fechas de pago."
+        accionEtiqueta="+ Nuevo préstamo"
+        onAccion={onAgregar}
+      />
     );
   }
 
@@ -107,6 +110,11 @@ export function ListaPrestamos({ prestamos }: ListaPrestamosProps) {
                 <button
                   type="button"
                   onClick={() => {
+                    if (
+                      !confirmarEliminacion(prestamo.entidad, "el préstamo")
+                    ) {
+                      return;
+                    }
                     if (editandoId === prestamo.id) setEditandoId(null);
                     eliminarPrestamo(prestamo.id);
                   }}
@@ -181,7 +189,7 @@ export function ListaPrestamos({ prestamos }: ListaPrestamosProps) {
                     </div>
                     <button
                       type="button"
-                      onClick={() => registrarCuotaPrestamo(prestamo.id)}
+                      onClick={() => registrarPagoPrestamo(prestamo.id)}
                       className="rounded-lg bg-ingreso px-3 py-2 text-xs font-medium text-white transition-colors hover:opacity-90"
                     >
                       Registrar cuota pagada

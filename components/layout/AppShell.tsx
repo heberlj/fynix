@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileHeader } from "@/components/layout/MobileHeader";
+import { tituloDeRuta } from "@/components/layout/navegacion";
 import { ThemeSync } from "@/components/layout/ThemeSync";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { FinanzasProvider } from "@/context/FinanzasContext";
@@ -66,7 +67,10 @@ function AppRoutes({ children }: { children: React.ReactNode }) {
           nombreUsuario={sesion.nombre}
         />
         <div className="flex min-w-0 flex-1 flex-col">
-          <MobileHeader onAbrirMenu={() => setMenuAbierto(true)} />
+          <MobileHeader
+            onAbrirMenu={() => setMenuAbierto(true)}
+            tituloPagina={tituloDeRuta(pathname)}
+          />
           <main className="flex flex-1 flex-col overflow-auto">{children}</main>
         </div>
       </div>

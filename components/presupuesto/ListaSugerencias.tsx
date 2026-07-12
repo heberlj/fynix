@@ -1,4 +1,7 @@
+"use client";
+
 import type { ItemSugerenciaPago, PrioridadSugerencia } from "@/types/finanzas";
+import { useFinanzas } from "@/context/FinanzasContext";
 import { formatearMoneda } from "@/lib/quincenas";
 
 const ETIQUETAS_TIPO: Record<ItemSugerenciaPago["tipo"], string> = {
@@ -35,6 +38,31 @@ interface ListaSugerenciasProps {
 }
 
 export function ListaSugerencias({ items, moneda }: ListaSugerenciasProps) {
+  const {
+    registrarPagoTarjeta,
+    registrarPagoPrestamo,
+    registrarCuotaPopularPagada,
+    registrarPagoGastoFijo,
+  } = useFinanzas();
+
+  function registrarPago(item: ItemSugerenciaPago) {
+    if (!item.entidadId) return;
+    switch (item.tipo) {
+      case "tarjeta":
+        registrarPagoTarjeta(item.entidadId);
+        break;
+      case "prestamo":
+        registrarPagoPrestamo(item.entidadId);
+        break;
+      case "cuota-popular":
+        registrarCuotaPopularPagada(item.entidadId);
+        break;
+      case "gasto-fijo":
+        registrarPagoGastoFijo(item.entidadId);
+        break;
+    }
+  }
+
   if (items.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-muted">
@@ -87,9 +115,20 @@ export function ListaSugerencias({ items, moneda }: ListaSugerenciasProps) {
                       </p>
                       <p className="mt-1.5 text-xs text-muted">{item.razon}</p>
                     </div>
-                    <p className="shrink-0 text-sm font-bold text-foreground">
-                      {formatearMoneda(item.monto, item.moneda)}
-                    </p>
+                    <div className="flex shrink-0 flex-col items-end gap-2">
+                      <p className="text-sm font-bold text-foreground">
+                        {formatearMoneda(item.monto, item.moneda)}
+                      </p>
+                      {prioridad === "pagar" && item.entidadId && (
+                        <button
+                          type="button"
+                          onClick={() => registrarPago(item)}
+                          className="rounded-lg bg-ingreso px-3 py-1.5 text-xs font-medium text-white transition-colors hover:opacity-90"
+                        >
+                          Registrar pago
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </li>
               ))}

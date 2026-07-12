@@ -41,8 +41,8 @@ export function PrestamosContent() {
         <div className="min-w-0">
           <h1 className="text-xl font-bold text-foreground sm:text-2xl">Préstamos</h1>
           <p className="mt-1 text-sm text-muted">
-            Registra tus préstamos, lleva el control de cuotas y ve en qué quincena
-            cae cada pago
+            Registra tus préstamos y paga cuotas con transacciones. En Gastos fijos
+            aparecen solo como referencia para ver tu panorama mensual.
           </p>
 
           {totalesPorMoneda.length > 0 && (
@@ -101,7 +101,10 @@ export function PrestamosContent() {
             <FormularioPrestamo onExito={() => setMostrarFormulario(false)} />
           </div>
         )}
-        <ListaPrestamos prestamos={prestamos} />
+        <ListaPrestamos
+          prestamos={prestamos}
+          onAgregar={() => setMostrarFormulario(true)}
+        />
       </div>
     </PageContainer>
   );

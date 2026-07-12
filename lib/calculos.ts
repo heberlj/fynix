@@ -15,6 +15,9 @@ import {
   obtenerCuotasPopularDetalle,
 } from "@/lib/cuotas-popular";
 import { calcularGastosFijosEnPeriodo, obtenerGastosFijosDetalle } from "@/lib/gastos-fijos";
+import { calcularCuotasPrestamosEnPeriodo } from "@/lib/prestamos";
+import { montoSalidaMovimiento } from "@/lib/cambio";
+import { esPagoATarjeta } from "@/lib/transacciones";
 import { fechaEnPeriodo } from "@/lib/quincenas";
 
 export { obtenerCuotasPopularDetalle, obtenerGastosFijosDetalle };
@@ -52,37 +55,40 @@ export function calcularPagosTarjetasEnPeriodo(
   }, 0);
 }
 
-export function calcularCuotasPrestamosEnPeriodo(
-  prestamos: Prestamo[],
+export { calcularCuotasPrestamosEnPeriodo };
+
+export function transaccionEnPeriodoParaMoneda(
+  transaccion: Transaccion,
+  periodo: PeriodoQuincena,
+  moneda?: string
+): boolean {
+  if (!fechaEnPeriodo(transaccion.fecha, periodo)) return false;
+  if (!moneda) return true;
+  if (transaccion.moneda === moneda) return true;
+  if (
+    transaccion.tipo === "transferencia" &&
+    montoSalidaMovimiento(transaccion, moneda) != null
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export function calcularMovimientosEnPeriodo(
+  transacciones: Transaccion[],
   periodo: PeriodoQuincena,
   moneda?: string
 ): number {
-  const prestamosFiltrados = moneda
-    ? prestamos.filter((p) => p.moneda === moneda)
-    : prestamos;
-  const inicio = new Date(periodo.inicio);
-  const fin = new Date(periodo.fin);
-
-  return prestamosFiltrados.reduce((total, prestamo) => {
-    if (prestamo.cuotasPagadas >= prestamo.cuotasTotales) return total;
-
-    let cuotaEnPeriodo = false;
-    const cursor = new Date(inicio);
-
-    while (cursor <= fin) {
-      const diaEfectivo = Math.min(
-        prestamo.diaPago,
-        new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate()
-      );
-      if (cursor.getDate() === diaEfectivo) {
-        cuotaEnPeriodo = true;
-        break;
-      }
-      cursor.setDate(cursor.getDate() + 1);
-    }
-
-    return cuotaEnPeriodo ? total + prestamo.montoCuota : total;
-  }, 0);
+  return transacciones
+    .filter(
+      (t) =>
+        esPagoATarjeta(t) && fechaEnPeriodo(t.fecha, periodo)
+    )
+    .reduce((total, t) => {
+      if (!moneda) return total + (t.montoOrigen ?? t.monto);
+      const salida = montoSalidaMovimiento(t, moneda);
+      return salida != null ? total + salida : total;
+    }, 0);
 }
 
 export function calcularResumenQuincena(
@@ -94,25 +100,34 @@ export function calcularResumenQuincena(
   periodo: PeriodoQuincena,
   moneda?: string
 ): ResumenQuincena {
-  const transaccionesFiltradas = transacciones.filter((t) => {
-    if (!fechaEnPeriodo(t.fecha, periodo)) return false;
-    if (moneda && t.moneda !== moneda) return false;
-    return true;
-  });
+  const transaccionesFiltradas = transacciones.filter((t) =>
+    transaccionEnPeriodoParaMoneda(t, periodo, moneda)
+  );
 
   let ingresosTotales = 0;
   let gastosTotales = 0;
 
   transaccionesFiltradas.forEach((t) => {
-    if (t.tipo === "ingreso") {
+    if (t.tipo === "ingreso" && (!moneda || t.moneda === moneda)) {
       ingresosTotales += t.monto;
-    } else {
+    } else if (t.tipo === "gasto" && (!moneda || t.moneda === moneda)) {
       gastosTotales += t.monto;
     }
   });
 
+  const movimientosTotales = calcularMovimientosEnPeriodo(
+    transacciones,
+    periodo,
+    moneda
+  );
+
   const pagosTarjetas = calcularPagosTarjetasEnPeriodo(tarjetas, periodo, moneda);
-  const cuotasPrestamos = calcularCuotasPrestamosEnPeriodo(prestamos, periodo, moneda);
+  const cuotasPrestamos = calcularCuotasPrestamosEnPeriodo(
+    prestamos,
+    periodo,
+    moneda,
+    transacciones
+  );
   const cuotasPopularTotal = calcularCuotasPopularEnPeriodo(
     cuotasPopular,
     tarjetas,
@@ -120,24 +135,33 @@ export function calcularResumenQuincena(
     transacciones,
     moneda
   );
-  const gastosFijosTotal = calcularGastosFijosEnPeriodo(gastosFijos, periodo, moneda);
+  const gastosFijosTotal = calcularGastosFijosEnPeriodo(
+    gastosFijos,
+    periodo,
+    moneda,
+    transacciones
+  );
   const balanceNeto = ingresosTotales - gastosTotales;
-  const disponible =
+  const disponibleProyectado =
     balanceNeto -
+    movimientosTotales -
     pagosTarjetas -
     cuotasPrestamos -
     cuotasPopularTotal -
     gastosFijosTotal;
+  const disponible = ingresosTotales > 0 ? disponibleProyectado : 0;
 
   return {
     ingresosTotales,
     gastosTotales,
+    movimientosTotales,
     pagosTarjetas,
     cuotasPrestamos,
     cuotasPopular: cuotasPopularTotal,
     gastosFijos: gastosFijosTotal,
     balanceNeto,
     disponible,
+    disponibleProyectado,
   };
 }
 
@@ -234,11 +258,7 @@ export function obtenerTransaccionesEnPeriodo(
   moneda?: string
 ): Transaccion[] {
   return transacciones
-    .filter((t) => {
-      if (!fechaEnPeriodo(t.fecha, periodo)) return false;
-      if (moneda && t.moneda !== moneda) return false;
-      return true;
-    })
+    .filter((t) => transaccionEnPeriodoParaMoneda(t, periodo, moneda))
     .sort((a, b) => b.fecha.localeCompare(a.fecha));
 }
 
@@ -256,20 +276,3 @@ export function obtenerPagosTarjetasDetalle(
     }));
 }
 
-export function obtenerCuotasPrestamosDetalle(
-  prestamos: Prestamo[],
-  periodo: PeriodoQuincena
-): { nombre: string; monto: number; moneda: string; dia: number }[] {
-  return prestamos
-    .filter(
-      (p) =>
-        p.cuotasPagadas < p.cuotasTotales &&
-        pagoCaeEnPeriodo(p.diaPago, periodo)
-    )
-    .map((p) => ({
-      nombre: p.entidad,
-      monto: p.montoCuota,
-      moneda: p.moneda,
-      dia: p.diaPago,
-    }));
-}

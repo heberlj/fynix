@@ -98,7 +98,10 @@ export function CuentasContent() {
             <FormularioCuenta onExito={() => setMostrarFormulario(false)} />
           </div>
         )}
-        <ListaCuentas cuentas={cuentas} />
+        <ListaCuentas
+          cuentas={cuentas}
+          onAgregar={() => setMostrarFormulario(true)}
+        />
       </div>
     </PageContainer>
   );

@@ -16,6 +16,8 @@ import {
   obtenerSesion,
   registrarUsuario,
 } from "@/lib/auth";
+import { limpiarDatosLocalesAntiguos } from "@/lib/limpiar-datos-locales";
+import { crearClienteSupabase } from "@/lib/supabase/client";
 
 interface AuthContextValue {
   sesion: SesionActiva | null;
@@ -39,8 +41,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [cargado, setCargado] = useState(false);
 
   useEffect(() => {
-    setSesion(obtenerSesion());
-    setCargado(true);
+    limpiarDatosLocalesAntiguos();
+
+    const supabase = crearClienteSupabase();
+
+    void obtenerSesion().then((activa) => {
+      setSesion(activa);
+      setCargado(true);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session?.user) {
+        setSesion(null);
+        setCargado(true);
+        return;
+      }
+
+      const nombre =
+        (session.user.user_metadata?.nombre as string | undefined)?.trim() ||
+        session.user.email?.split("@")[0] ||
+        "Usuario";
+
+      setSesion({
+        usuarioId: session.user.id,
+        nombre,
+        email: session.user.email ?? "",
+      });
+      setCargado(true);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -61,8 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(() => {
-    cerrarSesion();
-    setSesion(null);
+    void cerrarSesion().then(() => setSesion(null));
   }, []);
 
   const value = useMemo(

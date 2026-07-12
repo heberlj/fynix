@@ -2,19 +2,20 @@
 
 import { useMemo, useState } from "react";
 import { useFinanzas } from "@/context/FinanzasContext";
+import { useAuth } from "@/context/AuthContext";
 import type { TarjetaCredito } from "@/types/finanzas";
 import {
+  almacenarNumeroTarjeta,
   detectarMarca,
   enmascararNumero,
   formatearExpiracion,
-  formatearNumeroTarjeta,
-  limpiarNumeroTarjeta,
   MARCA_ETIQUETA,
-  obtenerUltimosCuatro,
   validarCvv,
   validarExpiracion,
   validarLuhn,
+  validarNumeroCuotas,
 } from "@/lib/tarjetas";
+import { InputNumeroTarjetaSeguro } from "@/components/tarjetas/InputNumeroTarjetaSeguro";
 import { TarjetaVisual } from "@/components/tarjetas/TarjetaVisual";
 import { SelectorMoneda } from "@/components/ui/SelectorMoneda";
 
@@ -28,11 +29,12 @@ interface EditarTarjetaFormProps {
 
 export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProps) {
   const { actualizarTarjeta } = useFinanzas();
+  const { sesion } = useAuth();
 
   const [banco, setBanco] = useState(tarjeta.banco);
   const [nombreTarjeta, setNombreTarjeta] = useState(tarjeta.nombreTarjeta);
   const [titular, setTitular] = useState(tarjeta.titular);
-  const [numeroTarjeta, setNumeroTarjeta] = useState("");
+  const [digitosTarjeta, setDigitosTarjeta] = useState("");
   const [fechaExpiracion, setFechaExpiracion] = useState(tarjeta.fechaExpiracion);
   const [cvv, setCvv] = useState("");
   const [limite, setLimite] = useState(String(tarjeta.limite));
@@ -48,11 +50,17 @@ export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProp
       ? String(tarjeta.extensionCuotasPopular.limiteAprobado)
       : ""
   );
+  const [digitosCuotasPopular, setDigitosCuotasPopular] = useState("");
+  const [sobregiroCuotasPopular, setSobregiroCuotasPopular] = useState(
+    tarjeta.extensionCuotasPopular?.sobregiro
+      ? String(tarjeta.extensionCuotasPopular.sobregiro)
+      : ""
+  );
   const [error, setError] = useState("");
 
   const marcaDetectada = useMemo(
-    () => (numeroTarjeta ? detectarMarca(numeroTarjeta) : tarjeta.marca),
-    [numeroTarjeta, tarjeta.marca]
+    () => (digitosTarjeta ? detectarMarca(digitosTarjeta) : tarjeta.marca),
+    [digitosTarjeta, tarjeta.marca]
   );
 
   const vistaPrevia = useMemo(
@@ -60,8 +68,8 @@ export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProp
       banco: banco || "Banco",
       nombreTarjeta: nombreTarjeta || "Crédito",
       titular: titular || "NOMBRE APELLIDO",
-      numeroEnmascarado: numeroTarjeta
-        ? enmascararNumero(numeroTarjeta)
+      numeroEnmascarado: digitosTarjeta
+        ? enmascararNumero(digitosTarjeta)
         : tarjeta.numeroEnmascarado,
       fechaExpiracion: fechaExpiracion || "MM/AA",
       cvv: cvv || tarjeta.cvv || "•••",
@@ -72,7 +80,7 @@ export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProp
       banco,
       nombreTarjeta,
       titular,
-      numeroTarjeta,
+      digitosTarjeta,
       tarjeta.numeroEnmascarado,
       tarjeta.cvv,
       fechaExpiracion,
@@ -82,14 +90,14 @@ export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProp
     ]
   );
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
 
-    const limpio = limpiarNumeroTarjeta(numeroTarjeta);
+    const limpio = digitosTarjeta;
     const limiteNum = parseFloat(limite);
     const deudaNum = parseFloat(deudaActual) || 0;
-    const marca = numeroTarjeta ? marcaDetectada : tarjeta.marca;
+    const marca = digitosTarjeta ? marcaDetectada : tarjeta.marca;
     const cvvFinal = cvv ? cvv.replace(/\D/g, "") : tarjeta.cvv;
 
     if (!banco.trim()) {
@@ -100,7 +108,7 @@ export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProp
       setError("El titular es obligatorio");
       return;
     }
-    if (numeroTarjeta) {
+    if (digitosTarjeta) {
       if (!validarLuhn(limpio)) {
         setError("Número de tarjeta inválido");
         return;
@@ -133,16 +141,49 @@ export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProp
         setError("Ingresa un límite aprobado válido para Cuotas Popular");
         return;
       }
+      if (
+        digitosCuotasPopular &&
+        !validarNumeroCuotas(digitosCuotasPopular)
+      ) {
+        setError("El número de Cuotas Popular debe tener 16 dígitos");
+        return;
+      }
+      if (
+        !digitosCuotasPopular &&
+        !tarjeta.extensionCuotasPopular?.numeroEnmascarado
+      ) {
+        setError("Ingresa el número de Cuotas Popular (16 dígitos)");
+        return;
+      }
     }
+
+    if (!sesion) {
+      setError("Debes iniciar sesión para guardar la tarjeta de forma segura");
+      return;
+    }
+
+    const numeroTarjetaAlmacenado = digitosTarjeta
+      ? await almacenarNumeroTarjeta(limpio, sesion.usuarioId)
+      : null;
+
+    const numeroCP = digitosCuotasPopular
+      ? await almacenarNumeroTarjeta(digitosCuotasPopular, sesion.usuarioId)
+      : cuotasPopularActivo && tarjeta.extensionCuotasPopular
+        ? {
+            numeroEnmascarado: tarjeta.extensionCuotasPopular.numeroEnmascarado,
+            primerosCuatro: tarjeta.extensionCuotasPopular.primerosCuatro,
+            ultimosCuatro: tarjeta.extensionCuotasPopular.ultimosCuatro,
+            numeroCifrado: tarjeta.extensionCuotasPopular.numeroCifrado,
+          }
+        : null;
 
     actualizarTarjeta(tarjeta.id, {
       banco: banco.trim(),
       nombreTarjeta: nombreTarjeta.trim() || "Crédito",
       titular: titular.trim().toUpperCase(),
-      ...(numeroTarjeta
+      ...(numeroTarjetaAlmacenado
         ? {
-            ultimosCuatro: obtenerUltimosCuatro(limpio),
-            numeroEnmascarado: enmascararNumero(limpio),
+            ...numeroTarjetaAlmacenado,
             marca,
           }
         : {}),
@@ -154,7 +195,11 @@ export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProp
       diaPago: Math.min(31, Math.max(1, Number(diaPago))),
       moneda,
       extensionCuotasPopular: cuotasPopularActivo
-        ? { limiteAprobado: limiteCuotasNum }
+        ? {
+            limiteAprobado: limiteCuotasNum,
+            ...numeroCP!,
+            sobregiro: parseFloat(sobregiroCuotasPopular) || 0,
+          }
         : undefined,
     });
 
@@ -173,7 +218,7 @@ export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProp
             <h4 className="text-sm font-semibold text-foreground">Editar tarjeta</h4>
             {marcaDetectada !== "desconocida" && (
               <p className="mt-0.5 text-xs text-muted">
-                {numeroTarjeta ? "Detectada: " : "Marca: "}
+                {digitosTarjeta ? "Detectada: " : "Marca: "}
                 <span className="font-medium text-foreground">
                   {MARCA_ETIQUETA[marcaDetectada]}
                 </span>
@@ -218,17 +263,13 @@ export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProp
               <span className="text-sm font-medium text-foreground">
                 Número de tarjeta
               </span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={numeroTarjeta}
-                onChange={(e) => setNumeroTarjeta(formatearNumeroTarjeta(e.target.value))}
-                placeholder={`Actual: ${tarjeta.numeroEnmascarado}`}
-                maxLength={19}
-                className={inputClass}
+              <InputNumeroTarjetaSeguro
+                digitos={digitosTarjeta}
+                onDigitosChange={setDigitosTarjeta}
               />
               <span className="text-xs text-muted">
-                Deja vacío para mantener el número actual
+                Guardado: {tarjeta.numeroEnmascarado}. Escribe un número nuevo
+                solo si quieres cambiarlo.
               </span>
             </label>
 
@@ -333,19 +374,50 @@ export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProp
               </label>
 
               {cuotasPopularActivo && (
-                <label className="mt-4 flex flex-col gap-1.5">
-                  <span className="text-sm font-medium text-foreground">
-                    Límite aprobado Cuotas Popular
-                  </span>
-                  <input
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    value={limiteCuotasPopular}
-                    onChange={(e) => setLimiteCuotasPopular(e.target.value)}
-                    className={inputClass}
-                  />
-                </label>
+                <div className="mt-4 space-y-4">
+                  <label className="flex flex-col gap-1.5">
+                    <span className="text-sm font-medium text-foreground">
+                      Número Cuotas Popular (16 dígitos)
+                    </span>
+                    <InputNumeroTarjetaSeguro
+                      digitos={digitosCuotasPopular}
+                      onDigitosChange={setDigitosCuotasPopular}
+                    />
+                    <span className="text-xs text-muted">
+                      Guardado:{" "}
+                      {tarjeta.extensionCuotasPopular?.numeroEnmascarado ??
+                        "sin número"}
+                      . Escribe uno nuevo solo si quieres cambiarlo.
+                    </span>
+                  </label>
+                  <label className="flex flex-col gap-1.5">
+                    <span className="text-sm font-medium text-foreground">
+                      Límite aprobado Cuotas Popular
+                    </span>
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      value={limiteCuotasPopular}
+                      onChange={(e) => setLimiteCuotasPopular(e.target.value)}
+                      className={inputClass}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1.5">
+                    <span className="text-sm font-medium text-foreground">
+                      Sobregiro (opcional)
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={sobregiroCuotasPopular}
+                      onChange={(e) => setSobregiroCuotasPopular(e.target.value)}
+                      placeholder="0.00"
+                      className={inputClass}
+                    />
+                  </label>
+                </div>
               )}
             </div>
           </div>

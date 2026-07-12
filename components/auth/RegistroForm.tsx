@@ -2,11 +2,23 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import {
+  estadoRequisitosContraseña,
+  validarContraseña,
+} from "@/lib/validar-contraseña";
 
 const inputClass =
   "rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-accent";
+
+const ETIQUETAS_REQUISITOS = [
+  { clave: "longitud" as const, texto: "Mínimo 8 caracteres" },
+  { clave: "mayuscula" as const, texto: "Una letra mayúscula" },
+  { clave: "minuscula" as const, texto: "Una letra minúscula" },
+  { clave: "numero" as const, texto: "Un número" },
+  { clave: "simbolo" as const, texto: "Un símbolo (!@#$%…)" },
+];
 
 export function RegistroForm() {
   const { registrar } = useAuth();
@@ -18,9 +30,20 @@ export function RegistroForm() {
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
 
+  const requisitos = useMemo(
+    () => estadoRequisitosContraseña(password),
+    [password]
+  );
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+
+    const errorContraseña = validarContraseña(password);
+    if (errorContraseña) {
+      setError(errorContraseña);
+      return;
+    }
 
     if (password !== confirmar) {
       setError("Las contraseñas no coinciden");
@@ -67,19 +90,36 @@ export function RegistroForm() {
         />
       </label>
 
-      <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-foreground">Contraseña</span>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="new-password"
-          placeholder="Mínimo 6 caracteres"
-          className={inputClass}
-          minLength={6}
-          required
-        />
-      </label>
+      <div className="space-y-2">
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium text-foreground">Contraseña</span>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
+            placeholder="Crea una contraseña segura"
+            className={inputClass}
+            minLength={8}
+            required
+          />
+        </label>
+
+        {password.length > 0 && (
+          <ul className="space-y-1 rounded-lg bg-background px-3 py-2 text-xs">
+            {ETIQUETAS_REQUISITOS.map(({ clave, texto }) => (
+              <li
+                key={clave}
+                className={
+                  requisitos[clave] ? "text-ingreso" : "text-muted"
+                }
+              >
+                {requisitos[clave] ? "✓" : "○"} {texto}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       <label className="flex flex-col gap-1.5">
         <span className="text-sm font-medium text-foreground">
@@ -92,7 +132,7 @@ export function RegistroForm() {
           autoComplete="new-password"
           placeholder="Repite tu contraseña"
           className={inputClass}
-          minLength={6}
+          minLength={8}
           required
         />
       </label>

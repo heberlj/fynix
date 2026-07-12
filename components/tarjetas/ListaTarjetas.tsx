@@ -4,18 +4,18 @@ import { useState } from "react";
 import { useFinanzas } from "@/context/FinanzasContext";
 import type { TarjetaCredito } from "@/types/finanzas";
 import { diasHastaPago, MARCA_ETIQUETA } from "@/lib/tarjetas";
-import {
-  disponibleLimiteCuotasPopular,
-  tarjetaTieneCuotasPopular,
-  usoCuotasPopularTarjeta,
-} from "@/lib/cuotas-popular";
+import { tarjetaTieneCuotasPopular } from "@/lib/cuotas-popular";
+import { confirmarEliminacion } from "@/lib/confirmar";
 import { formatearMoneda } from "@/lib/quincenas";
+import { EstadoVacio } from "@/components/ui/EstadoVacio";
 import { TarjetaVisual } from "@/components/tarjetas/TarjetaVisual";
 import { EditarTarjetaForm } from "@/components/tarjetas/EditarTarjetaForm";
+import { ResumenCuotasPopular } from "@/components/tarjetas/ResumenCuotasPopular";
 import { PlanesCuotasPopular } from "@/components/tarjetas/PlanesCuotasPopular";
 
 interface ListaTarjetasProps {
   tarjetas: TarjetaCredito[];
+  onAgregar?: () => void;
 }
 
 function BarraUso({ deuda, limite }: { deuda: number; limite: number }) {
@@ -70,18 +70,18 @@ function AlertaPago({
   );
 }
 
-export function ListaTarjetas({ tarjetas }: ListaTarjetasProps) {
+export function ListaTarjetas({ tarjetas, onAgregar }: ListaTarjetasProps) {
   const { eliminarTarjeta, cuotasPopular } = useFinanzas();
   const [editandoId, setEditandoId] = useState<string | null>(null);
 
   if (tarjetas.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-surface px-6 py-16 text-center">
-        <p className="text-sm text-muted">No tienes tarjetas registradas</p>
-        <p className="mt-1 text-xs text-muted">
-          Usa el botón &quot;Nueva tarjeta&quot; para registrar la primera
-        </p>
-      </div>
+      <EstadoVacio
+        titulo="No tienes tarjetas registradas"
+        descripcion="Agrega tus tarjetas de crédito para ver deuda, límite y fechas de pago."
+        accionEtiqueta="+ Nueva tarjeta"
+        onAccion={onAgregar}
+      />
     );
   }
 
@@ -90,11 +90,6 @@ export function ListaTarjetas({ tarjetas }: ListaTarjetasProps) {
       {tarjetas.map((tarjeta) => {
         const disponible = tarjeta.limite - tarjeta.deudaActual;
         const tieneCuotas = tarjetaTieneCuotasPopular(tarjeta);
-        const usoCuotas = usoCuotasPopularTarjeta(cuotasPopular, tarjeta.id);
-        const disponibleCuotas = disponibleLimiteCuotasPopular(
-          tarjeta,
-          cuotasPopular
-        );
         const estaEditando = editandoId === tarjeta.id;
 
         return (
@@ -132,6 +127,14 @@ export function ListaTarjetas({ tarjetas }: ListaTarjetasProps) {
                     <button
                       type="button"
                       onClick={() => {
+                        if (
+                          !confirmarEliminacion(
+                            `${tarjeta.banco} · ${tarjeta.nombreTarjeta}`,
+                            "la tarjeta"
+                          )
+                        ) {
+                          return;
+                        }
                         if (editandoId === tarjeta.id) setEditandoId(null);
                         eliminarTarjeta(tarjeta.id);
                       }}
@@ -175,41 +178,15 @@ export function ListaTarjetas({ tarjetas }: ListaTarjetasProps) {
                     <AlertaPago tarjeta={tarjeta} moneda={tarjeta.moneda} />
 
                     {tieneCuotas && (
-                      <div className="mt-4 rounded-lg border border-accent/20 bg-accent/5 px-4 py-3">
-                        <p className="text-xs font-semibold text-foreground">
-                          Cuotas Popular
-                        </p>
-                        <div className="mt-2 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
-                          <div>
-                            <p className="text-muted">Límite aprobado</p>
-                            <p className="font-semibold text-foreground">
-                              {formatearMoneda(
-                                tarjeta.extensionCuotasPopular!.limiteAprobado,
-                                tarjeta.moneda
-                              )}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-muted">En uso</p>
-                            <p className="font-semibold text-gasto">
-                              {formatearMoneda(usoCuotas, tarjeta.moneda)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-muted">Disponible</p>
-                            <p className="font-semibold text-ingreso">
-                              {formatearMoneda(disponibleCuotas, tarjeta.moneda)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+                      <>
+                        <ResumenCuotasPopular tarjeta={tarjeta} />
+                        <PlanesCuotasPopular
+                          tarjetaId={tarjeta.id}
+                          cuotas={cuotasPopular}
+                          tarjeta={tarjeta}
+                        />
+                      </>
                     )}
-
-                    <PlanesCuotasPopular
-                      tarjetaId={tarjeta.id}
-                      cuotas={cuotasPopular}
-                      tarjeta={tarjeta}
-                    />
                   </>
                 )}
               </div>

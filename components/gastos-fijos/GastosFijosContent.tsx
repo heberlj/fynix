@@ -7,14 +7,17 @@ import {
   totalMensualPorMoneda,
   totalPorQuincena,
 } from "@/lib/gastos-fijos";
+import { totalPrestamosPorQuincena } from "@/lib/prestamos";
 import { formatearMoneda } from "@/lib/quincenas";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { FormularioGastoFijo } from "@/components/gastos-fijos/FormularioGastoFijo";
+import { GestionCategoriasGastosFijos } from "@/components/gastos-fijos/GestionCategoriasGastosFijos";
 import { ListaGastosFijos } from "@/components/gastos-fijos/ListaGastosFijos";
 
 export function GastosFijosContent() {
-  const { gastosFijos, configuracion, cargado } = useFinanzas();
+  const { gastosFijos, prestamos, configuracion, cargado } = useFinanzas();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [gestionarCategorias, setGestionarCategorias] = useState(false);
   const [vistaCategoria, setVistaCategoria] = useState<"todas" | "1" | "2">("todas");
 
   const totalesPorMoneda = useMemo(
@@ -22,14 +25,32 @@ export function GastosFijosContent() {
     [gastosFijos]
   );
 
-  const totalQ1 = useMemo(
+  const totalQ1Gastos = useMemo(
     () => totalPorQuincena(gastosFijos, 1).get(configuracion.moneda) ?? 0,
     [gastosFijos, configuracion.moneda]
   );
 
-  const totalQ2 = useMemo(
+  const totalQ2Gastos = useMemo(
     () => totalPorQuincena(gastosFijos, 2).get(configuracion.moneda) ?? 0,
     [gastosFijos, configuracion.moneda]
+  );
+
+  const totalQ1Prestamos = useMemo(
+    () => totalPrestamosPorQuincena(prestamos, 1, configuracion.moneda),
+    [prestamos, configuracion.moneda]
+  );
+
+  const totalQ2Prestamos = useMemo(
+    () => totalPrestamosPorQuincena(prestamos, 2, configuracion.moneda),
+    [prestamos, configuracion.moneda]
+  );
+
+  const totalQ1 = totalQ1Gastos + totalQ1Prestamos;
+  const totalQ2 = totalQ2Gastos + totalQ2Prestamos;
+
+  const hayGastosFijosActivos = useMemo(
+    () => gastosFijos.some((g) => g.activo),
+    [gastosFijos]
   );
 
   const porCategoria = useMemo(() => {
@@ -51,8 +72,9 @@ export function GastosFijosContent() {
         <div className="min-w-0">
           <h1 className="text-xl font-bold text-foreground sm:text-2xl">Gastos fijos</h1>
           <p className="mt-1 text-sm text-muted">
-            Pagos mensuales organizados por quincena según tus días de pago (
-            {configuracion.diasPago.join(" y ")})
+            Pagos mensuales por quincena. Los préstamos aparecen aquí solo como
+            referencia para ver tu panorama; en el resto de la app siguen siendo
+            préstamos.
           </p>
 
           {totalesPorMoneda.length > 0 && (
@@ -75,16 +97,36 @@ export function GastosFijosContent() {
           )}
         </div>
 
-        {!mostrarFormulario && (
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:shrink-0">
           <button
             type="button"
-            onClick={() => setMostrarFormulario(true)}
-            className="w-full shrink-0 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover sm:w-auto"
+            onClick={() => {
+              const abrir = !gestionarCategorias;
+              setGestionarCategorias(abrir);
+              if (abrir) setMostrarFormulario(false);
+            }}
+            className="w-full rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-surface-hover sm:w-auto"
           >
-            + Nuevo gasto fijo
+            {gestionarCategorias ? "Cerrar categorías" : "Gestionar categorías"}
           </button>
-        )}
+          {!mostrarFormulario && (
+            <button
+              type="button"
+              onClick={() => {
+                setMostrarFormulario(true);
+                setGestionarCategorias(false);
+              }}
+              className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover sm:w-auto"
+            >
+              + Nuevo gasto fijo
+            </button>
+          )}
+        </div>
       </header>
+
+      {gestionarCategorias && (
+        <GestionCategoriasGastosFijos onCerrar={() => setGestionarCategorias(false)} />
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-border bg-surface p-4 sm:p-5">
@@ -94,6 +136,13 @@ export function GastosFijosContent() {
           </p>
           <p className="mt-1 text-xs text-muted">
             Gastos que pagas o presupuestas en la primera quincena
+            {totalQ1Prestamos > 0 && (
+              <>
+                {" "}
+                · incluye {formatearMoneda(totalQ1Prestamos, configuracion.moneda)} en
+                préstamos (referencia)
+              </>
+            )}
           </p>
         </div>
         <div className="rounded-xl border border-border bg-surface p-4 sm:p-5">
@@ -103,11 +152,18 @@ export function GastosFijosContent() {
           </p>
           <p className="mt-1 text-xs text-muted">
             Gastos que pagas o presupuestas en la segunda quincena
+            {totalQ2Prestamos > 0 && (
+              <>
+                {" "}
+                · incluye {formatearMoneda(totalQ2Prestamos, configuracion.moneda)} en
+                préstamos (referencia)
+              </>
+            )}
           </p>
         </div>
       </div>
 
-      {porCategoria.length > 0 && (
+      {hayGastosFijosActivos && (
         <div className="rounded-xl border border-border bg-surface p-4 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-sm font-semibold text-foreground">Por categoría</h2>
@@ -128,22 +184,30 @@ export function GastosFijosContent() {
               ))}
             </div>
           </div>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {porCategoria.map((item) => (
-              <div
-                key={item.categoria}
-                className="flex items-center justify-between rounded-lg bg-background px-3 py-2 text-sm"
-              >
-                <span className="text-muted">
-                  {item.categoria}{" "}
-                  <span className="text-xs">({item.cantidad})</span>
-                </span>
-                <span className="font-semibold text-gasto">
-                  {formatearMoneda(item.monto, configuracion.moneda)}
-                </span>
-              </div>
-            ))}
-          </div>
+          {porCategoria.length > 0 ? (
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {porCategoria.map((item) => (
+                <div
+                  key={item.categoria}
+                  className="flex items-center justify-between rounded-lg bg-background px-3 py-2 text-sm"
+                >
+                  <span className="text-muted">
+                    {item.categoria}{" "}
+                    <span className="text-xs">({item.cantidad})</span>
+                  </span>
+                  <span className="font-semibold text-gasto">
+                    {formatearMoneda(item.monto, configuracion.moneda)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-3 rounded-lg border border-dashed border-border py-6 text-center text-sm text-muted">
+              {vistaCategoria === "todas"
+                ? "No hay gastos fijos activos por categoría"
+                : `No hay gastos fijos en la quincena ${vistaCategoria}`}
+            </p>
+          )}
         </div>
       )}
 
@@ -166,7 +230,10 @@ export function GastosFijosContent() {
             <FormularioGastoFijo onExito={() => setMostrarFormulario(false)} />
           </div>
         )}
-        <ListaGastosFijos gastosFijos={gastosFijos} />
+        <ListaGastosFijos
+          gastosFijos={gastosFijos}
+          onAgregar={() => setMostrarFormulario(true)}
+        />
       </div>
     </PageContainer>
   );

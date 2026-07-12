@@ -1,4 +1,5 @@
 import type { MarcaTarjeta } from "@/types/finanzas";
+import { cifrarTexto } from "@/lib/cifrado-tarjetas";
 
 export function limpiarNumeroTarjeta(numero: string): string {
   return numero.replace(/\D/g, "");
@@ -49,8 +50,27 @@ export function validarLuhn(numero: string): boolean {
 
 export function enmascararNumero(numero: string): string {
   const limpio = limpiarNumeroTarjeta(numero);
-  const ultimos = limpio.slice(-4).padStart(4, "•");
-  return `•••• •••• •••• ${ultimos}`;
+  if (!limpio) return "";
+  if (limpio.length <= 4) return formatearNumeroTarjeta(limpio);
+
+  const inicio = limpio.slice(0, 4);
+
+  if (limpio.length < 13) {
+    const ocultos = limpio.length - 4;
+    const bullets = "•".repeat(ocultos);
+    const grupos = bullets.match(/.{1,4}/g)?.join(" ") ?? bullets;
+    return `${inicio} ${grupos}`;
+  }
+
+  const ultimos = limpio.slice(-4);
+  const longitudMedio = limpio.length - 8;
+  const gruposMedio = Math.ceil(longitudMedio / 4);
+  const medio = Array.from({ length: gruposMedio }, () => "••••").join(" ");
+  return `${inicio} ${medio} ${ultimos}`;
+}
+
+export function obtenerPrimerosCuatro(numero: string): string {
+  return limpiarNumeroTarjeta(numero).slice(0, 4);
 }
 
 export function obtenerUltimosCuatro(numero: string): string {
@@ -99,6 +119,48 @@ export function diasHastaPago(diaPago: number, desde: Date = new Date()): number
   const diaSiguiente = Math.min(diaPago, ultimoSiguiente);
 
   return ultimoDia - hoy + diaSiguiente;
+}
+
+export function validarNumeroCuotas(numero: string): boolean {
+  const limpio = limpiarNumeroTarjeta(numero);
+  return limpio.length === 16;
+}
+
+export function numeroCuotasDesdeEntrada(numero: string): {
+  numeroEnmascarado: string;
+  primerosCuatro: string;
+  ultimosCuatro: string;
+} {
+  const limpio = limpiarNumeroTarjeta(numero);
+  return {
+    numeroEnmascarado: enmascararNumero(limpio),
+    primerosCuatro: obtenerPrimerosCuatro(limpio),
+    ultimosCuatro: obtenerUltimosCuatro(limpio),
+  };
+}
+
+export async function almacenarNumeroTarjeta(
+  numero: string,
+  usuarioId: string
+): Promise<{
+  numeroCifrado: string;
+  numeroEnmascarado: string;
+  primerosCuatro: string;
+  ultimosCuatro: string;
+}> {
+  const limpio = limpiarNumeroTarjeta(numero);
+  const primerosCuatro = obtenerPrimerosCuatro(limpio);
+  const ultimosCuatro = obtenerUltimosCuatro(limpio);
+  const medio = limpio.slice(4, -4);
+  const numeroCifrado =
+    medio.length > 0 ? await cifrarTexto(medio, usuarioId) : "";
+
+  return {
+    numeroCifrado,
+    numeroEnmascarado: enmascararNumero(limpio),
+    primerosCuatro,
+    ultimosCuatro,
+  };
 }
 
 export const MARCA_ETIQUETA: Record<MarcaTarjeta, string> = {

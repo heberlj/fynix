@@ -2,18 +2,19 @@
 
 import { useMemo, useState } from "react";
 import { useFinanzas } from "@/context/FinanzasContext";
+import { useAuth } from "@/context/AuthContext";
 import {
+  almacenarNumeroTarjeta,
   detectarMarca,
   enmascararNumero,
   formatearExpiracion,
-  formatearNumeroTarjeta,
-  limpiarNumeroTarjeta,
   MARCA_ETIQUETA,
-  obtenerUltimosCuatro,
   validarCvv,
   validarExpiracion,
   validarLuhn,
+  validarNumeroCuotas,
 } from "@/lib/tarjetas";
+import { InputNumeroTarjetaSeguro } from "@/components/tarjetas/InputNumeroTarjetaSeguro";
 import { TarjetaVisual } from "@/components/tarjetas/TarjetaVisual";
 import { SelectorMoneda } from "@/components/ui/SelectorMoneda";
 
@@ -22,11 +23,12 @@ const inputClass =
 
 export function FormularioTarjeta({ onExito }: { onExito?: () => void } = {}) {
   const { agregarTarjeta, configuracion } = useFinanzas();
+  const { sesion } = useAuth();
 
   const [banco, setBanco] = useState("");
   const [nombreTarjeta, setNombreTarjeta] = useState("");
   const [titular, setTitular] = useState("");
-  const [numeroTarjeta, setNumeroTarjeta] = useState("");
+  const [digitosTarjeta, setDigitosTarjeta] = useState("");
   const [fechaExpiracion, setFechaExpiracion] = useState("");
   const [cvv, setCvv] = useState("");
   const [limite, setLimite] = useState("");
@@ -36,11 +38,13 @@ export function FormularioTarjeta({ onExito }: { onExito?: () => void } = {}) {
   const [moneda, setMoneda] = useState(configuracion.moneda);
   const [cuotasPopularActivo, setCuotasPopularActivo] = useState(false);
   const [limiteCuotasPopular, setLimiteCuotasPopular] = useState("");
+  const [digitosCuotasPopular, setDigitosCuotasPopular] = useState("");
+  const [sobregiroCuotasPopular, setSobregiroCuotasPopular] = useState("");
   const [error, setError] = useState("");
 
   const marca = useMemo(
-    () => detectarMarca(numeroTarjeta),
-    [numeroTarjeta]
+    () => detectarMarca(digitosTarjeta),
+    [digitosTarjeta]
   );
 
   const vistaPrevia = useMemo(
@@ -48,30 +52,26 @@ export function FormularioTarjeta({ onExito }: { onExito?: () => void } = {}) {
       banco: banco || "Banco",
       nombreTarjeta: nombreTarjeta || "Crédito",
       titular: titular || "NOMBRE APELLIDO",
-      numeroEnmascarado: numeroTarjeta
-        ? enmascararNumero(numeroTarjeta)
+      numeroEnmascarado: digitosTarjeta
+        ? enmascararNumero(digitosTarjeta)
         : "•••• •••• •••• ••••",
       fechaExpiracion: fechaExpiracion || "MM/AA",
       cvv: cvv || "•••",
       marca,
       moneda,
     }),
-    [banco, nombreTarjeta, titular, numeroTarjeta, fechaExpiracion, cvv, marca, moneda]
+    [banco, nombreTarjeta, titular, digitosTarjeta, fechaExpiracion, cvv, marca, moneda]
   );
-
-  function handleNumeroChange(valor: string) {
-    setNumeroTarjeta(formatearNumeroTarjeta(valor));
-  }
 
   function handleExpiracionChange(valor: string) {
     setFechaExpiracion(formatearExpiracion(valor));
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
 
-    const limpio = limpiarNumeroTarjeta(numeroTarjeta);
+    const limpio = digitosTarjeta;
     const limiteNum = parseFloat(limite);
     const deudaNum = parseFloat(deudaActual) || 0;
 
@@ -114,14 +114,27 @@ export function FormularioTarjeta({ onExito }: { onExito?: () => void } = {}) {
         setError("Ingresa un límite aprobado válido para Cuotas Popular");
         return;
       }
+      if (!validarNumeroCuotas(digitosCuotasPopular)) {
+        setError("Ingresa el número de Cuotas Popular (16 dígitos)");
+        return;
+      }
     }
+
+    if (!sesion) {
+      setError("Debes iniciar sesión para guardar la tarjeta de forma segura");
+      return;
+    }
+
+    const numeroAlmacenado = await almacenarNumeroTarjeta(limpio, sesion.usuarioId);
+    const numeroCP = cuotasPopularActivo
+      ? await almacenarNumeroTarjeta(digitosCuotasPopular, sesion.usuarioId)
+      : null;
 
     agregarTarjeta({
       banco: banco.trim(),
       nombreTarjeta: nombreTarjeta.trim() || "Crédito",
       titular: titular.trim().toUpperCase(),
-      ultimosCuatro: obtenerUltimosCuatro(limpio),
-      numeroEnmascarado: enmascararNumero(limpio),
+      ...numeroAlmacenado,
       marca,
       fechaExpiracion,
       cvv: cvv.replace(/\D/g, ""),
@@ -131,14 +144,18 @@ export function FormularioTarjeta({ onExito }: { onExito?: () => void } = {}) {
       diaPago: Math.min(31, Math.max(1, Number(diaPago))),
       moneda,
       extensionCuotasPopular: cuotasPopularActivo
-        ? { limiteAprobado: limiteCuotasNum }
+        ? {
+            limiteAprobado: limiteCuotasNum,
+            ...numeroCP!,
+            sobregiro: parseFloat(sobregiroCuotasPopular) || 0,
+          }
         : undefined,
     });
 
     setBanco("");
     setNombreTarjeta("");
     setTitular("");
-    setNumeroTarjeta("");
+    setDigitosTarjeta("");
     setFechaExpiracion("");
     setCvv("");
     setLimite("");
@@ -150,7 +167,7 @@ export function FormularioTarjeta({ onExito }: { onExito?: () => void } = {}) {
     <div className="space-y-6">
       <TarjetaVisual tarjeta={vistaPrevia} />
 
-      {marca !== "desconocida" && numeroTarjeta && (
+      {marca !== "desconocida" && digitosTarjeta && (
         <p className="text-center text-sm text-muted">
           Detectada:{" "}
           <span className="font-semibold text-foreground">
@@ -167,7 +184,8 @@ export function FormularioTarjeta({ onExito }: { onExito?: () => void } = {}) {
           Registrar tarjeta
         </h2>
         <p className="mt-1 text-xs text-muted">
-          Los datos se guardan solo en tu navegador
+          Los 4 primeros y últimos dígitos quedan visibles para identificar la
+          tarjeta; el bloque central se cifra en tu dispositivo
         </p>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -212,14 +230,9 @@ export function FormularioTarjeta({ onExito }: { onExito?: () => void } = {}) {
             <span className="text-sm font-medium text-foreground">
               Número de tarjeta
             </span>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={numeroTarjeta}
-              onChange={(e) => handleNumeroChange(e.target.value)}
-              placeholder="0000 0000 0000 0000"
-              maxLength={19}
-              className={inputClass}
+            <InputNumeroTarjetaSeguro
+              digitos={digitosTarjeta}
+              onDigitosChange={setDigitosTarjeta}
             />
           </label>
 
@@ -335,20 +348,45 @@ export function FormularioTarjeta({ onExito }: { onExito?: () => void } = {}) {
             </label>
 
             {cuotasPopularActivo && (
-              <label className="mt-4 flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-foreground">
-                  Límite aprobado Cuotas Popular
-                </span>
-                <input
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  value={limiteCuotasPopular}
-                  onChange={(e) => setLimiteCuotasPopular(e.target.value)}
-                  placeholder="Ej: 42000"
-                  className={inputClass}
-                />
-              </label>
+              <div className="mt-4 space-y-4">
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-sm font-medium text-foreground">
+                    Número Cuotas Popular (16 dígitos)
+                  </span>
+                  <InputNumeroTarjetaSeguro
+                    digitos={digitosCuotasPopular}
+                    onDigitosChange={setDigitosCuotasPopular}
+                  />
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-sm font-medium text-foreground">
+                    Límite aprobado Cuotas Popular
+                  </span>
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={limiteCuotasPopular}
+                    onChange={(e) => setLimiteCuotasPopular(e.target.value)}
+                    placeholder="Ej: 42000"
+                    className={inputClass}
+                  />
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-sm font-medium text-foreground">
+                    Sobregiro (opcional)
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={sobregiroCuotasPopular}
+                    onChange={(e) => setSobregiroCuotasPopular(e.target.value)}
+                    placeholder="0.00"
+                    className={inputClass}
+                  />
+                </label>
+              </div>
             )}
           </div>
         </div>

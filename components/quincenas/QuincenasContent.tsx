@@ -6,7 +6,6 @@ import {
   calcularResumenQuincena,
   obtenerGastosFijosDetalle,
   obtenerCuotasPopularDetalle,
-  obtenerCuotasPrestamosDetalle,
   obtenerPagosTarjetasDetalle,
   obtenerTransaccionesEnPeriodo,
 } from "@/lib/calculos";
@@ -25,7 +24,7 @@ const selectClass =
   "rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent";
 
 export function QuincenasContent() {
-  const { transacciones, tarjetas, prestamos, cuotasPopular, gastosFijos, configuracion, cargado } =
+  const { transacciones, tarjetas, cuotasPopular, gastosFijos, configuracion, cargado } =
     useFinanzas();
   const [mesSeleccionado, setMesSeleccionado] = useState(mesActual());
 
@@ -46,7 +45,7 @@ export function QuincenasContent() {
         resumen: calcularResumenQuincena(
           transacciones,
           tarjetas,
-          prestamos,
+          [],
           cuotasPopular,
           gastosFijos,
           periodo,
@@ -58,9 +57,8 @@ export function QuincenasContent() {
           configuracion.moneda
         ),
         pagosTarjetas: obtenerPagosTarjetasDetalle(tarjetas, periodo),
-        cuotasPrestamos: obtenerCuotasPrestamosDetalle(prestamos, periodo),
         cuotasPopular: obtenerCuotasPopularDetalle(cuotasPopular, tarjetas, periodo, transacciones),
-        gastosFijos: obtenerGastosFijosDetalle(gastosFijos, periodo),
+        gastosFijos: obtenerGastosFijosDetalle(gastosFijos, periodo, transacciones),
         esActual: quincenaActual
           ? periodosSonIguales(periodo, quincenaActual)
           : false,
@@ -69,30 +67,12 @@ export function QuincenasContent() {
       periodos,
       transacciones,
       tarjetas,
-      prestamos,
       cuotasPopular,
       gastosFijos,
       quincenaActual,
       configuracion.moneda,
     ]
   );
-
-  const resumenMes = useMemo(() => {
-    return datosQuincenas.reduce(
-      (acc, { resumen }) => ({
-        ingresos: acc.ingresos + resumen.ingresosTotales,
-        gastos: acc.gastos + resumen.gastosTotales,
-        compromisos:
-          acc.compromisos +
-          resumen.pagosTarjetas +
-          resumen.cuotasPrestamos +
-          resumen.cuotasPopular +
-          resumen.gastosFijos,
-        disponible: acc.disponible + resumen.disponible,
-      }),
-      { ingresos: 0, gastos: 0, compromisos: 0, disponible: 0 }
-    );
-  }, [datosQuincenas]);
 
   if (!cargado) {
     return (
@@ -111,8 +91,8 @@ export function QuincenasContent() {
       <header>
         <h1 className="text-xl font-bold text-foreground sm:text-2xl">Quincenas</h1>
         <p className="mt-1 text-sm text-muted">
-          Vista detallada por periodo según tus días de pago (
-          {configuracion.diasPago.join(" y ")})
+          Q1: del 1 al 15 · Q2: del 16 al fin de mes. Tus pagos: días{" "}
+          {configuracion.diasPago.join(" y ")}
         </p>
       </header>
 
@@ -133,15 +113,30 @@ export function QuincenasContent() {
         </label>
 
         <div>
-          <p className="mb-3 text-sm font-medium text-foreground">
-            Resumen de {etiquetaMes}
+          <p className="mb-1 text-sm font-medium text-foreground">
+            Resumen por quincena · {etiquetaMes}
           </p>
-          <ResumenQuincenaCards
-            ingresos={resumenMes.ingresos}
-            gastos={resumenMes.gastos}
-            disponible={resumenMes.disponible}
-            moneda={configuracion.moneda}
-          />
+          <p className="mb-4 text-xs text-muted">
+            Cada bloque muestra una quincena. El disponible aparece en cero hasta que
+            registres un ingreso en ese periodo.
+          </p>
+          {datosQuincenas.length === 0 ? (
+            <p className="text-sm text-muted">No hay quincenas para este mes</p>
+          ) : (
+            <div className="grid items-stretch gap-6 lg:grid-cols-2">
+              {datosQuincenas.map(({ periodo, resumen, esActual }) => (
+                <ResumenQuincenaCards
+                  key={`${periodo.inicio}-${periodo.fin}-resumen`}
+                  titulo={periodo.etiqueta}
+                  esActual={esActual}
+                  ingresos={resumen.ingresosTotales}
+                  gastos={resumen.gastosTotales}
+                  disponible={resumen.disponible}
+                  moneda={configuracion.moneda}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -151,7 +146,7 @@ export function QuincenasContent() {
         </div>
       ) : (
         <div className="space-y-6">
-          {datosQuincenas.map(({ periodo, resumen, transacciones: txs, pagosTarjetas, cuotasPrestamos, cuotasPopular: cuotasPopularDetalle, gastosFijos: gastosFijosDetalle, esActual }) => (
+          {datosQuincenas.map(({ periodo, resumen, transacciones: txs, pagosTarjetas, cuotasPopular: cuotasPopularDetalle, gastosFijos: gastosFijosDetalle, esActual }) => (
             <TarjetaQuincena
               key={`${periodo.inicio}-${periodo.fin}`}
               periodo={periodo}
@@ -160,7 +155,6 @@ export function QuincenasContent() {
               esActual={esActual}
               transacciones={txs}
               pagosTarjetas={pagosTarjetas}
-              cuotasPrestamos={cuotasPrestamos}
               cuotasPopular={cuotasPopularDetalle}
               gastosFijos={gastosFijosDetalle}
             />

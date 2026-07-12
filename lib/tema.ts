@@ -1,5 +1,4 @@
 import type { TemaApp } from "@/types/finanzas";
-import { claveDatosUsuario } from "@/lib/auth";
 
 const TEMAS: TemaApp[] = ["claro", "oscuro", "sistema"];
 
@@ -30,27 +29,6 @@ export function aplicarTema(tema: TemaApp | undefined): void {
 }
 
 export function obtenerTemaInicial(): TemaApp {
-  if (typeof window === "undefined") return "claro";
-
-  try {
-    const sesionRaw = localStorage.getItem("fynix-sesion");
-    let raw: string | null = null;
-
-    if (sesionRaw) {
-      const sesion = JSON.parse(sesionRaw) as { usuarioId?: string };
-      if (sesion.usuarioId) {
-        raw = localStorage.getItem(claveDatosUsuario(sesion.usuarioId));
-      }
-    }
-
-    if (!raw) raw = localStorage.getItem("gestor-money-data");
-    if (!raw) return "claro";
-    const parsed = JSON.parse(raw) as { configuracion?: { tema?: TemaApp } };
-    const tema = parsed.configuracion?.tema;
-    if (tema && TEMAS.includes(tema)) return tema;
-  } catch {
-    /* usar default */
-  }
   return "claro";
 }
 

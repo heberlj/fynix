@@ -68,7 +68,7 @@ export function evolucionMensual(
     let gastos = 0;
     delMes.forEach((t) => {
       if (t.tipo === "ingreso") ingresos += t.monto;
-      else gastos += t.monto;
+      else if (t.tipo === "gasto") gastos += t.monto;
     });
     return { mes: valor, etiqueta, ingresos, gastos };
   });
