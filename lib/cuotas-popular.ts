@@ -48,6 +48,10 @@ function proximoDiaDelMes(dia: number, desde: Date = new Date()): string {
 }
 
 export function tarjetaTieneCuotasPopular(tarjeta: TarjetaCredito): boolean {
+  const fin = tarjeta.financiamientoCuotas;
+  if (fin?.producto === "cuotas-popular" && fin.limiteAprobado > 0) {
+    return true;
+  }
   return (tarjeta.extensionCuotasPopular?.limiteAprobado ?? 0) > 0;
 }
 

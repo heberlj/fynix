@@ -30,6 +30,13 @@ import {
   montoCuotaPrestamoPendienteEnPeriodo,
 } from "@/lib/prestamos";
 import {
+  calcularMontoAporteSugerido,
+  diaPagoAporteEnQuincena,
+  montoPendienteAporteEnPeriodo,
+  obtenerAporteIngreso,
+} from "@/lib/aporte-ingreso";
+import { APORTE_INGRESO_ENTIDAD_ID } from "@/types/finanzas";
+import {
   obtenerQuincenaActual,
   obtenerQuincenaAnterior,
   obtenerQuincenaSiguiente,
@@ -186,6 +193,9 @@ function razonPrioridad(
     if (tipo === "gasto-fijo" && tipoPresupuesto === "esencial") {
       return "Marcado como esencial para tu presupuesto";
     }
+    if (tipo === "aporte-ingreso") {
+      return "Compromiso según tus ingresos registrados";
+    }
     return "Cabe en tu presupuesto con el próximo ingreso";
   }
   if (prioridad === "posponer") {
@@ -197,6 +207,9 @@ function razonPrioridad(
   if (tipo === "gasto-fijo") {
     return "Marcado como flexible; pospón si el presupuesto está ajustado";
   }
+  if (tipo === "aporte-ingreso") {
+    return "Aporte flexible según ingresos; pospón si hace falta";
+  }
   return "Gasto flexible; pospón si el presupuesto está ajustado";
 }
 
@@ -207,7 +220,8 @@ export function recolectarObligaciones(
   gastosFijos: GastoFijo[],
   transacciones: Transaccion[],
   periodo: PeriodoQuincena,
-  moneda: string
+  moneda: string,
+  configuracion?: ConfiguracionUsuario
 ): Omit<ItemSugerenciaPago, "prioridad" | "razon">[] {
   const items: Omit<ItemSugerenciaPago, "prioridad" | "razon">[] = [];
 
@@ -309,6 +323,39 @@ export function recolectarObligaciones(
       });
     });
 
+  const aporte = configuracion ? obtenerAporteIngreso(configuracion) : undefined;
+  if (aporte && aporte.moneda === moneda && (aporte.quincenas ?? []).includes(periodo.quincena)) {
+    const pendiente = montoPendienteAporteEnPeriodo(
+      transacciones,
+      aporte,
+      periodo
+    );
+    if (pendiente > 0) {
+      const dias = diasHastaCuota(diaPagoAporteEnQuincena(aporte, periodo.quincena));
+      const { monto } = calcularMontoAporteSugerido(
+        transacciones,
+        aporte,
+        periodo
+      );
+      items.push({
+        id: `aporte-${periodo.mes}-q${periodo.quincena}`,
+        entidadId: APORTE_INGRESO_ENTIDAD_ID,
+        tipo: "aporte-ingreso",
+        nombre: aporte.nombre,
+        monto: pendiente > 0 ? pendiente : monto,
+        moneda: aporte.moneda,
+        diaPago: diaPagoAporteEnQuincena(aporte, periodo.quincena),
+        diasRestantes: dias,
+        puntuacion: puntuacionGastoFijo(
+          { tipoPresupuesto: aporte.tipoPresupuesto } as GastoFijo,
+          dias
+        ),
+        categoria: aporte.categoria,
+        tipoPresupuesto: aporte.tipoPresupuesto,
+      });
+    }
+  }
+
   return items.sort((a, b) => {
     if (b.puntuacion !== a.puntuacion) return b.puntuacion - a.puntuacion;
     return a.diasRestantes - b.diasRestantes;
@@ -354,7 +401,8 @@ export function generarSugerencias(
     gastosFijos,
     transacciones,
     periodo,
-    moneda
+    moneda,
+    configuracion
   );
 
   let restante = presupuestoAsignable;
@@ -456,7 +504,8 @@ export function calcularProyeccionProximoIngreso(
     cuotasPopular,
     gastosFijos,
     periodo,
-    moneda
+    moneda,
+    configuracion
   );
   const compromisos =
     resumen.pagosTarjetas +

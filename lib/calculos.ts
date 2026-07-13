@@ -15,6 +15,7 @@ import {
   obtenerCuotasPopularDetalle,
 } from "@/lib/cuotas-popular";
 import { calcularGastosFijosEnPeriodo, obtenerGastosFijosDetalle } from "@/lib/gastos-fijos";
+import { montoPendienteAporteEnPeriodo, obtenerAporteIngreso } from "@/lib/aporte-ingreso";
 import { calcularCuotasPrestamosEnPeriodo } from "@/lib/prestamos";
 import { montoGastoIngresoEnMoneda, montoSalidaMovimiento } from "@/lib/cambio";
 import { esPagoATarjeta } from "@/lib/transacciones";
@@ -98,7 +99,8 @@ export function calcularResumenQuincena(
   cuotasPopular: CuotaPopular[],
   gastosFijos: GastoFijo[],
   periodo: PeriodoQuincena,
-  moneda?: string
+  moneda?: string,
+  configuracion?: ConfiguracionUsuario
 ): ResumenQuincena {
   const transaccionesFiltradas = transacciones.filter((t) =>
     transaccionEnPeriodoParaMoneda(t, periodo, moneda)
@@ -138,12 +140,18 @@ export function calcularResumenQuincena(
     transacciones,
     moneda
   );
-  const gastosFijosTotal = calcularGastosFijosEnPeriodo(
+  const gastosFijosRegulares = calcularGastosFijosEnPeriodo(
     gastosFijos,
     periodo,
     moneda,
     transacciones
   );
+  const aporte = configuracion ? obtenerAporteIngreso(configuracion) : undefined;
+  const aportePendiente =
+    aporte && (!moneda || aporte.moneda === moneda)
+      ? montoPendienteAporteEnPeriodo(transacciones, aporte, periodo)
+      : 0;
+  const gastosFijosTotal = gastosFijosRegulares + aportePendiente;
   const balanceNeto = ingresosTotales - gastosTotales;
   const disponibleProyectado =
     balanceNeto -

@@ -34,6 +34,8 @@ export interface Transaccion {
   gastoFijoId?: string;
   /** Préstamo al que aplica este pago de cuota */
   prestamoId?: string;
+  /** Pago de aporte según ingresos (diezmo, donación, etc.) */
+  aporteIngreso?: boolean;
 }
 
 export interface ExtensionCuotasPopular {
@@ -89,6 +91,30 @@ export interface CuentaBancaria {
 
 export type MarcaTarjeta = "visa" | "mastercard" | "desconocida";
 
+/** Productos de financiamiento en cuotas fijas ligados a tarjeta */
+export type ProductoFinanciamientoCuotas =
+  | "ninguna"
+  | "cuotas-popular"
+  | "cuotas-bhd"
+  | "credimas";
+
+export type ProductoFinanciamientoActivo = Exclude<
+  ProductoFinanciamientoCuotas,
+  "ninguna"
+>;
+
+/** Configuración del plan de cuotas fijas en una tarjeta */
+export interface FinanciamientoCuotas {
+  producto: ProductoFinanciamientoCuotas;
+  limiteAprobado: number;
+  balancePendiente: number;
+  montoCuotaMensual: number;
+  diaCorte: number;
+  diaPago: number;
+  /** Gasto fijo generado automáticamente en Gastos fijos */
+  gastoFijoId?: string;
+}
+
 export interface TarjetaCredito {
   id: string;
   banco: string;
@@ -109,6 +135,8 @@ export interface TarjetaCredito {
   moneda: string;
   /** Extensión opcional: plan Cuotas Popular con límite aprobado propio */
   extensionCuotasPopular?: ExtensionCuotasPopular;
+  /** Financiamiento en cuotas fijas (Popular, BHD, Credimás) */
+  financiamientoCuotas?: FinanciamientoCuotas;
   colorHome?: ColorHome;
 }
 
@@ -180,9 +208,32 @@ export interface GastoFijo {
   notas: string;
   /** Prioridad manual para sugerencias de presupuesto */
   tipoPresupuesto: TipoPresupuestoGasto;
+  /** Tarjeta que originó este gasto (financiamiento en cuotas) */
+  tarjetaFinanciamientoId?: string;
+  /** Producto bancario asociado */
+  productoFinanciamiento?: ProductoFinanciamientoActivo;
 }
 
 export type TipoPresupuestoGasto = "esencial" | "flexible";
+
+export type PeriodoAporteIngreso = "quincena" | "mes";
+
+/** Compromiso opcional calculado como % de ingresos (diezmo, donación, etc.) */
+export interface AporteSegunIngreso {
+  activo: boolean;
+  nombre: string;
+  porcentaje: number;
+  categoriasIngreso: string[];
+  periodo: PeriodoAporteIngreso;
+  /** Día de pago en Q1 y Q2 del mes (ej. 15 y 30) */
+  diasPago: [number, number];
+  quincenas: (1 | 2)[];
+  categoria: string;
+  moneda: string;
+  tipoPresupuesto: TipoPresupuestoGasto;
+}
+
+export const APORTE_INGRESO_ENTIDAD_ID = "__aporte-ingreso__";
 
 export type TemaApp = "claro" | "oscuro" | "sistema";
 
@@ -197,6 +248,8 @@ export interface ConfiguracionUsuario {
   categoriasGasto: string[];
   /** Categorías personalizables para ingresos en transacciones */
   categoriasIngreso: string[];
+  /** Aporte opcional según % de ingresos (desactivado por defecto) */
+  aporteIngreso?: AporteSegunIngreso;
 }
 
 export interface ResumenQuincena {
@@ -219,7 +272,8 @@ export type TipoObligacionSugerencia =
   | "tarjeta"
   | "prestamo"
   | "cuota-popular"
-  | "gasto-fijo";
+  | "gasto-fijo"
+  | "aporte-ingreso";
 
 export interface ItemSugerenciaPago {
   id: string;
@@ -292,6 +346,7 @@ export const CATEGORIAS_GASTOS_FIJOS_DEFAULT = [
   "Entretenimiento",
   "Compras",
   "Educación",
+  "Donaciones",
   "Otros",
 ] as const;
 
@@ -306,6 +361,7 @@ export const CATEGORIAS_GASTO_DEFAULT = [
   "Entretenimiento",
   "Compras",
   "Educación",
+  "Donaciones",
   "Otros",
 ] as const;
 

@@ -54,9 +54,9 @@ function LogoMarca({
       <Image
         src="/visa-logo.png"
         alt="Visa"
-        width={80}
-        height={48}
-        className={`${altura} w-auto object-contain opacity-95`}
+        width={120}
+        height={72}
+        className={`${altura} w-auto object-contain`}
         priority
       />
     );
@@ -67,9 +67,9 @@ function LogoMarca({
       <Image
         src="/mastercard-logo.png"
         alt="Mastercard"
-        width={64}
-        height={48}
-        className={`${compacta ? "h-7" : "h-9"} w-auto object-contain opacity-95`}
+        width={96}
+        height={72}
+        className={`${compacta ? "h-7" : "h-9"} w-auto object-contain`}
         priority
       />
     );

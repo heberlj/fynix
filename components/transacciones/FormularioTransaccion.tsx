@@ -24,6 +24,10 @@ import {
 } from "@/lib/cambio";
 import { formatearMoneda, periodoDeFecha } from "@/lib/quincenas";
 import { numeroCuotasDesdeEntrada, validarNumeroCuotas } from "@/lib/tarjetas";
+import {
+  calcularMontoAporteSugerido,
+  obtenerAporteIngreso,
+} from "@/lib/aporte-ingreso";
 import { SelectorOrigenFondo } from "@/components/ui/SelectorOrigenFondo";
 import { SelectorMoneda } from "@/components/ui/SelectorMoneda";
 import {
@@ -32,7 +36,7 @@ import {
 } from "@/components/transacciones/CamposCuotasPopular";
 
 const inputClass =
-  "rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent";
+  "w-full min-w-0 rounded-lg border border-border bg-background px-3 py-2.5 text-base text-foreground outline-none focus:border-accent sm:py-2 sm:text-sm";
 
 const CUOTAS_INICIAL: ValoresCuotasPopular = {
   numeroReferencia: "",
@@ -47,12 +51,14 @@ export function FormularioTransaccion({
   onExito,
   onCancelar,
   gastoFijoInicialId,
+  aporteIngresoInicial,
   transaccion,
   enModal = false,
 }: {
   onExito?: () => void;
   onCancelar?: () => void;
   gastoFijoInicialId?: string;
+  aporteIngresoInicial?: boolean;
   transaccion?: Transaccion;
   enModal?: boolean;
 } = {}) {
@@ -66,6 +72,7 @@ export function FormularioTransaccion({
     cuentas,
     efectivo,
     gastosFijos,
+    transacciones,
   } = useFinanzas();
   const [tipo, setTipo] = useState<"gasto" | "ingreso" | "transferencia">("gasto");
   const [descripcion, setDescripcion] = useState("");
@@ -81,6 +88,12 @@ export function FormularioTransaccion({
     useState<ValoresCuotasPopular>(CUOTAS_INICIAL);
   const [error, setError] = useState("");
   const [gastoFijoId, setGastoFijoId] = useState(gastoFijoInicialId ?? "");
+  const [esPagoAporte, setEsPagoAporte] = useState(aporteIngresoInicial ?? false);
+
+  const aporteConfig = useMemo(
+    () => obtenerAporteIngreso(configuracion),
+    [configuracion]
+  );
 
   const gastosFijosActivos = useMemo(
     () => gastosFijos.filter((g) => g.activo),
@@ -180,6 +193,7 @@ export function FormularioTransaccion({
       transaccion.tasaCambio != null ? String(transaccion.tasaCambio) : ""
     );
     setGastoFijoId(transaccion.gastoFijoId ?? "");
+    setEsPagoAporte(Boolean(transaccion.aporteIngreso));
     setUsarCuotasPopular(false);
     setCuotasValores(CUOTAS_INICIAL);
     setError("");
@@ -206,6 +220,36 @@ export function FormularioTransaccion({
     setGastoFijoId(gastoFijoInicialId);
     setTipo("gasto");
   }, [gastoFijoInicialId]);
+
+  useEffect(() => {
+    if (!aporteIngresoInicial || !aporteConfig) return;
+    setEsPagoAporte(true);
+    setTipo("gasto");
+    setGastoFijoId("");
+  }, [aporteIngresoInicial, aporteConfig]);
+
+  useEffect(() => {
+    if (!esPagoAporte || !aporteConfig || modoEdicion) return;
+    setDescripcion(aporteConfig.nombre);
+    setCategoria(aporteConfig.categoria);
+    setMoneda(aporteConfig.moneda);
+    const periodo = periodoDeFecha(fecha, configuracion.diasPago);
+    const { monto: montoSugerido } = calcularMontoAporteSugerido(
+      transacciones,
+      aporteConfig,
+      periodo
+    );
+    if (montoSugerido > 0) {
+      setMonto(String(montoSugerido));
+    }
+  }, [
+    esPagoAporte,
+    aporteConfig,
+    transacciones,
+    fecha,
+    configuracion.diasPago,
+    modoEdicion,
+  ]);
 
   useEffect(() => {
     if (tipo !== "gasto" || !gastoFijoId) return;
@@ -246,7 +290,10 @@ export function FormularioTransaccion({
     setCuotasValores(CUOTAS_INICIAL);
     setDestinoValor("");
     setTasaCambio("");
-    if (nuevoTipo !== "gasto") setGastoFijoId("");
+    if (nuevoTipo !== "gasto") {
+      setGastoFijoId("");
+      setEsPagoAporte(false);
+    }
   }
 
   function cambiarOrigen(valor: string) {
@@ -417,17 +464,19 @@ export function FormularioTransaccion({
       tasaCambioFinal = tasaNum;
     }
 
-    const debitoOrigen = montoOrigenFinal ?? montoNumerico;
+    if (tipo === "gasto") {
+      const debitoOrigen = montoOrigenFinal ?? montoNumerico;
 
-    if (!modoEdicion && origenDecodificado.tipo === "efectivo" && debitoOrigen > efectivo) {
-      setError("No tienes suficiente efectivo");
-      return;
-    }
-    if (!modoEdicion && origenDecodificado.tipo === "cuenta") {
-      const cuenta = cuentas.find((c) => c.id === origenDecodificado.id);
-      if (!cuenta || debitoOrigen > cuenta.saldoActual) {
-        setError("Saldo insuficiente en la cuenta seleccionada");
+      if (!modoEdicion && origenDecodificado.tipo === "efectivo" && debitoOrigen > efectivo) {
+        setError("No tienes suficiente efectivo");
         return;
+      }
+      if (!modoEdicion && origenDecodificado.tipo === "cuenta") {
+        const cuenta = cuentas.find((c) => c.id === origenDecodificado.id);
+        if (!cuenta || debitoOrigen > cuenta.saldoActual) {
+          setError("Saldo insuficiente en la cuenta seleccionada");
+          return;
+        }
       }
     }
 
@@ -487,9 +536,10 @@ export function FormularioTransaccion({
       tasaCambio: tasaCambioFinal,
       origen: origenDecodificado,
       gastoFijoId:
-        tipo === "gasto" && gastoFijoId && !transaccion?.prestamoId
+        tipo === "gasto" && gastoFijoId && !transaccion?.prestamoId && !esPagoAporte
           ? gastoFijoId
           : undefined,
+      aporteIngreso: tipo === "gasto" && esPagoAporte ? true : undefined,
     };
 
     if (modoEdicion && transaccion) {
@@ -509,6 +559,7 @@ export function FormularioTransaccion({
     setMoneda(configuracion.moneda);
     setFecha(fechaHoy());
     setGastoFijoId("");
+    setEsPagoAporte(false);
     setUsarCuotasPopular(false);
     setCuotasValores(CUOTAS_INICIAL);
     onExito?.();
@@ -545,12 +596,13 @@ export function FormularioTransaccion({
               : "Movimiento"}
         </p>
       ) : (
-      !gastoFijoInicialId && (
-      <div className="mt-4 flex rounded-lg border border-border p-1">
+      !gastoFijoInicialId &&
+      !aporteIngresoInicial && (
+      <div className="mt-4 flex rounded-lg border border-border p-0.5 sm:p-1">
         <button
           type="button"
           onClick={() => cambiarTipo("gasto")}
-          className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
+          className={`flex-1 rounded-md px-1 py-2 text-xs font-medium transition-colors sm:px-2 sm:text-sm ${
             tipo === "gasto"
               ? "bg-gasto text-white"
               : "text-muted hover:text-foreground"
@@ -561,7 +613,7 @@ export function FormularioTransaccion({
         <button
           type="button"
           onClick={() => cambiarTipo("ingreso")}
-          className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
+          className={`flex-1 rounded-md px-1 py-2 text-xs font-medium transition-colors sm:px-2 sm:text-sm ${
             tipo === "ingreso"
               ? "bg-ingreso text-white"
               : "text-muted hover:text-foreground"
@@ -572,7 +624,7 @@ export function FormularioTransaccion({
         <button
           type="button"
           onClick={() => cambiarTipo("transferencia")}
-          className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
+          className={`flex-1 rounded-md px-1 py-2 text-xs font-medium transition-colors sm:px-2 sm:text-sm ${
             tipo === "transferencia"
               ? "bg-accent text-white"
               : "text-muted hover:text-foreground"
@@ -584,7 +636,7 @@ export function FormularioTransaccion({
       )
       )}
 
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5 sm:col-span-2">
           <span className="text-sm font-medium text-foreground">Descripción</span>
           <input
@@ -679,7 +731,9 @@ export function FormularioTransaccion({
         {tipo === "gasto" &&
           gastosFijosActivos.length > 0 &&
           !transaccion?.prestamoId &&
-          !gastoFijoInicialId && (
+          !gastoFijoInicialId &&
+          !aporteIngresoInicial &&
+          !esPagoAporte && (
           <label className="flex flex-col gap-1.5 sm:col-span-2">
             <span className="text-sm font-medium text-foreground">
               Gasto fijo (opcional)
@@ -903,12 +957,12 @@ export function FormularioTransaccion({
         <p className="mt-3 text-sm text-gasto">{error}</p>
       )}
 
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+      <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row">
         {onCancelar && (
           <button
             type="button"
             onClick={onCancelar}
-            className="w-full rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-surface-hover sm:w-auto"
+            className="w-full rounded-lg border border-border px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-surface-hover sm:w-auto sm:py-2.5"
           >
             Cancelar
           </button>
@@ -916,7 +970,7 @@ export function FormularioTransaccion({
         <button
           type="submit"
           disabled={tipo === "transferencia" && !puedeTransferir}
-          className={`w-full rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:flex-1 ${
+          className={`w-full rounded-lg px-4 py-3 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:flex-1 sm:py-2.5 ${
             tipo === "gasto"
               ? "bg-gasto hover:opacity-90"
               : tipo === "ingreso"

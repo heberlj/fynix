@@ -227,6 +227,11 @@ export function ListaTransacciones({
                         Gasto fijo
                       </span>
                     )}
+                    {t.aporteIngreso && (
+                      <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+                        Aporte
+                      </span>
+                    )}
                     {t.moneda !== configuracion.moneda && (
                       <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
                         {t.moneda}

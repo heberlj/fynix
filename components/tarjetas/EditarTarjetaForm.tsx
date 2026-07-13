@@ -3,7 +3,15 @@
 import { useMemo, useState } from "react";
 import { useFinanzas } from "@/context/FinanzasContext";
 import { useAuth } from "@/context/AuthContext";
-import type { ColorHome, TarjetaCredito } from "@/types/finanzas";
+import type { ColorHome, FinanciamientoCuotas, TarjetaCredito } from "@/types/finanzas";
+import {
+  extensionCuotasPopularDesdeFinanciamiento,
+  financiamientoPorDefecto,
+  obtenerFinanciamientoTarjeta,
+  productoFinanciamientoActivo,
+  validarFinanciamientoCuotas,
+} from "@/lib/financiamiento-cuotas";
+import { FormularioFinanciamientoCuotas } from "@/components/tarjetas/FormularioFinanciamientoCuotas";
 import {
   almacenarNumeroTarjeta,
   detectarMarca,
@@ -46,20 +54,10 @@ export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProp
   const [diaCorte, setDiaCorte] = useState(String(tarjeta.diaCorte));
   const [diaPago, setDiaPago] = useState(String(tarjeta.diaPago));
   const [moneda, setMoneda] = useState(tarjeta.moneda);
-  const [cuotasPopularActivo, setCuotasPopularActivo] = useState(
-    Boolean(tarjeta.extensionCuotasPopular?.limiteAprobado)
-  );
-  const [limiteCuotasPopular, setLimiteCuotasPopular] = useState(
-    tarjeta.extensionCuotasPopular?.limiteAprobado
-      ? String(tarjeta.extensionCuotasPopular.limiteAprobado)
-      : ""
+  const [financiamiento, setFinanciamiento] = useState<FinanciamientoCuotas>(() =>
+    obtenerFinanciamientoTarjeta(tarjeta)
   );
   const [digitosCuotasPopular, setDigitosCuotasPopular] = useState("");
-  const [sobregiroCuotasPopular, setSobregiroCuotasPopular] = useState(
-    tarjeta.extensionCuotasPopular?.sobregiro
-      ? String(tarjeta.extensionCuotasPopular.sobregiro)
-      : ""
-  );
   const [error, setError] = useState("");
   const [colorHome, setColorHome] = useState<ColorHome>(colorHomeTarjeta(tarjeta));
 
@@ -140,13 +138,14 @@ export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProp
       return;
     }
 
-    const limiteCuotasNum = parseFloat(limiteCuotasPopular);
-    if (cuotasPopularActivo) {
-      if (!limiteCuotasPopular || isNaN(limiteCuotasNum) || limiteCuotasNum <= 0) {
-        setError("Ingresa un límite aprobado válido para Cuotas Popular");
+    if (productoFinanciamientoActivo(financiamiento.producto)) {
+      const errorFin = validarFinanciamientoCuotas(financiamiento);
+      if (errorFin) {
+        setError(errorFin);
         return;
       }
       if (
+        financiamiento.producto === "cuotas-popular" &&
         digitosCuotasPopular &&
         !validarNumeroCuotas(digitosCuotasPopular)
       ) {
@@ -154,6 +153,7 @@ export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProp
         return;
       }
       if (
+        financiamiento.producto === "cuotas-popular" &&
         !digitosCuotasPopular &&
         !tarjeta.extensionCuotasPopular?.numeroEnmascarado
       ) {
@@ -173,7 +173,9 @@ export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProp
 
     const numeroCP = digitosCuotasPopular
       ? await almacenarNumeroTarjeta(digitosCuotasPopular, sesion.usuarioId)
-      : cuotasPopularActivo && tarjeta.extensionCuotasPopular
+      : productoFinanciamientoActivo(financiamiento.producto) &&
+          financiamiento.producto === "cuotas-popular" &&
+          tarjeta.extensionCuotasPopular
         ? {
             numeroEnmascarado: tarjeta.extensionCuotasPopular.numeroEnmascarado,
             primerosCuatro: tarjeta.extensionCuotasPopular.primerosCuatro,
@@ -182,7 +184,19 @@ export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProp
           }
         : null;
 
-    actualizarTarjeta(tarjeta.id, {
+    const diaCorteNum = Math.min(31, Math.max(1, Number(diaCorte)));
+    const diaPagoNum = Math.min(31, Math.max(1, Number(diaPago)));
+    const financiamientoFinal: FinanciamientoCuotas = {
+      ...financiamiento,
+      gastoFijoId:
+        financiamiento.gastoFijoId ??
+        tarjeta.financiamientoCuotas?.gastoFijoId,
+      diaCorte: financiamiento.diaCorte || diaCorteNum,
+      diaPago: financiamiento.diaPago || diaPagoNum,
+    };
+
+    const tarjetaActualizada: TarjetaCredito = {
+      ...tarjeta,
       banco,
       nombreTarjeta: nombreTarjeta.trim() || "Crédito",
       titular: titular.trim().toUpperCase(),
@@ -196,18 +210,19 @@ export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProp
       cvv: cvvFinal,
       limite: limiteNum,
       deudaActual: deudaNum,
-      diaCorte: Math.min(31, Math.max(1, Number(diaCorte))),
-      diaPago: Math.min(31, Math.max(1, Number(diaPago))),
+      diaCorte: diaCorteNum,
+      diaPago: diaPagoNum,
       moneda,
       colorHome,
-      extensionCuotasPopular: cuotasPopularActivo
-        ? {
-            limiteAprobado: limiteCuotasNum,
-            ...numeroCP!,
-            sobregiro: parseFloat(sobregiroCuotasPopular) || 0,
-          }
-        : undefined,
-    });
+      financiamientoCuotas: financiamientoFinal,
+      extensionCuotasPopular: extensionCuotasPopularDesdeFinanciamiento(
+        tarjeta,
+        financiamientoFinal,
+        numeroCP ?? undefined
+      ),
+    };
+
+    actualizarTarjeta(tarjeta.id, tarjetaActualizada);
 
     onCancelar();
   }
@@ -353,71 +368,18 @@ export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProp
               />
             </label>
 
-            <div className="sm:col-span-2 rounded-lg border border-border bg-background p-4">
-              <label className="flex cursor-pointer items-start gap-3">
-                <input
-                  type="checkbox"
-                  checked={cuotasPopularActivo}
-                  onChange={(e) => setCuotasPopularActivo(e.target.checked)}
-                  className="mt-0.5"
-                />
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    Cuotas Popular activo
-                  </p>
-                  <p className="mt-0.5 text-xs text-muted">
-                    Límite de crédito para compras en cuotas
-                  </p>
-                </div>
-              </label>
-
-              {cuotasPopularActivo && (
-                <div className="mt-4 space-y-4">
-                  <label className="flex flex-col gap-1.5">
-                    <span className="text-sm font-medium text-foreground">
-                      Número Cuotas Popular (16 dígitos)
-                    </span>
-                    <InputNumeroTarjetaSeguro
-                      digitos={digitosCuotasPopular}
-                      onDigitosChange={setDigitosCuotasPopular}
-                    />
-                    <span className="text-xs text-muted">
-                      Guardado:{" "}
-                      {tarjeta.extensionCuotasPopular?.numeroEnmascarado ??
-                        "sin número"}
-                      . Escribe uno nuevo solo si quieres cambiarlo.
-                    </span>
-                  </label>
-                  <label className="flex flex-col gap-1.5">
-                    <span className="text-sm font-medium text-foreground">
-                      Límite aprobado Cuotas Popular
-                    </span>
-                    <input
-                      type="number"
-                      min="0.01"
-                      step="0.01"
-                      value={limiteCuotasPopular}
-                      onChange={(e) => setLimiteCuotasPopular(e.target.value)}
-                      className={inputClass}
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1.5">
-                    <span className="text-sm font-medium text-foreground">
-                      Sobregiro (opcional)
-                    </span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={sobregiroCuotasPopular}
-                      onChange={(e) => setSobregiroCuotasPopular(e.target.value)}
-                      placeholder="0.00"
-                      className={inputClass}
-                    />
-                  </label>
-                </div>
-              )}
-            </div>
+            <FormularioFinanciamientoCuotas
+              value={financiamiento}
+              onChange={setFinanciamiento}
+              moneda={moneda}
+              diaCorteTarjeta={Number(diaCorte) || tarjeta.diaCorte}
+              diaPagoTarjeta={Number(diaPago) || tarjeta.diaPago}
+              digitosCuotasPopular={digitosCuotasPopular}
+              onDigitosCuotasPopularChange={setDigitosCuotasPopular}
+              numeroCuotasPopularGuardado={
+                tarjeta.extensionCuotasPopular?.numeroEnmascarado
+              }
+            />
           </div>
 
           <PersonalizacionTarjetaHome color={colorHome} onChange={setColorHome} />

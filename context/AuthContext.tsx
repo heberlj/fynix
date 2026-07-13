@@ -15,6 +15,7 @@ import {
   iniciarSesion,
   obtenerSesion,
   registrarUsuario,
+  actualizarNombrePerfil,
 } from "@/lib/auth";
 import { limpiarDatosLocalesAntiguos } from "@/lib/limpiar-datos-locales";
 import {
@@ -36,6 +37,9 @@ interface AuthContextValue {
     password: string
   ) => Promise<{ ok: true } | { ok: false; error: string }>;
   cerrarSesion: () => void;
+  actualizarPerfil: (
+    nombre: string
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -116,6 +120,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void cerrarSesion().then(() => setSesion(null));
   }, []);
 
+  const actualizarPerfil = useCallback(async (nombre: string) => {
+    const resultado = await actualizarNombrePerfil(nombre);
+    if (!resultado.ok) return resultado;
+    setSesion(resultado.sesion);
+    return { ok: true as const };
+  }, []);
+
   const value = useMemo(
     () => ({
       sesion,
@@ -123,8 +134,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       iniciarSesion: login,
       registrar,
       cerrarSesion: logout,
+      actualizarPerfil,
     }),
-    [sesion, cargado, login, registrar, logout]
+    [sesion, cargado, login, registrar, logout, actualizarPerfil]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

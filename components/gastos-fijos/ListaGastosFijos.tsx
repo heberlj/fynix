@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useFinanzas } from "@/context/FinanzasContext";
 import type { GastoFijo } from "@/types/finanzas";
+import { etiquetaProductoFinanciamiento } from "@/lib/financiamiento-cuotas";
 import {
   diasHastaCuota,
   prestamoTienePagoEnPeriodo,
@@ -22,6 +23,11 @@ import {
 import { formatearMoneda, obtenerQuincenasDelMes, periodoDeFecha } from "@/lib/quincenas";
 import { fechaHoy, mesActual } from "@/lib/fechas";
 import { confirmarAccion, confirmarEliminacion } from "@/lib/confirmar";
+import {
+  montoPendienteAporteEnPeriodo,
+  obtenerAporteIngreso,
+} from "@/lib/aporte-ingreso";
+import { TarjetaAporteIngreso } from "@/components/gastos-fijos/TarjetaAporteIngreso";
 import { EditarGastoFijoForm } from "@/components/gastos-fijos/EditarGastoFijoForm";
 import { EstadoVacio } from "@/components/ui/EstadoVacio";
 
@@ -29,6 +35,7 @@ interface ListaGastosFijosProps {
   gastosFijos: GastoFijo[];
   onAgregar?: () => void;
   onRegistrarPago?: (gastoId: string) => void;
+  onRegistrarAporte?: () => void;
 }
 
 function TarjetaGasto({
@@ -61,6 +68,11 @@ function TarjetaGasto({
             <span className="rounded-full bg-surface px-2 py-0.5 text-xs text-muted">
               {gasto.categoria}
             </span>
+            {gasto.productoFinanciamiento && (
+              <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+                {etiquetaProductoFinanciamiento(gasto.productoFinanciamiento)}
+              </span>
+            )}
             <span
               className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                 gasto.tipoPresupuesto === "esencial"
@@ -244,24 +256,29 @@ function ColumnaQuincena({
   prestamos,
   totalGastos,
   totalPrestamos,
+  totalAporte,
   moneda,
   transacciones,
   configuracion,
   onRegistrarPago,
+  onRegistrarAporte,
 }: {
   quincena: 1 | 2;
   gastos: GastoFijo[];
   prestamos: PrestamoVistaGastosFijos[];
   totalGastos: number;
   totalPrestamos: number;
+  totalAporte: number;
   moneda: string;
   transacciones: ReturnType<typeof useFinanzas>["transacciones"];
   configuracion: ReturnType<typeof useFinanzas>["configuracion"];
   onRegistrarPago?: (gastoId: string) => void;
+  onRegistrarAporte?: () => void;
 }) {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const activos = gastos.filter((g) => g.activo);
-  const total = totalGastos + totalPrestamos;
+  const aporte = obtenerAporteIngreso(configuracion);
+  const total = totalGastos + totalPrestamos + totalAporte;
   const periodoQuincena = useMemo(() => {
     const periodos = obtenerQuincenasDelMes(mesActual(), configuracion.diasPago);
     return (
@@ -286,8 +303,17 @@ function ColumnaQuincena({
           <p className="text-lg font-bold text-gasto">{formatearMoneda(total, moneda)}</p>
           {totalPrestamos > 0 && (
             <p className="mt-0.5 text-xs text-muted">
-              Gastos: {formatearMoneda(totalGastos, moneda)} · Préstamos:{" "}
-              {formatearMoneda(totalPrestamos, moneda)}
+              Gastos: {formatearMoneda(totalGastos, moneda)}
+              {totalAporte > 0 && (
+                <> · Aporte: {formatearMoneda(totalAporte, moneda)}</>
+              )}
+              {" "}· Préstamos: {formatearMoneda(totalPrestamos, moneda)}
+            </p>
+          )}
+          {totalPrestamos === 0 && totalAporte > 0 && (
+            <p className="mt-0.5 text-xs text-muted">
+              Gastos: {formatearMoneda(totalGastos, moneda)} · Aporte:{" "}
+              {formatearMoneda(totalAporte, moneda)}
             </p>
           )}
         </div>
@@ -300,14 +326,23 @@ function ColumnaQuincena({
           ` · ${gastos.length - activos.length} pausado${gastos.length - activos.length !== 1 ? "s" : ""}`}
         {prestamos.length > 0 &&
           ` · ${prestamos.length} préstamo${prestamos.length !== 1 ? "s" : ""} (referencia)`}
+        {aporte && aporte.quincenas.includes(quincena) && " · 1 aporte según ingresos"}
       </p>
 
-      {gastos.length === 0 && prestamos.length === 0 ? (
+      {gastos.length === 0 && prestamos.length === 0 && !(aporte && aporte.quincenas.includes(quincena)) ? (
         <p className="mt-6 rounded-lg border border-dashed border-border py-8 text-center text-sm text-muted">
           Sin gastos ni préstamos en esta quincena
         </p>
       ) : (
         <div className="mt-4 space-y-3">
+          {aporte && aporte.quincenas.includes(quincena) && (
+            <TarjetaAporteIngreso
+              aporte={aporte}
+              transacciones={transacciones}
+              periodoQuincena={periodoQuincena}
+              onRegistrarPago={onRegistrarAporte}
+            />
+          )}
           {gastos.map((gasto) => (
             <TarjetaGasto
               key={gasto.id}
@@ -353,6 +388,7 @@ export function ListaGastosFijos({
   gastosFijos,
   onAgregar,
   onRegistrarPago,
+  onRegistrarAporte,
 }: ListaGastosFijosProps) {
   const { configuracion, transacciones, prestamos } = useFinanzas();
   const [categoriaFiltro, setCategoriaFiltro] = useState("todas");
@@ -376,21 +412,41 @@ export function ListaGastosFijos({
 
   const totalesQ = useMemo(() => {
     const moneda = configuracion.moneda;
+    const aporte = obtenerAporteIngreso(configuracion);
+    const periodos = obtenerQuincenasDelMes(mesActual(), configuracion.diasPago);
+    const periodoQ1 = periodos.find((p) => p.quincena === 1)!;
+    const periodoQ2 = periodos.find((p) => p.quincena === 2)!;
+
     const sumarGastos = (q: 1 | 2, monedaFiltro: string) =>
       filtrados
         .filter(
           (g) => g.activo && g.quincena === q && g.moneda === monedaFiltro
         )
         .reduce((sum, g) => sum + g.monto, 0);
+
+    const aporteQ1 =
+      aporte && aporte.quincenas.includes(1) && aporte.moneda === moneda
+        ? montoPendienteAporteEnPeriodo(transacciones, aporte, periodoQ1)
+        : 0;
+    const aporteQ2 =
+      aporte && aporte.quincenas.includes(2) && aporte.moneda === moneda
+        ? montoPendienteAporteEnPeriodo(transacciones, aporte, periodoQ2)
+        : 0;
+
+    const gastosQ1 = sumarGastos(1, moneda);
+    const gastosQ2 = sumarGastos(2, moneda);
+
     return {
-      q1: sumarGastos(1, moneda) + totalPrestamosPorQuincena(prestamos, 1, moneda),
-      q2: sumarGastos(2, moneda) + totalPrestamosPorQuincena(prestamos, 2, moneda),
-      gastosQ1: sumarGastos(1, moneda),
-      gastosQ2: sumarGastos(2, moneda),
+      q1: gastosQ1 + aporteQ1 + totalPrestamosPorQuincena(prestamos, 1, moneda),
+      q2: gastosQ2 + aporteQ2 + totalPrestamosPorQuincena(prestamos, 2, moneda),
+      gastosQ1,
+      gastosQ2,
+      aporteQ1,
+      aporteQ2,
       prestamosQ1: totalPrestamosPorQuincena(prestamos, 1, moneda),
       prestamosQ2: totalPrestamosPorQuincena(prestamos, 2, moneda),
     };
-  }, [filtrados, prestamos, configuracion.moneda]);
+  }, [filtrados, prestamos, configuracion, transacciones]);
 
   const hayPrestamos = prestamosParaVistaGastosFijos(prestamos).length > 0;
 
@@ -448,6 +504,7 @@ export function ListaGastosFijos({
               gastos={gastos}
               prestamos={prestamosQuincena}
               totalGastos={quincena === 1 ? totalesQ.gastosQ1 : totalesQ.gastosQ2}
+              totalAporte={quincena === 1 ? totalesQ.aporteQ1 : totalesQ.aporteQ2}
               totalPrestamos={
                 quincena === 1 ? totalesQ.prestamosQ1 : totalesQ.prestamosQ2
               }
@@ -455,6 +512,7 @@ export function ListaGastosFijos({
               transacciones={transacciones}
               configuracion={configuracion}
               onRegistrarPago={onRegistrarPago}
+              onRegistrarAporte={onRegistrarAporte}
             />
           );
         })}

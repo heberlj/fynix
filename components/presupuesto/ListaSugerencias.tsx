@@ -9,6 +9,7 @@ const ETIQUETAS_TIPO: Record<ItemSugerenciaPago["tipo"], string> = {
   prestamo: "Préstamo",
   "cuota-popular": "Cuota Popular",
   "gasto-fijo": "Gasto fijo",
+  "aporte-ingreso": "Aporte",
 };
 
 const ETIQUETAS_PRIORIDAD: Record<
@@ -36,12 +37,14 @@ interface ListaSugerenciasProps {
   items: ItemSugerenciaPago[];
   moneda: string;
   onPagarGastoFijo?: (gastoId: string) => void;
+  onPagarAporteIngreso?: () => void;
 }
 
 export function ListaSugerencias({
   items,
   moneda,
   onPagarGastoFijo,
+  onPagarAporteIngreso,
 }: ListaSugerenciasProps) {
   const {
     registrarPagoTarjeta,
@@ -67,6 +70,11 @@ export function ListaSugerencias({
           onPagarGastoFijo(item.entidadId);
         } else {
           registrarPagoGastoFijo(item.entidadId);
+        }
+        break;
+      case "aporte-ingreso":
+        if (onPagarAporteIngreso) {
+          onPagarAporteIngreso();
         }
         break;
     }

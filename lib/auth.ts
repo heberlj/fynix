@@ -109,6 +109,32 @@ export async function iniciarSesion(datos: {
   return { ok: true, sesion };
 }
 
+export async function actualizarNombrePerfil(
+  nombre: string
+): Promise<{ ok: true; sesion: SesionActiva } | { ok: false; error: string }> {
+  const nombreLimpio = nombre.trim();
+  if (!nombreLimpio) {
+    return { ok: false, error: "El nombre es obligatorio" };
+  }
+
+  const supabase = crearClienteSupabase();
+  const { error } = await supabase.auth.updateUser({
+    data: { nombre: nombreLimpio },
+  });
+
+  if (error) {
+    return { ok: false, error: mensajeErrorAuth(error.message) };
+  }
+
+  const { data } = await supabase.auth.getSession();
+  const sesion = mapearSesion(data.session);
+  if (!sesion) {
+    return { ok: false, error: "No se pudo actualizar el perfil" };
+  }
+
+  return { ok: true, sesion };
+}
+
 export async function cerrarSesion(): Promise<void> {
   if (typeof window === "undefined") return;
   const supabase = crearClienteSupabase();

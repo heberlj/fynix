@@ -35,6 +35,7 @@ export function PresupuestoContent() {
   const [ingresoManual, setIngresoManual] = useState("");
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
   const [pagoGastoFijoId, setPagoGastoFijoId] = useState<string | null>(null);
+  const [pagoAporteIngreso, setPagoAporteIngreso] = useState(false);
 
   const hayCambios = ingresoManual.trim() !== "" || mostrarSugerencias;
 
@@ -326,6 +327,7 @@ export function PresupuestoContent() {
               items={sugerencias.items}
               moneda={moneda}
               onPagarGastoFijo={(id) => setPagoGastoFijoId(id)}
+              onPagarAporteIngreso={() => setPagoAporteIngreso(true)}
             />
           </div>
 
@@ -359,6 +361,21 @@ export function PresupuestoContent() {
           gastoFijoInicialId={pagoGastoFijoId ?? undefined}
           onExito={() => setPagoGastoFijoId(null)}
           onCancelar={() => setPagoGastoFijoId(null)}
+        />
+      </Modal>
+
+      <Modal
+        abierto={pagoAporteIngreso}
+        onCerrar={() => setPagoAporteIngreso(false)}
+        titulo="Registrar aporte"
+        variant="centro"
+        tamano="amplio"
+      >
+        <FormularioTransaccion
+          enModal
+          aporteIngresoInicial
+          onExito={() => setPagoAporteIngreso(false)}
+          onCancelar={() => setPagoAporteIngreso(false)}
         />
       </Modal>
     </PageContainer>

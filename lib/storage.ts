@@ -1,5 +1,7 @@
 import type { ColorHome, CuentaBancaria, CuotaPopular, EstadoFinanzas, GastoFijo, IconoHomeCuenta, Prestamo, TarjetaCredito, Transaccion } from "@/types/finanzas";
 import { CONFIGURACION_DEFAULT } from "@/types/finanzas";
+import { normalizarAporteIngreso } from "@/lib/aporte-ingreso";
+import { obtenerFinanciamientoTarjeta, productoFinanciamientoActivo, sincronizarGastoFijoFinanciamiento } from "@/lib/financiamiento-cuotas";
 import { quincenaNumeroDeDia, tipoPresupuestoPorDefecto } from "@/lib/gastos-fijos";
 import { crearClienteSupabase } from "@/lib/supabase/client";
 import {
@@ -36,19 +38,33 @@ function normalizarTarjetas(tarjetas: TarjetaCredito[] = []): TarjetaCredito[] {
       primerosCuatro: inferirPrimerosCuatro({ ...TARJETA_DEFAULT, ...t }),
       colorHome: esColorHome(t.colorHome) ? t.colorHome : colorHomePorIndice(indice + 3),
     };
-    if (!base.extensionCuotasPopular) return base;
+
+    const financiamiento = base.financiamientoCuotas
+      ? {
+          producto: base.financiamientoCuotas.producto ?? "ninguna",
+          limiteAprobado: base.financiamientoCuotas.limiteAprobado ?? 0,
+          balancePendiente: base.financiamientoCuotas.balancePendiente ?? 0,
+          montoCuotaMensual: base.financiamientoCuotas.montoCuotaMensual ?? 0,
+          diaCorte: base.financiamientoCuotas.diaCorte ?? base.diaCorte ?? 15,
+          diaPago: base.financiamientoCuotas.diaPago ?? base.diaPago ?? 30,
+          gastoFijoId: base.financiamientoCuotas.gastoFijoId,
+        }
+      : obtenerFinanciamientoTarjeta(base);
 
     const ext = base.extensionCuotasPopular;
     return {
       ...base,
-      extensionCuotasPopular: {
-        limiteAprobado: ext.limiteAprobado ?? 0,
-        numeroEnmascarado:
-          ext.numeroEnmascarado ?? "•••• •••• •••• 0000",
-        primerosCuatro: ext.primerosCuatro ?? "••••",
-        ultimosCuatro: ext.ultimosCuatro ?? "0000",
-        sobregiro: ext.sobregiro ?? 0,
-      },
+      financiamientoCuotas: financiamiento,
+      extensionCuotasPopular: ext
+        ? {
+            limiteAprobado: ext.limiteAprobado ?? 0,
+            numeroEnmascarado:
+              ext.numeroEnmascarado ?? "•••• •••• •••• 0000",
+            primerosCuatro: ext.primerosCuatro ?? "••••",
+            ultimosCuatro: ext.ultimosCuatro ?? "0000",
+            sobregiro: ext.sobregiro ?? 0,
+          }
+        : undefined,
     };
   });
 }
@@ -191,10 +207,18 @@ export function normalizarEstado(parsed: Partial<EstadoFinanzas>): EstadoFinanza
         : CONFIGURACION_DEFAULT.categoriasIngreso,
   };
 
-  return {
+  const configuracionFinal = {
+    ...configuracion,
+    aporteIngreso: normalizarAporteIngreso(
+      parsed.configuracion?.aporteIngreso,
+      configuracion
+    ),
+  };
+
+  let estado: EstadoFinanzas = {
     ...estadoInicial(),
     ...parsed,
-    transacciones: normalizarTransacciones(parsed.transacciones, configuracion.moneda),
+    transacciones: normalizarTransacciones(parsed.transacciones, configuracionFinal.moneda),
     tarjetas: normalizarTarjetas(parsed.tarjetas),
     prestamos: normalizarPrestamos(parsed.prestamos),
     cuotasPopular: normalizarCuotasPopular(parsed.cuotasPopular),
@@ -204,8 +228,30 @@ export function normalizarEstado(parsed: Partial<EstadoFinanzas>): EstadoFinanza
     ),
     cuentas: normalizarCuentas(parsed.cuentas),
     efectivo: parsed.efectivo ?? 0,
-    configuracion,
+    configuracion: configuracionFinal,
   };
+
+  for (const tarjeta of estado.tarjetas) {
+    const fin = tarjeta.financiamientoCuotas ?? obtenerFinanciamientoTarjeta(tarjeta);
+    if (
+      !productoFinanciamientoActivo(fin.producto) ||
+      fin.montoCuotaMensual <= 0
+    ) {
+      continue;
+    }
+    const sync = sincronizarGastoFijoFinanciamiento(estado, tarjeta, fin);
+    estado = {
+      ...estado,
+      gastosFijos: sync.gastosFijos,
+      tarjetas: estado.tarjetas.map((t) =>
+        t.id === tarjeta.id
+          ? { ...t, financiamientoCuotas: sync.financiamiento }
+          : t
+      ),
+    };
+  }
+
+  return estado;
 }
 
 export function estadoInicial(): EstadoFinanzas {

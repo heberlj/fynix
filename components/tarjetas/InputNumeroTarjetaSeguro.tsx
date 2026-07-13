@@ -1,10 +1,14 @@
 "use client";
 
-import { useRef } from "react";
-import { enmascararNumero, limpiarNumeroTarjeta } from "@/lib/tarjetas";
+import { useState } from "react";
+import {
+  enmascararNumero,
+  formatearNumeroTarjeta,
+  limpiarNumeroTarjeta,
+} from "@/lib/tarjetas";
 
 const inputClass =
-  "rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent";
+  "rounded-lg border border-border bg-background px-3 py-2 text-base text-foreground outline-none focus:border-accent sm:text-sm";
 
 interface InputNumeroTarjetaSeguroProps {
   digitos: string;
@@ -21,27 +25,11 @@ export function InputNumeroTarjetaSeguro({
   placeholder = "0000 •••• •••• 0000",
   className = inputClass,
 }: InputNumeroTarjetaSeguroProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [enfocado, setEnfocado] = useState(false);
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key >= "0" && e.key <= "9") {
-      e.preventDefault();
-      if (digitos.length < maxDigitos) {
-        onDigitosChange(digitos + e.key);
-      }
-      return;
-    }
-
-    if (e.key === "Backspace") {
-      e.preventDefault();
-      onDigitosChange(digitos.slice(0, -1));
-      return;
-    }
-
-    if (e.key === "Delete") {
-      e.preventDefault();
-      onDigitosChange("");
-    }
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const nuevosDigitos = limpiarNumeroTarjeta(e.target.value).slice(0, maxDigitos);
+    onDigitosChange(nuevosDigitos);
   }
 
   function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
@@ -53,19 +41,22 @@ export function InputNumeroTarjetaSeguro({
     if (pegado) onDigitosChange(pegado);
   }
 
-  const valorVisible = digitos ? enmascararNumero(digitos) : "";
+  const valorVisible = digitos
+    ? enfocado
+      ? formatearNumeroTarjeta(digitos)
+      : enmascararNumero(digitos)
+    : "";
 
   return (
     <input
-      ref={inputRef}
-      type="text"
+      type="tel"
       inputMode="numeric"
-      autoComplete="off"
+      autoComplete="cc-number"
       value={valorVisible}
-      readOnly
-      onKeyDown={handleKeyDown}
+      onChange={handleChange}
       onPaste={handlePaste}
-      onFocus={() => inputRef.current?.select()}
+      onFocus={() => setEnfocado(true)}
+      onBlur={() => setEnfocado(false)}
       placeholder={placeholder}
       className={className}
       aria-label="Número de tarjeta con primeros y últimos cuatro dígitos visibles"

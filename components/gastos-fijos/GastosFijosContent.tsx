@@ -8,6 +8,9 @@ import {
   totalPorQuincena,
 } from "@/lib/gastos-fijos";
 import { totalPrestamosPorQuincena } from "@/lib/prestamos";
+import { montoPendienteAporteEnPeriodo, obtenerAporteIngreso } from "@/lib/aporte-ingreso";
+import { obtenerQuincenasDelMes } from "@/lib/quincenas";
+import { mesActual } from "@/lib/fechas";
 import { formatearMoneda } from "@/lib/quincenas";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { EncabezadoPagina } from "@/components/layout/EncabezadoPagina";
@@ -19,11 +22,12 @@ import { ListaGastosFijos } from "@/components/gastos-fijos/ListaGastosFijos";
 import { FormularioTransaccion } from "@/components/transacciones/FormularioTransaccion";
 
 export function GastosFijosContent() {
-  const { gastosFijos, prestamos, configuracion, cargado } = useFinanzas();
+  const { gastosFijos, prestamos, configuracion, transacciones, cargado } = useFinanzas();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [gestionarCategorias, setGestionarCategorias] = useState(false);
   const [vistaCategoria, setVistaCategoria] = useState<"todas" | "1" | "2">("todas");
   const [pagoGastoFijoId, setPagoGastoFijoId] = useState<string | null>(null);
+  const [pagoAporteIngreso, setPagoAporteIngreso] = useState(false);
 
   const totalesPorMoneda = useMemo(
     () => Array.from(totalMensualPorMoneda(gastosFijos).entries()),
@@ -40,6 +44,30 @@ export function GastosFijosContent() {
     [gastosFijos, configuracion.moneda]
   );
 
+  const totalQ1Aporte = useMemo(() => {
+    const aporte = obtenerAporteIngreso(configuracion);
+    if (!aporte || !aporte.quincenas.includes(1) || aporte.moneda !== configuracion.moneda) {
+      return 0;
+    }
+    const periodos = obtenerQuincenasDelMes(mesActual(), configuracion.diasPago);
+    const periodo = periodos.find((p) => p.quincena === 1);
+    return periodo
+      ? montoPendienteAporteEnPeriodo(transacciones, aporte, periodo)
+      : 0;
+  }, [configuracion, transacciones]);
+
+  const totalQ2Aporte = useMemo(() => {
+    const aporte = obtenerAporteIngreso(configuracion);
+    if (!aporte || !aporte.quincenas.includes(2) || aporte.moneda !== configuracion.moneda) {
+      return 0;
+    }
+    const periodos = obtenerQuincenasDelMes(mesActual(), configuracion.diasPago);
+    const periodo = periodos.find((p) => p.quincena === 2);
+    return periodo
+      ? montoPendienteAporteEnPeriodo(transacciones, aporte, periodo)
+      : 0;
+  }, [configuracion, transacciones]);
+
   const totalQ1Prestamos = useMemo(
     () => totalPrestamosPorQuincena(prestamos, 1, configuracion.moneda),
     [prestamos, configuracion.moneda]
@@ -50,8 +78,8 @@ export function GastosFijosContent() {
     [prestamos, configuracion.moneda]
   );
 
-  const totalQ1 = totalQ1Gastos + totalQ1Prestamos;
-  const totalQ2 = totalQ2Gastos + totalQ2Prestamos;
+  const totalQ1 = totalQ1Gastos + totalQ1Aporte + totalQ1Prestamos;
+  const totalQ2 = totalQ2Gastos + totalQ2Aporte + totalQ2Prestamos;
 
   const hayGastosFijosActivos = useMemo(
     () => gastosFijos.some((g) => g.activo),
@@ -221,6 +249,7 @@ export function GastosFijosContent() {
             setGestionarCategorias(false);
           }}
           onRegistrarPago={(id) => setPagoGastoFijoId(id)}
+          onRegistrarAporte={() => setPagoAporteIngreso(true)}
         />
       </div>
 
@@ -248,6 +277,20 @@ export function GastosFijosContent() {
           gastoFijoInicialId={pagoGastoFijoId ?? undefined}
           onExito={() => setPagoGastoFijoId(null)}
           onCancelar={() => setPagoGastoFijoId(null)}
+        />
+      </Modal>
+      <Modal
+        abierto={pagoAporteIngreso}
+        onCerrar={() => setPagoAporteIngreso(false)}
+        titulo="Registrar aporte"
+        variant="centro"
+        tamano="amplio"
+      >
+        <FormularioTransaccion
+          enModal
+          aporteIngresoInicial
+          onExito={() => setPagoAporteIngreso(false)}
+          onCancelar={() => setPagoAporteIngreso(false)}
         />
       </Modal>
     </PageContainer>

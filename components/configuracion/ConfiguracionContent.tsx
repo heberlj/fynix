@@ -1,145 +1,102 @@
 "use client";
 
 import { useState } from "react";
-import { useFinanzas } from "@/context/FinanzasContext";
-import type { TemaApp } from "@/types/finanzas";
-import { RespaldoDatos } from "@/components/configuracion/RespaldoDatos";
-import { SelectorMoneda } from "@/components/ui/SelectorMoneda";
-import { SelectorTema } from "@/components/ui/SelectorTema";
-import { aplicarTema } from "@/lib/tema";
-import { validarDiasPago } from "@/lib/validar-configuracion";
+import { ConfiguracionPerfil } from "@/components/configuracion/ConfiguracionPerfil";
+import { ConfiguracionApariencia } from "@/components/configuracion/ConfiguracionApariencia";
+import { ConfiguracionAporteIngreso } from "@/components/configuracion/ConfiguracionAporteIngreso";
+import { ConfiguracionSuscripcion } from "@/components/configuracion/ConfiguracionSuscripcion";
+import { ConfiguracionAcercaDe } from "@/components/configuracion/ConfiguracionAcercaDe";
+import {
+  SECCIONES_CONFIGURACION,
+  type SeccionConfiguracionId,
+} from "@/components/configuracion/secciones-configuracion";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { EncabezadoPagina } from "@/components/layout/EncabezadoPagina";
 import { AyudaPagina } from "@/components/ayuda/AyudaPagina";
 
+function ContenidoSeccion({ seccion }: { seccion: SeccionConfiguracionId }) {
+  switch (seccion) {
+    case "perfil":
+      return <ConfiguracionPerfil />;
+    case "apariencia":
+      return <ConfiguracionApariencia />;
+    case "diezmos":
+      return <ConfiguracionAporteIngreso />;
+    case "suscripcion":
+      return <ConfiguracionSuscripcion />;
+    case "acerca":
+      return <ConfiguracionAcercaDe />;
+    default:
+      return null;
+  }
+}
+
 export function ConfiguracionContent() {
-  const { configuracion, actualizarConfiguracion } = useFinanzas();
-  const [dia1, setDia1] = useState(String(configuracion.diasPago[0]));
-  const [dia2, setDia2] = useState(String(configuracion.diasPago[1]));
-  const [moneda, setMoneda] = useState(configuracion.moneda);
-  const [tema, setTema] = useState<TemaApp>(configuracion.tema ?? "claro");
-  const [guardado, setGuardado] = useState(false);
-  const [error, setError] = useState("");
+  const [seccionActiva, setSeccionActiva] =
+    useState<SeccionConfiguracionId>("perfil");
 
-  function handleTemaChange(nuevoTema: TemaApp) {
-    setTema(nuevoTema);
-    aplicarTema(nuevoTema);
-    actualizarConfiguracion({ tema: nuevoTema });
-  }
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    const d1 = Number(dia1);
-    const d2 = Number(dia2);
-    const errorDias = validarDiasPago(d1, d2);
-    if (errorDias) {
-      setError(errorDias);
-      return;
-    }
-
-    actualizarConfiguracion({
-      diasPago: [d1, d2],
-      moneda,
-      tema,
-    });
-    setGuardado(true);
-    setTimeout(() => setGuardado(false), 2000);
-  }
+  const seccionActual = SECCIONES_CONFIGURACION.find(
+    (s) => s.id === seccionActiva
+  );
 
   return (
     <AyudaPagina pagina="configuracion">
       <PageContainer>
         <EncabezadoPagina
           titulo="Configuración"
-          descripcion="Personaliza tu gestor de finanzas"
+          descripcion="Perfil, apariencia, diezmos y más"
         />
 
-      <form
-        onSubmit={handleSubmit}
-        data-ayuda="quincenas"
-        className="max-w-lg rounded-xl border border-border bg-surface p-6 shadow-sm"
-      >
-        <h2 className="text-base font-semibold text-foreground">Apariencia</h2>
-        <div data-ayuda="preferencias">
-        <p className="mt-1 text-xs text-muted">
-          Elige entre modo claro, oscuro o seguir tu sistema
-        </p>
-        <div className="mt-4">
-          <SelectorTema value={tema} onChange={handleTemaChange} />
+        <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start">
+          <nav
+            aria-label="Secciones de configuración"
+            className="lg:w-60 lg:shrink-0"
+          >
+            <div className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
+              {SECCIONES_CONFIGURACION.map((seccion) => {
+                const activa = seccionActiva === seccion.id;
+                return (
+                  <button
+                    key={seccion.id}
+                    type="button"
+                    onClick={() => setSeccionActiva(seccion.id)}
+                    className={`flex min-w-[9.5rem] shrink-0 items-start gap-3 rounded-xl border px-3 py-3 text-left transition-colors lg:min-w-0 lg:w-full ${
+                      activa
+                        ? "border-accent bg-accent/10"
+                        : "border-border bg-surface hover:border-accent/30 hover:bg-surface-hover"
+                    }`}
+                  >
+                    <span className="text-lg leading-none" aria-hidden>
+                      {seccion.icono}
+                    </span>
+                    <span className="min-w-0">
+                      <span
+                        className={`block text-sm font-medium ${
+                          activa ? "text-accent" : "text-foreground"
+                        }`}
+                      >
+                        {seccion.label}
+                      </span>
+                      <span className="mt-0.5 block text-xs text-muted">
+                        {seccion.descripcion}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+
+          <div className="min-w-0 flex-1" data-ayuda="preferencias">
+            {seccionActual && (
+              <p className="mb-4 text-sm text-muted lg:hidden">
+                {seccionActual.descripcion}
+              </p>
+            )}
+            <ContenidoSeccion seccion={seccionActiva} />
+          </div>
         </div>
-        </div>
-
-        <h2 className="mt-6 text-base font-semibold text-foreground">
-          Días de pago
-        </h2>
-        <p className="mt-1 text-xs text-muted">
-          Indica los días del mes en que recibes tu salario. Las quincenas del
-          calendario siempre van del 1 al 15 (Q1) y del 16 al fin de mes (Q2).
-        </p>
-
-        <div className="mt-5 grid grid-cols-2 gap-4">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-foreground">
-              Primer pago (día)
-            </span>
-            <input
-              type="number"
-              min={1}
-              max={31}
-              value={dia1}
-              onChange={(e) => setDia1(e.target.value)}
-              className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent"
-            />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-foreground">
-              Segundo pago (día)
-            </span>
-            <input
-              type="number"
-              min={1}
-              max={31}
-              value={dia2}
-              onChange={(e) => setDia2(e.target.value)}
-              className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent"
-            />
-          </label>
-        </div>
-
-        <label className="mt-4 flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-foreground">
-            Moneda principal
-          </span>
-          <p className="text-xs text-muted">
-            Para transacciones y resúmenes. Cada tarjeta puede tener su propia moneda.
-          </p>
-          <SelectorMoneda value={moneda} onChange={setMoneda} />
-        </label>
-
-        <div className="mt-4 rounded-lg bg-accent/5 px-4 py-3 text-xs text-muted">
-          <p className="font-medium text-foreground">Quincenas (calendario):</p>
-          <p className="mt-1">Q1: del 1 al 15 de cada mes</p>
-          <p>Q2: del 16 al 30/31 de cada mes</p>
-          <p className="mt-2 font-medium text-foreground">Tus días de pago:</p>
-          <p className="mt-1">
-            Se usan para referencia de ingresos (ej. días {dia1} y {dia2})
-          </p>
-        </div>
-
-        <button
-          type="submit"
-          className="mt-5 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
-        >
-          {guardado ? "¡Guardado!" : "Guardar configuración"}
-        </button>
-        {error && <p className="mt-3 text-sm text-gasto">{error}</p>}
-      </form>
-
-      <div data-ayuda="respaldo">
-        <RespaldoDatos />
-      </div>
-    </PageContainer>
+      </PageContainer>
     </AyudaPagina>
   );
 }

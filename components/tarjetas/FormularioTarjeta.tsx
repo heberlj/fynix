@@ -20,7 +20,14 @@ import { SelectorMoneda } from "@/components/ui/SelectorMoneda";
 import { SelectorBanco } from "@/components/ui/SelectorBanco";
 import { esBancoCertificado } from "@/lib/bancos";
 import { PersonalizacionTarjetaHome } from "@/components/ui/PersonalizacionTarjetaHome";
-import type { ColorHome } from "@/types/finanzas";
+import type { ColorHome, FinanciamientoCuotas } from "@/types/finanzas";
+import {
+  extensionCuotasPopularDesdeFinanciamiento,
+  financiamientoPorDefecto,
+  productoFinanciamientoActivo,
+  validarFinanciamientoCuotas,
+} from "@/lib/financiamiento-cuotas";
+import { FormularioFinanciamientoCuotas } from "@/components/tarjetas/FormularioFinanciamientoCuotas";
 import { colorHomePorIndice } from "@/lib/personalizacion-home";
 
 const inputClass =
@@ -44,10 +51,10 @@ export function FormularioTarjeta({
   const [diaCorte, setDiaCorte] = useState("15");
   const [diaPago, setDiaPago] = useState("30");
   const [moneda, setMoneda] = useState(configuracion.moneda);
-  const [cuotasPopularActivo, setCuotasPopularActivo] = useState(false);
-  const [limiteCuotasPopular, setLimiteCuotasPopular] = useState("");
+  const [financiamiento, setFinanciamiento] = useState<FinanciamientoCuotas>(() =>
+    financiamientoPorDefecto(15, 30)
+  );
   const [digitosCuotasPopular, setDigitosCuotasPopular] = useState("");
-  const [sobregiroCuotasPopular, setSobregiroCuotasPopular] = useState("");
   const [colorHome, setColorHome] = useState<ColorHome>(
     colorHomePorIndice(tarjetas.length + 3)
   );
@@ -119,13 +126,17 @@ export function FormularioTarjeta({
       return;
     }
 
-    const limiteCuotasNum = parseFloat(limiteCuotasPopular);
-    if (cuotasPopularActivo) {
-      if (!limiteCuotasPopular || isNaN(limiteCuotasNum) || limiteCuotasNum <= 0) {
-        setError("Ingresa un límite aprobado válido para Cuotas Popular");
+    const limiteCuotasNum = financiamiento.limiteAprobado;
+    if (productoFinanciamientoActivo(financiamiento.producto)) {
+      const errorFin = validarFinanciamientoCuotas(financiamiento);
+      if (errorFin) {
+        setError(errorFin);
         return;
       }
-      if (!validarNumeroCuotas(digitosCuotasPopular)) {
+      if (
+        financiamiento.producto === "cuotas-popular" &&
+        !validarNumeroCuotas(digitosCuotasPopular)
+      ) {
         setError("Ingresa el número de Cuotas Popular (16 dígitos)");
         return;
       }
@@ -137,11 +148,20 @@ export function FormularioTarjeta({
     }
 
     const numeroAlmacenado = await almacenarNumeroTarjeta(limpio, sesion.usuarioId);
-    const numeroCP = cuotasPopularActivo
-      ? await almacenarNumeroTarjeta(digitosCuotasPopular, sesion.usuarioId)
-      : null;
+    const numeroCP =
+      financiamiento.producto === "cuotas-popular" && digitosCuotasPopular
+        ? await almacenarNumeroTarjeta(digitosCuotasPopular, sesion.usuarioId)
+        : null;
 
-    agregarTarjeta({
+    const diaCorteNum = Math.min(31, Math.max(1, Number(diaCorte)));
+    const diaPagoNum = Math.min(31, Math.max(1, Number(diaPago)));
+    const financiamientoFinal: FinanciamientoCuotas = {
+      ...financiamiento,
+      diaCorte: financiamiento.diaCorte || diaCorteNum,
+      diaPago: financiamiento.diaPago || diaPagoNum,
+    };
+
+    const tarjetaBase = {
       banco,
       nombreTarjeta: nombreTarjeta.trim() || "Crédito",
       titular: titular.trim().toUpperCase(),
@@ -151,17 +171,20 @@ export function FormularioTarjeta({
       cvv: cvv.replace(/\D/g, ""),
       limite: limiteNum,
       deudaActual: deudaNum,
-      diaCorte: Math.min(31, Math.max(1, Number(diaCorte))),
-      diaPago: Math.min(31, Math.max(1, Number(diaPago))),
+      diaCorte: diaCorteNum,
+      diaPago: diaPagoNum,
       moneda,
       colorHome,
-      extensionCuotasPopular: cuotasPopularActivo
-        ? {
-            limiteAprobado: limiteCuotasNum,
-            ...numeroCP!,
-            sobregiro: parseFloat(sobregiroCuotasPopular) || 0,
-          }
-        : undefined,
+      financiamientoCuotas: financiamientoFinal,
+    };
+
+    agregarTarjeta({
+      ...tarjetaBase,
+      extensionCuotasPopular: extensionCuotasPopularDesdeFinanciamiento(
+        { ...tarjetaBase, id: "" },
+        financiamientoFinal,
+        numeroCP ?? undefined
+      ),
     });
 
     setBanco("");
@@ -338,66 +361,15 @@ export function FormularioTarjeta({
             />
           </label>
 
-          <div className="sm:col-span-2 rounded-lg border border-border bg-background p-4">
-            <label className="flex cursor-pointer items-start gap-3">
-              <input
-                type="checkbox"
-                checked={cuotasPopularActivo}
-                onChange={(e) => setCuotasPopularActivo(e.target.checked)}
-                className="mt-0.5"
-              />
-              <div>
-                <p className="text-sm font-medium text-foreground">
-                  Activar Cuotas Popular
-                </p>
-                <p className="mt-0.5 text-xs text-muted">
-                  Extensión de crédito para financiar compras en cuotas
-                </p>
-              </div>
-            </label>
-
-            {cuotasPopularActivo && (
-              <div className="mt-4 space-y-4">
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium text-foreground">
-                    Número Cuotas Popular (16 dígitos)
-                  </span>
-                  <InputNumeroTarjetaSeguro
-                    digitos={digitosCuotasPopular}
-                    onDigitosChange={setDigitosCuotasPopular}
-                  />
-                </label>
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium text-foreground">
-                    Límite aprobado Cuotas Popular
-                  </span>
-                  <input
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    value={limiteCuotasPopular}
-                    onChange={(e) => setLimiteCuotasPopular(e.target.value)}
-                    placeholder="Ej: 42000"
-                    className={inputClass}
-                  />
-                </label>
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium text-foreground">
-                    Sobregiro (opcional)
-                  </span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={sobregiroCuotasPopular}
-                    onChange={(e) => setSobregiroCuotasPopular(e.target.value)}
-                    placeholder="0.00"
-                    className={inputClass}
-                  />
-                </label>
-              </div>
-            )}
-          </div>
+          <FormularioFinanciamientoCuotas
+            value={financiamiento}
+            onChange={setFinanciamiento}
+            moneda={moneda}
+            diaCorteTarjeta={Number(diaCorte) || 15}
+            diaPagoTarjeta={Number(diaPago) || 30}
+            digitosCuotasPopular={digitosCuotasPopular}
+            onDigitosCuotasPopularChange={setDigitosCuotasPopular}
+          />
         </div>
 
         <PersonalizacionTarjetaHome color={colorHome} onChange={setColorHome} />

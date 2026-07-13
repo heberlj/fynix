@@ -11,6 +11,7 @@ import { EstadoVacio } from "@/components/ui/EstadoVacio";
 import { TarjetaVisual } from "@/components/tarjetas/TarjetaVisual";
 import { EditarTarjetaForm } from "@/components/tarjetas/EditarTarjetaForm";
 import { ResumenCuotasPopular } from "@/components/tarjetas/ResumenCuotasPopular";
+import { ResumenFinanciamientoCuotas } from "@/components/tarjetas/ResumenFinanciamientoCuotas";
 import { PlanesCuotasPopular } from "@/components/tarjetas/PlanesCuotasPopular";
 
 interface ListaTarjetasProps {
@@ -176,6 +177,8 @@ export function ListaTarjetas({ tarjetas, onAgregar }: ListaTarjetasProps) {
 
                     <BarraUso deuda={tarjeta.deudaActual} limite={tarjeta.limite} />
                     <AlertaPago tarjeta={tarjeta} moneda={tarjeta.moneda} />
+
+                    <ResumenFinanciamientoCuotas tarjeta={tarjeta} />
 
                     {tieneCuotas && (
                       <>

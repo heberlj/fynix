@@ -25,7 +25,13 @@ import { CATEGORIA_PAGO_TARJETA } from "@/types/finanzas";
 import { fechaHoy } from "@/lib/fechas";
 import { asignarQuincena } from "@/lib/quincenas";
 import { disponibleLimiteCuotasPopular } from "@/lib/cuotas-popular";
+import {
+  eliminarGastosFijosDeTarjeta,
+  obtenerFinanciamientoTarjeta,
+  sincronizarGastoFijoFinanciamiento,
+} from "@/lib/financiamiento-cuotas";
 import { aplicarEfectoTransaccion, origenPorDefectoPago } from "@/lib/transacciones";
+import { normalizarAporteIngreso } from "@/lib/aporte-ingreso";
 import { aplicarTema } from "@/lib/tema";
 import { cargarEstado, estadoInicial, generarId, guardarEstado, normalizarEstado } from "@/lib/storage";
 
@@ -309,20 +315,45 @@ export function FinanzasProvider({
   );
 
   const agregarTarjeta = useCallback((datos: Omit<TarjetaCredito, "id">) => {
-    setEstado((prev) => ({
-      ...prev,
-      tarjetas: [...prev.tarjetas, { ...datos, id: generarId() }],
-    }));
+    setEstado((prev) => {
+      const id = generarId();
+      const tarjeta: TarjetaCredito = { ...datos, id };
+      const financiamiento =
+        tarjeta.financiamientoCuotas ?? obtenerFinanciamientoTarjeta(tarjeta);
+      const { gastosFijos, financiamiento: finSync } =
+        sincronizarGastoFijoFinanciamiento(prev, tarjeta, financiamiento);
+
+      return {
+        ...prev,
+        tarjetas: [
+          ...prev.tarjetas,
+          { ...tarjeta, financiamientoCuotas: finSync },
+        ],
+        gastosFijos,
+      };
+    });
   }, []);
 
   const actualizarTarjeta = useCallback(
     (id: string, datos: Partial<TarjetaCredito>) => {
-      setEstado((prev) => ({
-        ...prev,
-        tarjetas: prev.tarjetas.map((t) =>
-          t.id === id ? { ...t, ...datos } : t
-        ),
-      }));
+      setEstado((prev) => {
+        const actual = prev.tarjetas.find((t) => t.id === id);
+        if (!actual) return prev;
+
+        const tarjeta: TarjetaCredito = { ...actual, ...datos };
+        const financiamiento =
+          tarjeta.financiamientoCuotas ?? obtenerFinanciamientoTarjeta(tarjeta);
+        const { gastosFijos, financiamiento: finSync } =
+          sincronizarGastoFijoFinanciamiento(prev, tarjeta, financiamiento);
+
+        return {
+          ...prev,
+          tarjetas: prev.tarjetas.map((t) =>
+            t.id === id ? { ...tarjeta, financiamientoCuotas: finSync } : t
+          ),
+          gastosFijos,
+        };
+      });
     },
     []
   );
@@ -332,6 +363,7 @@ export function FinanzasProvider({
       ...prev,
       tarjetas: prev.tarjetas.filter((t) => t.id !== id),
       cuotasPopular: prev.cuotasPopular.filter((c) => c.tarjetaId !== id),
+      gastosFijos: eliminarGastosFijosDeTarjeta(prev.gastosFijos, id),
     }));
   }, []);
 
@@ -663,7 +695,13 @@ export function FinanzasProvider({
   const actualizarConfiguracion = useCallback(
     (config: Partial<ConfiguracionUsuario>) => {
       setEstado((prev) => {
-        const nuevaConfig = { ...prev.configuracion, ...config };
+        const merged = { ...prev.configuracion, ...config };
+        const nuevaConfig = {
+          ...merged,
+          aporteIngreso: config.aporteIngreso
+            ? normalizarAporteIngreso(config.aporteIngreso, merged)
+            : merged.aporteIngreso,
+        };
         if (config.tema) aplicarTema(config.tema);
         return {
           ...prev,
