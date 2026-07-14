@@ -16,12 +16,16 @@ const RUTAS_AUTH = [
   "/restablecer-contrasena",
 ];
 
+const RUTAS_PUBLICAS = new Set(["/", ...RUTAS_AUTH]);
+
 function AppRoutes({ children }: { children: React.ReactNode }) {
   const { sesion, cargado } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [menuAbierto, setMenuAbierto] = useState(false);
   const esRutaAuth = RUTAS_AUTH.includes(pathname);
+  const esRutaPublica = RUTAS_PUBLICAS.has(pathname);
+  const esLanding = pathname === "/" && !sesion;
   const esRestablecerContrasena = pathname === "/restablecer-contrasena";
 
   useEffect(() => {
@@ -31,8 +35,8 @@ function AppRoutes({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!cargado) return;
 
-    if (!sesion && !esRutaAuth) {
-      router.replace("/login");
+    if (!sesion && !esRutaPublica) {
+      router.replace("/");
       return;
     }
 
@@ -56,8 +60,8 @@ function AppRoutes({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (esRutaAuth) {
-    if (sesion) return null;
+  if (esRutaAuth || esLanding) {
+    if (sesion && esRutaAuth && !esRestablecerContrasena) return null;
     return <>{children}</>;
   }
 

@@ -1,5 +1,4 @@
 import type { Transaccion } from "@/types/finanzas";
-import { esPagoATarjeta } from "@/lib/transacciones";
 
 function redondear(n: number): number {
   return Math.round(n * 100) / 100;
@@ -93,7 +92,7 @@ export function totalesTransaccionesEnMoneda(
     } else if (t.tipo === "gasto") {
       const monto = montoGastoIngresoEnMoneda(t, monedaReferencia);
       if (monto != null) gastos += monto;
-    } else if (t.tipo === "transferencia" && esPagoATarjeta(t)) {
+    } else if (t.tipo === "transferencia") {
       const salida = montoSalidaMovimiento(t, monedaReferencia);
       if (salida != null) movimientos += salida;
     }

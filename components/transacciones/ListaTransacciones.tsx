@@ -8,6 +8,7 @@ import {
 import { formatearFecha, mesActual, opcionesMeses } from "@/lib/fechas";
 import { formatearMoneda } from "@/lib/quincenas";
 import { totalesTransaccionesEnMoneda } from "@/lib/cambio";
+import { balanceTotalEnMoneda } from "@/lib/cuentas";
 import { confirmarEliminacion } from "@/lib/confirmar";
 import { etiquetaOrigen, etiquetaTransferencia } from "@/lib/transacciones";
 import { EstadoVacio } from "@/components/ui/EstadoVacio";
@@ -26,7 +27,7 @@ export function ListaTransacciones({
   onEditar,
   onNueva,
 }: ListaTransaccionesProps) {
-  const { eliminarTransaccion, configuracion, cuentas, tarjetas, gastosFijos } =
+  const { eliminarTransaccion, configuracion, cuentas, tarjetas, gastosFijos, efectivo } =
     useFinanzas();
   const [mesFiltro, setMesFiltro] = useState(mesActual());
   const [quincenaFiltro, setQuincenaFiltro] = useState<"todas" | "1" | "2">(
@@ -58,6 +59,11 @@ export function ListaTransacciones({
   const totales = useMemo(
     () => totalesTransaccionesEnMoneda(filtradas, configuracion.moneda),
     [filtradas, configuracion.moneda]
+  );
+
+  const balanceCuentas = useMemo(
+    () => balanceTotalEnMoneda(cuentas, efectivo, configuracion.moneda),
+    [cuentas, efectivo, configuracion.moneda]
   );
 
   return (
@@ -139,41 +145,39 @@ export function ListaTransacciones({
           </label>
         </div>
 
-        {filtradas.length > 0 && (
-          <div
-            data-ayuda="totales"
-            className="mt-4 grid grid-cols-2 gap-2 text-xs sm:flex sm:flex-wrap sm:gap-4"
-          >
-            <span className="text-muted">
-              Ingresos:{" "}
-              <span className="font-semibold text-ingreso">
-                {formatearMoneda(totales.ingresos, configuracion.moneda)}
-              </span>
+        <div
+          data-ayuda="totales"
+          className="mt-4 grid grid-cols-2 gap-2 text-xs sm:flex sm:flex-wrap sm:gap-4"
+        >
+          <span className="text-muted">
+            Ingresos:{" "}
+            <span className="font-semibold text-ingreso">
+              {formatearMoneda(totales.ingresos, configuracion.moneda)}
             </span>
-            <span className="text-muted">
-              Gastos:{" "}
-              <span className="font-semibold text-gasto">
-                {formatearMoneda(totales.gastos, configuracion.moneda)}
-              </span>
+          </span>
+          <span className="text-muted">
+            Gastos:{" "}
+            <span className="font-semibold text-gasto">
+              {formatearMoneda(totales.gastos, configuracion.moneda)}
             </span>
-            <span className="text-muted">
-              Movimientos:{" "}
-              <span className="font-semibold text-accent">
-                {formatearMoneda(totales.movimientos, configuracion.moneda)}
-              </span>
+          </span>
+          <span className="text-muted">
+            Movimientos:{" "}
+            <span className="font-semibold text-accent">
+              {formatearMoneda(totales.movimientos, configuracion.moneda)}
             </span>
-            <span className="text-muted">
-              Balance:{" "}
-              <span
-                className={`font-semibold ${
-                  totales.balance >= 0 ? "text-ingreso" : "text-gasto"
-                }`}
-              >
-                {formatearMoneda(totales.balance, configuracion.moneda)}
-              </span>
+          </span>
+          <span className="text-muted">
+            Balance cuentas:{" "}
+            <span
+              className={`font-semibold ${
+                balanceCuentas >= 0 ? "text-ingreso" : "text-gasto"
+              }`}
+            >
+              {formatearMoneda(balanceCuentas, configuracion.moneda)}
             </span>
-          </div>
-        )}
+          </span>
+        </div>
       </div>
 
       {filtradas.length === 0 ? (

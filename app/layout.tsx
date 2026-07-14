@@ -30,9 +30,12 @@ export const viewport: Viewport = {
 const scriptTema = `
 (function(){
   try {
-    document.documentElement.setAttribute('data-theme-preference', 'claro');
-    document.documentElement.setAttribute('data-theme', 'claro');
-    document.documentElement.style.colorScheme = 'light';
+    var t = localStorage.getItem('fynix-tema');
+    var pref = (t === 'oscuro' || t === 'claro' || t === 'sistema') ? t : 'claro';
+    var visual = pref === 'oscuro' ? 'oscuro' : (pref === 'sistema' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
+    document.documentElement.setAttribute('data-theme-preference', pref);
+    document.documentElement.setAttribute('data-theme', visual);
+    document.documentElement.style.colorScheme = visual === 'oscuro' ? 'dark' : 'light';
   } catch (e) {
     document.documentElement.setAttribute('data-theme-preference', 'claro');
     document.documentElement.setAttribute('data-theme', 'claro');

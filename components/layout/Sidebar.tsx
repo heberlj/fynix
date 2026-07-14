@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useFinanzas } from "@/context/FinanzasContext";
@@ -13,7 +12,6 @@ import {
   NAV_GRUPOS,
   type NavItem,
 } from "@/components/layout/navegacion";
-import { TutorialGuia } from "@/components/tutorial/TutorialGuia";
 import { useAuth } from "@/context/AuthContext";
 import { aplicarTema } from "@/lib/tema";
 import type { TemaApp } from "@/types/finanzas";
@@ -62,7 +60,6 @@ export function Sidebar({ abierto, onCerrar, nombreUsuario }: SidebarProps) {
   const router = useRouter();
   const { configuracion, actualizarConfiguracion } = useFinanzas();
   const { cerrarSesion } = useAuth();
-  const [tutorialAbierto, setTutorialAbierto] = useState(false);
 
   function cambiarTema(tema: TemaApp) {
     aplicarTema(tema);
@@ -139,18 +136,6 @@ export function Sidebar({ abierto, onCerrar, nombreUsuario }: SidebarProps) {
         </nav>
 
         <div className="mt-auto space-y-3 border-t border-border p-4">
-          <button
-            type="button"
-            onClick={() => {
-              setTutorialAbierto(true);
-              onCerrar();
-            }}
-            className="flex w-full items-center gap-3 rounded-lg border border-accent/30 bg-accent/5 px-3 py-2.5 text-sm font-medium text-accent transition-colors hover:bg-accent/10"
-          >
-            <span className="text-base">?</span>
-            Cómo usar Fynix
-          </button>
-
           <NavLink
             item={NAV_CONFIGURACION}
             pathname={pathname}
@@ -188,11 +173,6 @@ export function Sidebar({ abierto, onCerrar, nombreUsuario }: SidebarProps) {
           </button>
         </div>
       </aside>
-
-      <TutorialGuia
-        abierto={tutorialAbierto}
-        onCerrar={() => setTutorialAbierto(false)}
-      />
     </>
   );
 }

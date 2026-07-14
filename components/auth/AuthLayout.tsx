@@ -1,4 +1,7 @@
+import Link from "next/link";
 import { Logo } from "@/components/ui/Logo";
+import { BotonTemaAuth } from "@/components/auth/BotonTemaAuth";
+import { BotonVolverInicio } from "@/components/auth/BotonVolverInicio";
 
 export function AuthLayout({
   titulo,
@@ -10,10 +13,14 @@ export function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
+    <div className="relative flex min-h-screen flex-col items-center justify-center bg-background p-4">
+      <BotonVolverInicio />
+      <BotonTemaAuth />
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <Logo />
+          <Link href="/" className="inline-block">
+            <Logo />
+          </Link>
           <h1 className="mt-4 text-2xl font-bold text-foreground">Fynix</h1>
           <p className="mt-1 text-sm text-muted">{subtitulo}</p>
         </div>
