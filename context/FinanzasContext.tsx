@@ -15,6 +15,7 @@ import type {
   CuentaBancaria,
   EstadoFinanzas,
   GastoFijo,
+  MetaAhorro,
   OrigenFondo,
   PlanCuotasPopularNuevo,
   Prestamo,
@@ -32,6 +33,7 @@ import {
 } from "@/lib/financiamiento-cuotas";
 import { aplicarEfectoTransaccion, origenPorDefectoPago } from "@/lib/transacciones";
 import { normalizarAporteIngreso } from "@/lib/aporte-ingreso";
+import { colorCategoria } from "@/lib/graficos";
 import { aplicarTema } from "@/lib/tema";
 import { cargarEstado, estadoInicial, generarId, guardarEstado, normalizarEstado } from "@/lib/storage";
 
@@ -66,6 +68,10 @@ interface FinanzasContextValue extends EstadoFinanzas {
   registrarCuotaPrestamo: (id: string) => void;
   registrarPagoPrestamo: (prestamoId: string, fecha?: string) => void;
   eliminarPrestamo: (id: string) => void;
+  agregarMetaAhorro: (datos: Omit<MetaAhorro, "id">) => void;
+  actualizarMetaAhorro: (id: string, datos: Partial<MetaAhorro>) => void;
+  registrarAporteMeta: (metaId: string, monto: number) => void;
+  eliminarMetaAhorro: (id: string) => void;
   agregarCuotaPopular: (datos: Omit<CuotaPopular, "id">) => void;
   actualizarCuotaPopular: (id: string, datos: Partial<CuotaPopular>) => void;
   registrarCuotaPopularPagada: (id: string, origen?: OrigenFondo) => void;
@@ -86,6 +92,7 @@ interface FinanzasContextValue extends EstadoFinanzas {
   agregarCategoriaGasto: (nombre: string) => void;
   renombrarCategoriaGasto: (anterior: string, nuevo: string) => void;
   eliminarCategoriaGasto: (nombre: string) => void;
+  actualizarColorCategoriaGasto: (nombre: string, color: string) => void;
   agregarCategoriaIngreso: (nombre: string) => void;
   renombrarCategoriaIngreso: (anterior: string, nuevo: string) => void;
   eliminarCategoriaIngreso: (nombre: string) => void;
@@ -439,6 +446,50 @@ export function FinanzasProvider({
     }));
   }, []);
 
+  const agregarMetaAhorro = useCallback((datos: Omit<MetaAhorro, "id">) => {
+    setEstado((prev) => ({
+      ...prev,
+      metasAhorro: [...prev.metasAhorro, { ...datos, id: generarId() }],
+    }));
+  }, []);
+
+  const actualizarMetaAhorro = useCallback(
+    (id: string, datos: Partial<MetaAhorro>) => {
+      setEstado((prev) => ({
+        ...prev,
+        metasAhorro: prev.metasAhorro.map((m) =>
+          m.id === id ? { ...m, ...datos } : m
+        ),
+      }));
+    },
+    []
+  );
+
+  const registrarAporteMeta = useCallback((metaId: string, monto: number) => {
+    if (monto <= 0) return;
+    setEstado((prev) => ({
+      ...prev,
+      metasAhorro: prev.metasAhorro.map((m) =>
+        m.id === metaId
+          ? {
+              ...m,
+              montoActual: Math.round((m.montoActual + monto) * 100) / 100,
+            }
+          : m
+      ),
+    }));
+  }, []);
+
+  const eliminarMetaAhorro = useCallback((id: string) => {
+    setEstado((prev) => ({
+      ...prev,
+      metasAhorro: prev.metasAhorro.filter((m) => m.id !== id),
+      transacciones: prev.transacciones.map((t) =>
+        t.metaAhorroId === id ? { ...t, metaAhorroId: undefined } : t
+      ),
+    }));
+  }, []);
+
   const agregarCuotaPopular = useCallback((datos: Omit<CuotaPopular, "id">) => {
     setEstado((prev) => {
       const tarjeta = prev.tarjetas.find((t) => t.id === datos.tarjetaId);
@@ -782,11 +833,16 @@ export function FinanzasProvider({
     setEstado((prev) => {
       const cats = prev.configuracion.categoriasGasto ?? [];
       if (cats.some((c) => c.toLowerCase() === limpio.toLowerCase())) return prev;
+      const colores = { ...(prev.configuracion.coloresCategoriaGasto ?? {}) };
+      if (!colores[limpio]) {
+        colores[limpio] = colorCategoria(cats.length);
+      }
       return {
         ...prev,
         configuracion: {
           ...prev.configuracion,
           categoriasGasto: [...cats, limpio],
+          coloresCategoriaGasto: colores,
         },
       };
     });
@@ -802,11 +858,17 @@ export function FinanzasProvider({
       ) {
         return prev;
       }
+      const colores = { ...(prev.configuracion.coloresCategoriaGasto ?? {}) };
+      if (colores[anterior]) {
+        colores[limpio] = colores[anterior];
+        delete colores[anterior];
+      }
       return {
         ...prev,
         configuracion: {
           ...prev.configuracion,
           categoriasGasto: cats.map((c) => (c === anterior ? limpio : c)),
+          coloresCategoriaGasto: colores,
         },
         transacciones: prev.transacciones.map((t) =>
           t.tipo === "gasto" && t.categoria === anterior
@@ -822,11 +884,14 @@ export function FinanzasProvider({
       const cats = prev.configuracion.categoriasGasto ?? [];
       if (cats.length <= 1) return prev;
       const fallback = cats.find((c) => c !== nombre) ?? "Otros";
+      const colores = { ...(prev.configuracion.coloresCategoriaGasto ?? {}) };
+      delete colores[nombre];
       return {
         ...prev,
         configuracion: {
           ...prev.configuracion,
           categoriasGasto: cats.filter((c) => c !== nombre),
+          coloresCategoriaGasto: colores,
         },
         transacciones: prev.transacciones.map((t) =>
           t.tipo === "gasto" && t.categoria === nombre
@@ -835,6 +900,20 @@ export function FinanzasProvider({
         ),
       };
     });
+  }, []);
+
+  const actualizarColorCategoriaGasto = useCallback((nombre: string, color: string) => {
+    if (!color) return;
+    setEstado((prev) => ({
+      ...prev,
+      configuracion: {
+        ...prev.configuracion,
+        coloresCategoriaGasto: {
+          ...(prev.configuracion.coloresCategoriaGasto ?? {}),
+          [nombre]: color,
+        },
+      },
+    }));
   }, []);
 
   const agregarCategoriaIngreso = useCallback((nombre: string) => {
@@ -919,6 +998,10 @@ export function FinanzasProvider({
       registrarCuotaPrestamo,
       registrarPagoPrestamo,
       eliminarPrestamo,
+      agregarMetaAhorro,
+      actualizarMetaAhorro,
+      registrarAporteMeta,
+      eliminarMetaAhorro,
       agregarCuotaPopular,
       actualizarCuotaPopular,
       registrarCuotaPopularPagada,
@@ -939,6 +1022,7 @@ export function FinanzasProvider({
       agregarCategoriaGasto,
       renombrarCategoriaGasto,
       eliminarCategoriaGasto,
+      actualizarColorCategoriaGasto,
       agregarCategoriaIngreso,
       renombrarCategoriaIngreso,
       eliminarCategoriaIngreso,
@@ -958,6 +1042,10 @@ export function FinanzasProvider({
       registrarCuotaPrestamo,
       registrarPagoPrestamo,
       eliminarPrestamo,
+      agregarMetaAhorro,
+      actualizarMetaAhorro,
+      registrarAporteMeta,
+      eliminarMetaAhorro,
       agregarCuotaPopular,
       actualizarCuotaPopular,
       registrarCuotaPopularPagada,
@@ -978,6 +1066,7 @@ export function FinanzasProvider({
       agregarCategoriaGasto,
       renombrarCategoriaGasto,
       eliminarCategoriaGasto,
+      actualizarColorCategoriaGasto,
       agregarCategoriaIngreso,
       renombrarCategoriaIngreso,
       eliminarCategoriaIngreso,

@@ -98,3 +98,264 @@ button {
 .card-face-back {
   transform: rotateY(180deg) translateZ(1px);
 }
+
+/* ── IA de Fynix: animación de entrada ── */
+@keyframes ia-entrada-icono {
+  0% {
+    opacity: 0;
+    transform: scale(0.35) rotate(-20deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.15) rotate(8deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes ia-entrada-subir {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ia-entrada-panel {
+  from {
+    opacity: 0;
+    transform: translateY(32px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes ia-entrada-resplandor {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.ia-entrada-pending .ia-anim-icono,
+.ia-entrada-pending .ia-anim-panel,
+.ia-entrada-pending .ia-anim-subir-1,
+.ia-entrada-pending .ia-anim-subir-2,
+.ia-entrada-pending .ia-anim-subir-3,
+.ia-entrada-pending .ia-anim-subir-4,
+.ia-entrada-pending .ia-anim-resplandor {
+  opacity: 0;
+}
+
+.ia-entrada-pending .ia-anim-panel {
+  transform: translateY(32px) scale(0.94);
+}
+
+.ia-entrada-pending .ia-anim-subir-1,
+.ia-entrada-pending .ia-anim-subir-2,
+.ia-entrada-pending .ia-anim-subir-3,
+.ia-entrada-pending .ia-anim-subir-4 {
+  transform: translateY(28px);
+}
+
+.ia-entrada-activa .ia-anim-icono {
+  animation: ia-entrada-icono 0.85s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+.ia-entrada-activa .ia-anim-panel {
+  animation: ia-entrada-panel 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.08s;
+}
+
+.ia-entrada-activa .ia-anim-subir-1 {
+  animation: ia-entrada-subir 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.18s;
+}
+
+.ia-entrada-activa .ia-anim-subir-2 {
+  animation: ia-entrada-subir 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.32s;
+}
+
+.ia-entrada-activa .ia-anim-subir-3 {
+  animation: ia-entrada-subir 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.46s;
+}
+
+.ia-entrada-activa .ia-anim-subir-4 {
+  animation: ia-entrada-subir 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.58s;
+}
+
+.ia-entrada-activa .ia-anim-resplandor {
+  animation: ia-entrada-resplandor 1s ease-out both;
+  animation-delay: 0.12s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ia-entrada-pending .ia-anim-icono,
+  .ia-entrada-pending .ia-anim-panel,
+  .ia-entrada-pending .ia-anim-subir-1,
+  .ia-entrada-pending .ia-anim-subir-2,
+  .ia-entrada-pending .ia-anim-subir-3,
+  .ia-entrada-pending .ia-anim-subir-4,
+  .ia-entrada-pending .ia-anim-resplandor {
+    opacity: 1;
+    transform: none;
+  }
+
+  .ia-entrada-activa .ia-anim-icono,
+  .ia-entrada-activa .ia-anim-panel,
+  .ia-entrada-activa .ia-anim-subir-1,
+  .ia-entrada-activa .ia-anim-subir-2,
+  .ia-entrada-activa .ia-anim-subir-3,
+  .ia-entrada-activa .ia-anim-subir-4,
+  .ia-entrada-activa .ia-anim-resplandor {
+    animation: none !important;
+  }
+}
+
+/* ── Entrada sencilla de páginas ── */
+@keyframes pagina-entrada-subir {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pagina-entrada-pending > * {
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+.pagina-entrada-activa > * {
+  animation: pagina-entrada-subir 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.pagina-entrada-activa > *:nth-child(1) {
+  animation-delay: 0.03s;
+}
+
+.pagina-entrada-activa > *:nth-child(2) {
+  animation-delay: 0.09s;
+}
+
+.pagina-entrada-activa > *:nth-child(3) {
+  animation-delay: 0.15s;
+}
+
+.pagina-entrada-activa > *:nth-child(4) {
+  animation-delay: 0.21s;
+}
+
+.pagina-entrada-activa > *:nth-child(5) {
+  animation-delay: 0.27s;
+}
+
+.pagina-entrada-activa > *:nth-child(6) {
+  animation-delay: 0.33s;
+}
+
+.pagina-entrada-activa > *:nth-child(n + 7) {
+  animation-delay: 0.39s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pagina-entrada-pending > * {
+    opacity: 1;
+    transform: none;
+  }
+
+  .pagina-entrada-activa > * {
+    animation: none !important;
+  }
+}
+
+/* ── Entrada landing (página de inicio sin sesión) ── */
+@keyframes landing-entrada-subir {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes landing-entrada-nav {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.landing-entrada-pending .landing-anim-nav {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.landing-entrada-pending .landing-anim-item {
+  opacity: 0;
+  transform: translateY(22px);
+}
+
+.landing-entrada-activa .landing-anim-nav {
+  animation: landing-entrada-nav 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.landing-entrada-activa .landing-anim-item {
+  animation: landing-entrada-subir 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.landing-entrada-activa main > .landing-anim-item:nth-child(1) {
+  animation-delay: 0.08s;
+}
+
+.landing-entrada-activa main > .landing-anim-item:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.landing-entrada-activa main > .landing-anim-item:nth-child(3) {
+  animation-delay: 0.24s;
+}
+
+.landing-entrada-activa main > .landing-anim-item:nth-child(4) {
+  animation-delay: 0.32s;
+}
+
+.landing-entrada-activa .landing-anim-footer {
+  animation: landing-entrada-subir 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.4s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-entrada-pending .landing-anim-nav,
+  .landing-entrada-pending .landing-anim-item {
+    opacity: 1;
+    transform: none;
+  }
+
+  .landing-entrada-activa .landing-anim-nav,
+  .landing-entrada-activa .landing-anim-item,
+  .landing-entrada-activa .landing-anim-footer {
+    animation: none !important;
+  }
+}

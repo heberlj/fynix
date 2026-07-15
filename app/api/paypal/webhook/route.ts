@@ -7,11 +7,24 @@ import {
 } from "@/lib/paypal";
 import { supabaseAdminConfigurado } from "@/lib/supabase/admin";
 import {
+  activarProPorPagoEnlace,
+  EVENTOS_PAGO_ENLACE,
+  type EventoPagoPaypal,
+} from "@/lib/paypal-pago-enlace";
+import {
   guardarSuscripcionUsuario,
   obtenerUsuarioPorSuscripcionPaypal,
 } from "@/lib/suscripcion-server";
 
 export const runtime = "nodejs";
+
+const EVENTOS_SUSCRIPCION = [
+  "BILLING.SUBSCRIPTION.ACTIVATED",
+  "BILLING.SUBSCRIPTION.UPDATED",
+  "BILLING.SUBSCRIPTION.CANCELLED",
+  "BILLING.SUBSCRIPTION.EXPIRED",
+  "BILLING.SUBSCRIPTION.SUSPENDED",
+] as const;
 
 async function sincronizarDesdePaypal(
   subscriptionId: string,
@@ -52,8 +65,7 @@ export async function POST(request: Request) {
     }
   }
 
-  let event: {
-    event_type?: string;
+  let event: EventoPagoPaypal & {
     resource?: { id?: string; custom_id?: string };
   };
 
@@ -63,24 +75,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
 
-  const subscriptionId = event.resource?.id;
-  if (!subscriptionId) {
-    return NextResponse.json({ received: true });
-  }
-
-  const eventos = [
-    "BILLING.SUBSCRIPTION.ACTIVATED",
-    "BILLING.SUBSCRIPTION.UPDATED",
-    "BILLING.SUBSCRIPTION.CANCELLED",
-    "BILLING.SUBSCRIPTION.EXPIRED",
-    "BILLING.SUBSCRIPTION.SUSPENDED",
-  ];
-
-  if (!event.event_type || !eventos.includes(event.event_type)) {
+  if (!event.event_type) {
     return NextResponse.json({ received: true });
   }
 
   try {
+    if (EVENTOS_PAGO_ENLACE.includes(event.event_type as (typeof EVENTOS_PAGO_ENLACE)[number])) {
+      await activarProPorPagoEnlace(event);
+      return NextResponse.json({ received: true });
+    }
+
+    if (!EVENTOS_SUSCRIPCION.includes(event.event_type as (typeof EVENTOS_SUSCRIPCION)[number])) {
+      return NextResponse.json({ received: true });
+    }
+
+    const subscriptionId = event.resource?.id;
+    if (!subscriptionId) {
+      return NextResponse.json({ received: true });
+    }
+
     await sincronizarDesdePaypal(
       subscriptionId,
       event.resource?.custom_id ?? undefined

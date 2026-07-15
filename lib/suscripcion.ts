@@ -3,6 +3,10 @@ import type {
   SuscripcionFila,
   SuscripcionUsuario,
 } from "@/types/suscripcion";
+import {
+  CREDITOS_IA_GRATIS,
+  CREDITOS_IA_PRO,
+} from "@/lib/ia-fynix-constantes";
 
 export const SUSCRIPCION_GRATIS: SuscripcionUsuario = {
   usuarioId: "",
@@ -26,6 +30,14 @@ export function filaASuscripcion(fila: SuscripcionFila): SuscripcionUsuario {
 
 export function tienePlanPro(suscripcion: SuscripcionUsuario): boolean {
   return suscripcion.plan === "pro" && suscripcion.estado === "activo";
+}
+
+export function limiteCreditosIa(
+  suscripcion: Pick<SuscripcionUsuario, "plan" | "estado">
+): number {
+  return tienePlanPro(suscripcion as SuscripcionUsuario)
+    ? CREDITOS_IA_PRO
+    : CREDITOS_IA_GRATIS;
 }
 
 export function etiquetaPlan(plan: PlanSuscripcion): string {

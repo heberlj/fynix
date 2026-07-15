@@ -10,13 +10,13 @@ export const AYUDA_POR_PAGINA: Record<string, PuntoAyuda[]> = {
       id: "patrimonio",
       titulo: "Cuentas, tarjetas y efectivo",
       descripcion:
-        "Saldo disponible de cada fuente. Toca una para filtrar el gráfico por sus transacciones del mes.",
+        "Saldo disponible de cada fuente. Toca una para filtrar los gráficos por sus transacciones del periodo.",
     },
     {
       id: "grafico",
-      titulo: "Gráfico mensual",
+      titulo: "Resumen financiero",
       descripcion:
-        "Ingresos, gastos y movimientos (transferencias) del mes según transacciones. Filtra por tipo o por la cuenta/tarjeta seleccionada arriba.",
+        "Ingresos, gastos y movimientos por día, semana, mes o año. Debajo verás en qué categorías gastaste más.",
     },
   ],
   dashboard: [
@@ -87,7 +87,7 @@ export const AYUDA_POR_PAGINA: Record<string, PuntoAyuda[]> = {
       id: "efectivo",
       titulo: "Efectivo",
       descripcion:
-        "Dinero en mano no depositado en banco. Se suma a tu liquidez en presupuesto y quincenas.",
+        "Dinero en mano no depositado en banco. Se suma a tu liquidez en quincenas.",
     },
   ],
   tarjetas: [
@@ -157,18 +157,18 @@ export const AYUDA_POR_PAGINA: Record<string, PuntoAyuda[]> = {
         "Desglose de compromisos y gastos por categoría en la quincena seleccionada.",
     },
   ],
-  presupuesto: [
+  "metas-ahorro": [
     {
-      id: "proyeccion",
-      titulo: "Proyección",
+      id: "acciones",
+      titulo: "Nueva meta",
       descripcion:
-        "Simula tu próximo ingreso y calcula cuánto tendrás disponible después de reserva y compromisos.",
+        "Crea metas con monto objetivo, fecha límite opcional y registra aportes para ver tu progreso.",
     },
     {
-      id: "sugerencias",
-      titulo: "Sugerencias de pago",
+      id: "lista",
+      titulo: "Tus metas",
       descripcion:
-        "Prioriza qué pagar según tu liquidez. Puedes registrar el pago directamente desde aquí.",
+        "Cada meta muestra cuánto llevas ahorrado, cuánto falta y si ya la completaste.",
     },
   ],
   configuracion: [

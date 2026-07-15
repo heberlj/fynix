@@ -1,20 +1,37 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { mesActual, opcionesMeses } from "@/lib/fechas";
+import {
+  fechaHoy,
+  mesActual,
+  opcionesAnios,
+  opcionesMeses,
+} from "@/lib/fechas";
 import { formatearMoneda } from "@/lib/quincenas";
 import type { CuentaBancaria, TarjetaCredito, Transaccion } from "@/types/finanzas";
 import {
-  calcularResumenMensualHome,
-  filtrarTransaccionesMensualHome,
+  calcularResumenPeriodoHome,
+  filtrarTransaccionesPeriodoHome,
   type FiltroDetalleHome,
   type SeleccionFuenteHome,
 } from "@/lib/resumen-home";
 import {
+  etiquetaTipoPeriodo,
+  rangoPeriodoHome,
+  type TipoPeriodoHome,
+} from "@/lib/periodos-home";
+import { gastosPorCategoriaEnPeriodo } from "@/lib/graficos";
+import {
   GraficoCircular,
   type SegmentoCircular,
 } from "@/components/ui/GraficoCircular";
+import { GraficoCategoriasHome } from "@/components/home/GraficoCategoriasHome";
 import { DetalleTransaccionesHome } from "@/components/home/DetalleTransaccionesHome";
+import { ModalDetalleTransaccionesHome } from "@/components/home/ModalDetalleTransaccionesHome";
+
+function esFiltroDetalle(id: string): id is FiltroDetalleHome {
+  return id === "ingresos" || id === "gastos" || id === "movimientos";
+}
 
 export type FiltroGraficoHome = "todos" | "gastos" | "movimientos" | "ingresos";
 
@@ -37,6 +54,13 @@ const FILTROS: { id: FiltroGraficoHome; etiqueta: string }[] = [
   { id: "gastos", etiqueta: "Gastos" },
   { id: "movimientos", etiqueta: "Movimientos" },
   { id: "ingresos", etiqueta: "Ingresos" },
+];
+
+const PERIODOS: { id: TipoPeriodoHome; etiqueta: string }[] = [
+  { id: "dia", etiqueta: "Día" },
+  { id: "semana", etiqueta: "Semana" },
+  { id: "mes", etiqueta: "Mes" },
+  { id: "anio", etiqueta: "Año" },
 ];
 
 function segmentosParaFiltro(
@@ -64,8 +88,7 @@ function segmentosParaFiltro(
         etiqueta: "Movimientos",
         valor: movimientos,
         color: COLOR_MOVIMIENTOS,
-        descripcion:
-          "Transferencias entre cuentas, efectivo y tarjetas.",
+        descripcion: "Transferencias entre cuentas, efectivo y tarjetas.",
       },
     ];
   }
@@ -88,7 +111,7 @@ function segmentosParaFiltro(
       etiqueta: "Ingresos",
       valor: ingresos,
       color: COLOR_INGRESOS,
-      descripcion: "Entradas de dinero en el mes.",
+      descripcion: "Entradas de dinero en el periodo.",
     },
     {
       id: "gastos",
@@ -138,6 +161,17 @@ function etiquetaCentro(filtro: FiltroGraficoHome): string {
   }
 }
 
+function referenciaPeriodo(
+  tipo: TipoPeriodoHome,
+  fecha: string,
+  mes: string,
+  anio: string
+): string {
+  if (tipo === "mes") return mes;
+  if (tipo === "anio") return anio;
+  return fecha;
+}
+
 export function GraficoFinanzasHome({
   transacciones,
   cuentas,
@@ -148,72 +182,107 @@ export function GraficoFinanzasHome({
   className = "",
 }: GraficoFinanzasHomeProps) {
   const [filtro, setFiltro] = useState<FiltroGraficoHome>("todos");
+  const [tipoPeriodo, setTipoPeriodo] = useState<TipoPeriodoHome>("mes");
+  const [fecha, setFecha] = useState(fechaHoy);
   const [mes, setMes] = useState(mesActual);
+  const [anio, setAnio] = useState(String(new Date().getFullYear()));
+  const [segmentoExpandido, setSegmentoExpandido] =
+    useState<FiltroDetalleHome | null>(null);
+  const [modalDetalleAbierto, setModalDetalleAbierto] = useState(false);
 
   const opcionesMes = useMemo(() => opcionesMeses(12), []);
-  const etiquetaMes =
-    opcionesMes.find((o) => o.valor === mes)?.etiqueta ?? mes;
+  const opcionesAnio = useMemo(() => opcionesAnios(6), []);
+
+  const referencia = referenciaPeriodo(tipoPeriodo, fecha, mes, anio);
+  const rango = useMemo(
+    () => rangoPeriodoHome(tipoPeriodo, referencia),
+    [tipoPeriodo, referencia]
+  );
 
   const resumen = useMemo(
     () =>
-      calcularResumenMensualHome(
+      calcularResumenPeriodoHome(
         transacciones,
-        mes,
+        rango,
         moneda,
         fuenteSeleccionada
       ),
-    [transacciones, mes, moneda, fuenteSeleccionada]
+    [transacciones, rango, moneda, fuenteSeleccionada]
+  );
+
+  const datosCategoria = useMemo(
+    () =>
+      gastosPorCategoriaEnPeriodo(
+        transacciones,
+        rango,
+        moneda,
+        fuenteSeleccionada
+      ),
+    [transacciones, rango, moneda, fuenteSeleccionada]
   );
 
   const segmentos = segmentosParaFiltro(filtro, resumen);
   const total = totalFiltro(filtro, resumen);
 
-  const filtroDetalle: FiltroDetalleHome | null =
-    filtro === "ingresos" || filtro === "gastos" || filtro === "movimientos"
-      ? filtro
-      : null;
-
-  const transaccionesDetalle = useMemo(() => {
-    if (!filtroDetalle) return [];
-    return filtrarTransaccionesMensualHome(
+  const transaccionesSegmento = useMemo(() => {
+    if (!segmentoExpandido) return [];
+    return filtrarTransaccionesPeriodoHome(
       transacciones,
-      mes,
+      rango,
       moneda,
       fuenteSeleccionada,
-      filtroDetalle
+      segmentoExpandido
     );
-  }, [transacciones, mes, moneda, fuenteSeleccionada, filtroDetalle]);
+  }, [
+    transacciones,
+    rango,
+    moneda,
+    fuenteSeleccionada,
+    segmentoExpandido,
+  ]);
+
+  function manejarClicSegmento(id: string) {
+    if (!esFiltroDetalle(id)) return;
+    setSegmentoExpandido((actual) => (actual === id ? null : id));
+  }
+
+  function manejarCambioFiltro(nuevo: FiltroGraficoHome) {
+    setFiltro(nuevo);
+    if (nuevo !== "todos" && segmentoExpandido && segmentoExpandido !== nuevo) {
+      setSegmentoExpandido(null);
+    }
+  }
+
+  function manejarCambioPeriodo(nuevo: TipoPeriodoHome) {
+    setTipoPeriodo(nuevo);
+    setSegmentoExpandido(null);
+  }
+
+  const etiquetaPeriodo = rango.etiqueta;
+  const tipoEtiqueta = etiquetaTipoPeriodo(tipoPeriodo);
 
   const subtitulo = fuenteSeleccionada
-    ? `Transacciones de ${etiquetaFuente ?? "la fuente seleccionada"} en ${etiquetaMes}.`
-    : `Todas tus transacciones en ${etiquetaMes}. Selecciona una cuenta o tarjeta arriba para filtrar.`;
+    ? `Transacciones de ${etiquetaFuente ?? "la fuente seleccionada"} en ${etiquetaPeriodo}.`
+    : `Todas tus transacciones en ${etiquetaPeriodo}. Selecciona una cuenta o tarjeta arriba para filtrar.`;
+
+  const subtituloCategorias = fuenteSeleccionada
+    ? `Gastos de ${etiquetaFuente ?? "la fuente seleccionada"} en ${etiquetaPeriodo}.`
+    : `Dónde gastaste más en ${etiquetaPeriodo}.`;
+
+  const inputClass =
+    "rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent";
 
   return (
     <div className={className}>
-      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-muted">Mes</span>
-          <select
-            value={mes}
-            onChange={(e) => setMes(e.target.value)}
-            className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent"
-          >
-            {opcionesMes.map((opcion) => (
-              <option key={opcion.valor} value={opcion.valor}>
-                {opcion.etiqueta}
-              </option>
-            ))}
-          </select>
-        </label>
-
+      <div className="mb-3 flex flex-col gap-3">
         <div className="flex flex-wrap gap-2">
-          {FILTROS.map((opcion) => (
+          {PERIODOS.map((opcion) => (
             <button
               key={opcion.id}
               type="button"
-              onClick={() => setFiltro(opcion.id)}
+              onClick={() => manejarCambioPeriodo(opcion.id)}
               className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                filtro === opcion.id
+                tipoPeriodo === opcion.id
                   ? "bg-accent text-white"
                   : "border border-border bg-background text-muted hover:text-foreground"
               }`}
@@ -222,12 +291,72 @@ export function GraficoFinanzasHome({
             </button>
           ))}
         </div>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-muted">
+              {tipoPeriodo === "dia" && "Fecha"}
+              {tipoPeriodo === "semana" && "Semana (elige un día)"}
+              {tipoPeriodo === "mes" && "Mes"}
+              {tipoPeriodo === "anio" && "Año"}
+            </span>
+            {tipoPeriodo === "mes" ? (
+              <select
+                value={mes}
+                onChange={(e) => setMes(e.target.value)}
+                className={inputClass}
+              >
+                {opcionesMes.map((opcion) => (
+                  <option key={opcion.valor} value={opcion.valor}>
+                    {opcion.etiqueta}
+                  </option>
+                ))}
+              </select>
+            ) : tipoPeriodo === "anio" ? (
+              <select
+                value={anio}
+                onChange={(e) => setAnio(e.target.value)}
+                className={inputClass}
+              >
+                {opcionesAnio.map((opcion) => (
+                  <option key={opcion.valor} value={opcion.valor}>
+                    {opcion.etiqueta}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="date"
+                value={fecha}
+                onChange={(e) => setFecha(e.target.value)}
+                className={inputClass}
+              />
+            )}
+          </label>
+
+          <div className="flex flex-wrap gap-2">
+            {FILTROS.map((opcion) => (
+              <button
+                key={opcion.id}
+                type="button"
+                onClick={() => manejarCambioFiltro(opcion.id)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                  filtro === opcion.id
+                    ? "bg-accent text-white"
+                    : "border border-border bg-background text-muted hover:text-foreground"
+                }`}
+              >
+                {opcion.etiqueta}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <GraficoCircular
         segmentos={segmentos}
         moneda={moneda}
-        titulo="Resumen del mes"
+        titulo={`Resumen del ${tipoEtiqueta}`}
         subtitulo={subtitulo}
         centroEtiqueta={etiquetaCentro(filtro)}
         centroValor={formatearMoneda(total, moneda)}
@@ -236,17 +365,49 @@ export function GraficoFinanzasHome({
             ? `Ingresos: ${formatearMoneda(resumen.ingresos, moneda)}`
             : undefined
         }
-        mensajeVacio="No hay transacciones en este mes para mostrar."
+        mensajeVacio={`No hay transacciones en este ${tipoEtiqueta} para mostrar.`}
+        segmentoSeleccionado={segmentoExpandido}
+        onSegmentoClick={manejarClicSegmento}
       />
 
-      {filtroDetalle && (
+      {segmentoExpandido && (
         <DetalleTransaccionesHome
-          transacciones={transaccionesDetalle}
-          filtro={filtroDetalle}
+          transacciones={transaccionesSegmento}
+          filtro={segmentoExpandido}
           moneda={moneda}
           fuente={fuenteSeleccionada}
           cuentas={cuentas}
           tarjetas={tarjetas}
+          onVerMas={() => setModalDetalleAbierto(true)}
+        />
+      )}
+
+      <div className="mt-6">
+        <GraficoCategoriasHome
+          datos={datosCategoria}
+          transacciones={transacciones}
+          rango={rango}
+          tipoPeriodo={tipoPeriodo}
+          moneda={moneda}
+          fuente={fuenteSeleccionada}
+          cuentas={cuentas}
+          tarjetas={tarjetas}
+          subtitulo={subtituloCategorias}
+        />
+      </div>
+
+      {segmentoExpandido && (
+        <ModalDetalleTransaccionesHome
+          abierto={modalDetalleAbierto}
+          onCerrar={() => setModalDetalleAbierto(false)}
+          filtro={segmentoExpandido}
+          transacciones={transacciones}
+          moneda={moneda}
+          fuente={fuenteSeleccionada}
+          cuentas={cuentas}
+          tarjetas={tarjetas}
+          rangoInicial={rango}
+          tipoPeriodoInicial={tipoPeriodo}
         />
       )}
     </div>

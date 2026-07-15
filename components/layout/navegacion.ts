@@ -35,7 +35,13 @@ export const NAV_GRUPOS: NavGrupo[] = [
       { href: "/cuentas", label: "Cuentas", icon: "cuentas" },
       { href: "/tarjetas", label: "Tarjetas", icon: "tarjetas" },
       { href: "/prestamos", label: "Préstamos", icon: "prestamos" },
-      { href: "/presupuesto", label: "Presupuesto", icon: "presupuesto" },
+      { href: "/metas-ahorro", label: "Metas de ahorro", icon: "metas-ahorro" },
+    ],
+  },
+  {
+    titulo: "IA de Fynix",
+    items: [
+      { href: "/ia-fynix", label: "Asistente", icon: "ia-fynix" },
     ],
   },
 ];

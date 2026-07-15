@@ -5,7 +5,7 @@ import { useFinanzas } from "@/context/FinanzasContext";
 import { exportarDatos, importarDesdeArchivo } from "@/lib/exportar";
 
 export function RespaldoDatos() {
-  const { transacciones, tarjetas, prestamos, cuotasPopular, gastosFijos, cuentas, efectivo, configuracion, importarEstado } =
+  const { transacciones, tarjetas, prestamos, metasAhorro, cuotasPopular, gastosFijos, cuentas, efectivo, configuracion, importarEstado } =
     useFinanzas();
   const inputRef = useRef<HTMLInputElement>(null);
   const [mensaje, setMensaje] = useState<{
@@ -14,7 +14,7 @@ export function RespaldoDatos() {
   } | null>(null);
 
   function handleExportar() {
-    exportarDatos({ transacciones, tarjetas, prestamos, cuotasPopular, gastosFijos, cuentas, efectivo, configuracion });
+    exportarDatos({ transacciones, tarjetas, prestamos, metasAhorro, cuotasPopular, gastosFijos, cuentas, efectivo, configuracion });
     setMensaje({ tipo: "ok", texto: "Datos exportados correctamente" });
     setTimeout(() => setMensaje(null), 3000);
   }

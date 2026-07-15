@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { PanelConfiguracion } from "@/components/configuracion/PanelConfiguracion";
-import { BotonPayPalSuscripcion } from "@/components/configuracion/BotonPayPalSuscripcion";
+import { BotonPayPalPago } from "@/components/configuracion/BotonPayPalPago";
 import { useSuscripcion } from "@/hooks/useSuscripcion";
 import {
   etiquetaEstadoSuscripcion,
@@ -12,11 +12,15 @@ import {
   tienePlanPro,
 } from "@/lib/suscripcion";
 import { formatearFecha } from "@/lib/fechas";
-import { paypalPublicoConfigurado } from "@/lib/paypal-client";
+import {
+  paypalEnlacePago,
+  paypalPublicoConfigurado,
+  usaEnlacePagoPaypal,
+} from "@/lib/paypal-client";
 
 const BENEFICIOS_GRATIS = [
   "Cuentas, tarjetas y transacciones ilimitadas",
-  "Gastos fijos y presupuesto por quincena",
+  "Gastos fijos y metas de ahorro",
   "Respaldo manual en JSON",
   "Sincronización en la nube con tu cuenta",
 ];
@@ -28,63 +32,161 @@ const BENEFICIOS_PRO = [
   "Funciones nuevas antes que nadie",
 ];
 
-interface ConfigPayPal {
-  planId: string;
-  usuarioId: string;
-}
+const PENDING_SUBSCRIPTION_KEY = "fynix_paypal_subscription_id";
 
 export function ConfiguracionSuscripcion() {
   const { suscripcion, cargado, recargar } = useSuscripcion();
   const searchParams = useSearchParams();
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
-  const [configPaypal, setConfigPaypal] = useState<ConfigPayPal | null>(null);
+  const [paypalListo, setPaypalListo] = useState(usaEnlacePagoPaypal());
   const [configError, setConfigError] = useState("");
+  const [verificandoPago, setVerificandoPago] = useState(false);
 
   const esPro = tienePlanPro(suscripcion);
   const exito = searchParams.get("exito") === "1";
+  const paypalReturn = searchParams.get("paypal");
+  const enlacePago = paypalEnlacePago();
 
-  const cargarConfigPaypal = useCallback(async () => {
-    if (esPro) return;
+  const activarSuscripcion = useCallback(
+    async (subscriptionId: string) => {
+      setError("");
+      setCargando(true);
+      try {
+        const res = await fetch("/api/paypal/activate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ subscriptionId }),
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          setError(data.error ?? "No se pudo activar la suscripción");
+          return;
+        }
+        await recargar();
+      } catch {
+        setError("Error de conexión al activar la suscripción");
+      } finally {
+        setCargando(false);
+      }
+    },
+    [recargar]
+  );
+
+  const verificarPaypal = useCallback(async () => {
+    if (esPro || usaEnlacePagoPaypal()) return;
     setConfigError("");
     try {
       const res = await fetch("/api/paypal/config");
       const data = await res.json();
       if (!res.ok || data.error) {
-        setConfigError(data.error ?? "No se pudo cargar PayPal");
+        setConfigError(data.error ?? "No se pudo conectar con PayPal");
+        setPaypalListo(false);
         return;
       }
-      if (data.planId && data.usuarioId) {
-        setConfigPaypal({ planId: data.planId, usuarioId: data.usuarioId });
-      }
+      setPaypalListo(true);
     } catch {
       setConfigError("Error de conexión al cargar PayPal");
+      setPaypalListo(false);
     }
   }, [esPro]);
 
   useEffect(() => {
     if (cargado && !esPro && paypalPublicoConfigurado()) {
-      void cargarConfigPaypal();
+      void verificarPaypal();
     }
-  }, [cargado, esPro, cargarConfigPaypal]);
+  }, [cargado, esPro, verificarPaypal]);
 
-  async function activarSuscripcion(subscriptionId: string) {
+  useEffect(() => {
+    if (paypalReturn !== "return") return;
+    const pending = sessionStorage.getItem(PENDING_SUBSCRIPTION_KEY);
+    if (!pending) return;
+    sessionStorage.removeItem(PENDING_SUBSCRIPTION_KEY);
+    void activarSuscripcion(pending);
+  }, [paypalReturn, activarSuscripcion]);
+
+  useEffect(() => {
+    if (paypalReturn === "cancel") {
+      setError("Cancelaste el pago en PayPal.");
+    }
+  }, [paypalReturn]);
+
+  useEffect(() => {
+    if (paypalReturn !== "paid" || esPro) return;
+
+    let activo = true;
+    let intentos = 0;
+    const maxIntentos = 20;
+
+    setVerificandoPago(true);
+
+    const intervalo = setInterval(() => {
+      intentos += 1;
+      void (async () => {
+        try {
+          const res = await fetch("/api/paypal/estado-pago");
+          const data = (await res.json()) as { pro?: boolean };
+          if (!activo) return;
+          if (data.pro) {
+            clearInterval(intervalo);
+            setVerificandoPago(false);
+            await recargar();
+            return;
+          }
+          if (intentos >= maxIntentos) {
+            clearInterval(intervalo);
+            setVerificandoPago(false);
+          }
+        } catch {
+          if (intentos >= maxIntentos) {
+            clearInterval(intervalo);
+            setVerificandoPago(false);
+          }
+        }
+      })();
+    }, 3000);
+
+    return () => {
+      activo = false;
+      clearInterval(intervalo);
+      setVerificandoPago(false);
+    };
+  }, [paypalReturn, esPro, recargar]);
+
+  async function iniciarPagoEnlace() {
+    if (!enlacePago) return;
+
     setError("");
     setCargando(true);
     try {
-      const res = await fetch("/api/paypal/activate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subscriptionId }),
-      });
+      const res = await fetch("/api/paypal/iniciar-pago", { method: "POST" });
       const data = await res.json();
       if (!res.ok || data.error) {
-        setError(data.error ?? "No se pudo activar la suscripción");
+        setError(data.error ?? "No se pudo preparar el pago");
         return;
       }
-      await recargar();
+      window.location.href = enlacePago;
     } catch {
-      setError("Error de conexión al activar la suscripción");
+      setError("Error de conexión al preparar el pago");
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  async function iniciarSuscripcionApi() {
+    setError("");
+    setCargando(true);
+    try {
+      const res = await fetch("/api/paypal/subscribe", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok || !data.approvalUrl || !data.subscriptionId) {
+        setError(data.error ?? "No se pudo iniciar el pago con PayPal");
+        return;
+      }
+      sessionStorage.setItem(PENDING_SUBSCRIPTION_KEY, data.subscriptionId);
+      window.location.href = data.approvalUrl;
+    } catch {
+      setError("Error de conexión con PayPal");
     } finally {
       setCargando(false);
     }
@@ -116,6 +218,45 @@ export function ConfiguracionSuscripcion() {
     }
   }
 
+  function renderBotonPago() {
+    if (enlacePago) {
+      return (
+        <>
+          <BotonPayPalPago
+            onClick={() => void iniciarPagoEnlace()}
+            deshabilitado={!cargado}
+            cargando={cargando}
+            precio={PRECIO_PRO_MENSUAL_USD}
+          />
+          <p className="text-center text-[11px] text-muted">
+            Serás redirigido a PayPal para completar el pago.
+          </p>
+        </>
+      );
+    }
+
+    if (configError) {
+      return <p className="mt-4 text-sm text-gasto">{configError}</p>;
+    }
+
+    if (paypalListo) {
+      return (
+        <BotonPayPalPago
+          onClick={() => void iniciarSuscripcionApi()}
+          deshabilitado={cargando || !cargado}
+          cargando={cargando}
+          precio={PRECIO_PRO_MENSUAL_USD}
+        />
+      );
+    }
+
+    return (
+      <p className="mt-4 text-sm text-muted">
+        {cargado ? "Cargando PayPal..." : "Cargando..."}
+      </p>
+    );
+  }
+
   return (
     <PanelConfiguracion
       titulo="Suscripción"
@@ -125,6 +266,25 @@ export function ConfiguracionSuscripcion() {
         {exito && (
           <p className="rounded-lg border border-ingreso/30 bg-ingreso/10 px-4 py-3 text-sm text-ingreso">
             Suscripción activada. ¡Bienvenido a Fynix Pro!
+          </p>
+        )}
+
+        {paypalReturn === "paid" && !esPro && verificandoPago && (
+          <p className="rounded-lg border border-accent/30 bg-accent/5 px-4 py-3 text-sm text-foreground">
+            Confirmando tu pago con PayPal…
+          </p>
+        )}
+
+        {paypalReturn === "paid" && !esPro && !verificandoPago && (
+          <p className="rounded-lg border border-border bg-background px-4 py-3 text-sm text-muted">
+            Si ya pagaste, Fynix Pro se activará en unos minutos. Recarga la página
+            o vuelve en breve.
+          </p>
+        )}
+
+        {esPro && paypalReturn === "paid" && (
+          <p className="rounded-lg border border-ingreso/30 bg-ingreso/10 px-4 py-3 text-sm text-ingreso">
+            ¡Pago confirmado! Bienvenido a Fynix Pro.
           </p>
         )}
 
@@ -198,20 +358,8 @@ export function ConfiguracionSuscripcion() {
               >
                 {cargando ? "Procesando..." : "Cancelar suscripción"}
               </button>
-            ) : configPaypal ? (
-              <BotonPayPalSuscripcion
-                planId={configPaypal.planId}
-                usuarioId={configPaypal.usuarioId}
-                deshabilitado={cargando || !cargado}
-                onExito={activarSuscripcion}
-                onError={setError}
-              />
-            ) : configError ? (
-              <p className="mt-4 text-sm text-gasto">{configError}</p>
             ) : (
-              <p className="mt-4 text-sm text-muted">
-                {cargado ? "Cargando PayPal..." : "Cargando..."}
-              </p>
+              renderBotonPago()
             )}
           </div>
         </div>
@@ -220,8 +368,8 @@ export function ConfiguracionSuscripcion() {
 
         {!paypalPublicoConfigurado() && (
           <p className="text-xs text-muted">
-            PayPal no está configurado. Añade NEXT_PUBLIC_PAYPAL_CLIENT_ID y las
-            claves del servidor en .env.local, luego reinicia la app.
+            PayPal no está configurado. Añade NEXT_PUBLIC_PAYPAL_PAYMENT_LINK o
+            las credenciales en .env.local, luego reinicia la app.
           </p>
         )}
 

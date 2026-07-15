@@ -12,6 +12,7 @@ import {
   NAV_GRUPOS,
   type NavItem,
 } from "@/components/layout/navegacion";
+import { notificarEntradaPagina } from "@/components/layout/useEntradaPagina";
 import { useAuth } from "@/context/AuthContext";
 import { aplicarTema } from "@/lib/tema";
 import type { TemaApp } from "@/types/finanzas";
@@ -40,7 +41,10 @@ function NavLink({
   return (
     <Link
       href={item.href}
-      onClick={onCerrar}
+      onClick={() => {
+        onCerrar();
+        notificarEntradaPagina(item.href);
+      }}
       className={`flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors lg:py-2.5 ${
         activo
           ? "bg-accent/10 text-accent"

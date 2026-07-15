@@ -34,6 +34,8 @@ export interface Transaccion {
   gastoFijoId?: string;
   /** Préstamo al que aplica este pago de cuota */
   prestamoId?: string;
+  /** Aporte registrado hacia una meta de ahorro */
+  metaAhorroId?: string;
   /** Pago de aporte según ingresos (diezmo, donación, etc.) */
   aporteIngreso?: boolean;
 }
@@ -161,6 +163,17 @@ export interface Prestamo {
   fechaInicio: string;
 }
 
+export interface MetaAhorro {
+  id: string;
+  nombre: string;
+  montoObjetivo: number;
+  montoActual: number;
+  moneda: string;
+  /** Fecha límite opcional (YYYY-MM-DD) */
+  fechaLimite?: string;
+  notas?: string;
+}
+
 export interface CuotaPopular {
   id: string;
   /** Tarjeta donde está el plan de cuotas */
@@ -248,6 +261,8 @@ export interface ConfiguracionUsuario {
   categoriasGasto: string[];
   /** Categorías personalizables para ingresos en transacciones */
   categoriasIngreso: string[];
+  /** Color por categoría de gasto (hex), ej. { Comida: "#16a34a" } */
+  coloresCategoriaGasto?: Record<string, string>;
   /** Aporte opcional según % de ingresos (desactivado por defecto) */
   aporteIngreso?: AporteSegunIngreso;
 }
@@ -266,56 +281,6 @@ export interface ResumenQuincena {
   disponibleProyectado: number;
 }
 
-export type PrioridadSugerencia = "pagar" | "posponer" | "evitar";
-
-export type TipoObligacionSugerencia =
-  | "tarjeta"
-  | "prestamo"
-  | "cuota-popular"
-  | "gasto-fijo"
-  | "aporte-ingreso";
-
-export interface ItemSugerenciaPago {
-  id: string;
-  tipo: TipoObligacionSugerencia;
-  nombre: string;
-  monto: number;
-  moneda: string;
-  diaPago: number;
-  diasRestantes: number;
-  /** ID de la entidad para acciones (tarjeta, préstamo, cuota, gasto fijo) */
-  entidadId?: string;
-  prioridad: PrioridadSugerencia;
-  puntuacion: number;
-  razon: string;
-  categoria?: string;
-  tipoPresupuesto?: TipoPresupuestoGasto;
-}
-
-export interface ProyeccionProximoIngreso {
-  periodo: PeriodoQuincena;
-  ingresoEstimado: number;
-  compromisos: number;
-  gastosVariablesEstimados: number;
-  liquidezActual: number;
-  fondoTotal: number;
-  reservaSugerida: number;
-  disponibleProyectado: number;
-  moneda: string;
-}
-
-export interface ResultadoSugerencias {
-  items: ItemSugerenciaPago[];
-  totalPagar: number;
-  totalPosponer: number;
-  totalEvitar: number;
-  liquidez: number;
-  ingresoEstimado: number;
-  presupuestoAsignable: number;
-  resumen: string;
-  moneda: string;
-}
-
 export interface PeriodoQuincena {
   quincena: 1 | 2;
   mes: string;
@@ -328,6 +293,7 @@ export interface EstadoFinanzas {
   transacciones: Transaccion[];
   tarjetas: TarjetaCredito[];
   prestamos: Prestamo[];
+  metasAhorro: MetaAhorro[];
   cuotasPopular: CuotaPopular[];
   gastosFijos: GastoFijo[];
   cuentas: CuentaBancaria[];

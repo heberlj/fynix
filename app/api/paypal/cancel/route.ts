@@ -1,17 +1,16 @@
 import { NextResponse } from "next/server";
 import { crearClienteSupabaseServidor } from "@/lib/supabase/server";
-import { supabaseAdminConfigurado } from "@/lib/supabase/admin";
 import {
   cancelarSuscripcionPaypal,
   mapearEstadoPaypal,
   paypalConfigurado,
 } from "@/lib/paypal";
-import { guardarSuscripcionUsuario } from "@/lib/suscripcion-server";
+import { guardarSuscripcionAuth } from "@/lib/suscripcion-server";
 
 export async function POST() {
-  if (!paypalConfigurado() || !supabaseAdminConfigurado()) {
+  if (!paypalConfigurado()) {
     return NextResponse.json(
-      { error: "Servidor no configurado" },
+      { error: "PayPal no está configurado" },
       { status: 503 }
     );
   }
@@ -42,7 +41,7 @@ export async function POST() {
     await cancelarSuscripcionPaypal(fila.paypal_subscription_id);
     const { plan, estado } = mapearEstadoPaypal("CANCELLED");
 
-    await guardarSuscripcionUsuario({
+    await guardarSuscripcionAuth(supabase, {
       usuarioId: user.id,
       plan,
       estado,

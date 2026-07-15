@@ -17,8 +17,8 @@ export const metadata: Metadata = {
   title: "Fynix",
   description: "Tu dinero, tu futuro. Gestor de finanzas personales.",
   icons: {
-    icon: "/icon.png",
-    apple: "/icon.png",
+    icon: "/logo-fynix.png",
+    apple: "/logo-fynix.png",
   },
 };
 

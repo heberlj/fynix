@@ -2,7 +2,7 @@ const BENEFICIOS = [
   {
     titulo: "Quincenas a tu medida",
     descripcion:
-      "Q1 del 1 al 15 y Q2 del 16 al fin de mes. Tus cobros del 15 y 30 guían el presupuesto.",
+      "Q1 del 1 al 15 y Q2 del 16 al fin de mes. Tus cobros del 15 y 30 guían tus quincenas.",
     icono: "📅",
     color: "bg-blue-500/15 text-blue-400",
   },
@@ -21,9 +21,9 @@ const BENEFICIOS = [
     color: "bg-amber-500/15 text-amber-400",
   },
   {
-    titulo: "Presupuesto con sugerencias",
+    titulo: "Metas de ahorro",
     descripcion:
-      "Te indica qué pagar primero según vencimientos, liquidez y prioridad esencial o flexible.",
+      "Define objetivos como fondo de emergencia o un viaje y sigue tu progreso con cada aporte.",
     icono: "🎯",
     color: "bg-yellow-500/15 text-yellow-400",
   },

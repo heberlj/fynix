@@ -21,6 +21,8 @@ interface GraficoCircularProps {
   totalReferencia?: number;
   mensajeVacio?: string;
   className?: string;
+  segmentoSeleccionado?: string | null;
+  onSegmentoClick?: (id: string) => void;
 }
 
 export function GraficoCircular({
@@ -34,6 +36,8 @@ export function GraficoCircular({
   totalReferencia,
   mensajeVacio = "Sin datos para mostrar",
   className = "",
+  segmentoSeleccionado = null,
+  onSegmentoClick,
 }: GraficoCircularProps) {
   const segmentosActivos = segmentos.filter((s) => s.valor > 0);
   const total =
@@ -102,21 +106,18 @@ export function GraficoCircular({
                 total > 0 && seg.valor > 0
                   ? (seg.valor / total) * 100
                   : 0;
+              const seleccionado = segmentoSeleccionado === seg.id;
+              const clickeable = Boolean(onSegmentoClick);
 
-              return (
-                <li
-                  key={seg.id}
-                  className={`rounded-lg border border-border bg-background px-3 py-2.5 ${
-                    seg.valor <= 0 ? "opacity-50" : ""
-                  }`}
-                >
+              const contenido = (
+                <>
                   <div className="flex items-start gap-2.5">
                     <span
                       className="mt-1 h-3 w-3 shrink-0 rounded-full"
                       style={{ backgroundColor: seg.color }}
                       aria-hidden
                     />
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 text-left">
                       <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
                         <span className="text-sm font-medium text-foreground">
                           {seg.etiqueta}
@@ -137,6 +138,33 @@ export function GraficoCircular({
                       )}
                     </div>
                   </div>
+                </>
+              );
+
+              return (
+                <li key={seg.id}>
+                  {clickeable ? (
+                    <button
+                      type="button"
+                      onClick={() => onSegmentoClick?.(seg.id)}
+                      disabled={seg.valor <= 0}
+                      className={`w-full rounded-lg border px-3 py-2.5 text-left transition-colors ${
+                        seleccionado
+                          ? "border-accent bg-accent/10 ring-1 ring-accent/30"
+                          : "border-border bg-background hover:border-accent/40 hover:bg-surface-hover"
+                      } ${seg.valor <= 0 ? "cursor-not-allowed opacity-50" : ""}`}
+                    >
+                      {contenido}
+                    </button>
+                  ) : (
+                    <div
+                      className={`rounded-lg border border-border bg-background px-3 py-2.5 ${
+                        seg.valor <= 0 ? "opacity-50" : ""
+                      }`}
+                    >
+                      {contenido}
+                    </div>
+                  )}
                 </li>
               );
             })}

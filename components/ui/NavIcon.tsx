@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 export type NavIconName =
   | "home"
   | "dashboard"
@@ -7,7 +9,8 @@ export type NavIconName =
   | "cuentas"
   | "tarjetas"
   | "prestamos"
-  | "presupuesto"
+  | "metas-ahorro"
+  | "ia-fynix"
   | "configuracion";
 
 interface NavIconProps {
@@ -92,15 +95,24 @@ export function NavIcon({ name, className = "h-[18px] w-[18px]" }: NavIconProps)
           <path d="M10 11.5h4.5" />
         </svg>
       );
-    case "presupuesto":
+    case "metas-ahorro":
       return (
         <svg {...props}>
-          <path d="M4 19V5" />
-          <path d="M4 19h16" />
-          <rect x="7" y="12" width="3" height="7" rx="0.5" />
-          <rect x="12" y="9" width="3" height="10" rx="0.5" />
-          <rect x="17" y="6" width="3" height="13" rx="0.5" />
+          <circle cx="12" cy="12" r="8" />
+          <circle cx="12" cy="12" r="4.5" />
+          <path d="M12 4v2M12 18v2M4 12h2M18 12h2" />
         </svg>
+      );
+    case "ia-fynix":
+      return (
+        <Image
+          src="/ia-fynix-icon.png"
+          alt=""
+          width={18}
+          height={18}
+          className={`${className} object-contain`}
+          aria-hidden
+        />
       );
     case "configuracion":
       return (

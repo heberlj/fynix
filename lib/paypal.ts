@@ -7,8 +7,12 @@ export function paypalConfigurado(): boolean {
   );
 }
 
+export function paypalModo(): "live" | "sandbox" {
+  return process.env.PAYPAL_MODE === "live" ? "live" : "sandbox";
+}
+
 function paypalApiBase(): string {
-  return process.env.PAYPAL_MODE === "live"
+  return paypalModo() === "live"
     ? "https://api-m.paypal.com"
     : "https://api-m.sandbox.paypal.com";
 }
@@ -124,12 +128,94 @@ export async function cancelarSuscripcionPaypal(
   });
 }
 
+export interface PayPalSubscriptionLink {
+  href: string;
+  rel: string;
+  method: string;
+}
+
+export interface PayPalSubscriptionCreada {
+  id: string;
+  status: string;
+  links?: PayPalSubscriptionLink[];
+}
+
+export function urlBaseApp(desde?: string | URL): string {
+  const configurada = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (configurada) return configurada.replace(/\/$/, "");
+  if (desde) return new URL(desde).origin;
+  return "http://localhost:3000";
+}
+
+export async function crearSuscripcionPaypal(opciones: {
+  planId: string;
+  usuarioId: string;
+  returnUrl: string;
+  cancelUrl: string;
+}): Promise<PayPalSubscriptionCreada> {
+  return paypalApi<PayPalSubscriptionCreada>("/v1/billing/subscriptions", {
+    method: "POST",
+    body: JSON.stringify({
+      plan_id: opciones.planId,
+      custom_id: opciones.usuarioId,
+      application_context: {
+        brand_name: "Fynix",
+        locale: "es-ES",
+        shipping_preference: "NO_SHIPPING",
+        user_action: "SUBSCRIBE_NOW",
+        payment_method: {
+          payer_selected: "PAYPAL",
+          payee_preferred: "IMMEDIATE_PAYMENT_REQUIRED",
+        },
+        return_url: opciones.returnUrl,
+        cancel_url: opciones.cancelUrl,
+      },
+    }),
+  });
+}
+
+async function asegurarPlanActivo(planId: string): Promise<string> {
+  const plan = await paypalApi<{ id: string; status?: string }>(
+    `/v1/billing/plans/${planId}`
+  );
+
+  if (plan.status !== "ACTIVE") {
+    await paypalApi(`/v1/billing/plans/${planId}/activate`, { method: "POST" });
+  }
+
+  return planId;
+}
+
+async function buscarPlanProExistente(): Promise<string | null> {
+  const data = await paypalApi<{ plans?: { id: string; name?: string; status?: string }[] }>(
+    "/v1/billing/plans?page_size=20&total_required=true"
+  );
+
+  const plan = data.plans?.find(
+    (item) => item.name === "Fynix Pro Mensual" && item.status === "ACTIVE"
+  );
+
+  return plan?.id ?? null;
+}
+
 let planIdCache: string | null = null;
 
 export async function obtenerPlanProId(): Promise<string> {
-  const existente = process.env.PAYPAL_PLAN_ID;
-  if (existente) return existente;
-  if (planIdCache) return planIdCache;
+  const existente = process.env.PAYPAL_PLAN_ID?.trim();
+  if (existente) {
+    planIdCache = await asegurarPlanActivo(existente);
+    return planIdCache;
+  }
+
+  if (planIdCache) {
+    return asegurarPlanActivo(planIdCache);
+  }
+
+  const reutilizable = await buscarPlanProExistente();
+  if (reutilizable) {
+    planIdCache = reutilizable;
+    return planIdCache;
+  }
 
   const producto = await paypalApi<{ id: string }>("/v1/catalogs/products", {
     method: "POST",
@@ -166,24 +252,20 @@ export async function obtenerPlanProId(): Promise<string> {
         ],
         payment_preferences: {
           auto_bill_outstanding: true,
+          setup_fee_failure_action: "CONTINUE",
           payment_failure_threshold: 3,
+        },
+        taxes: {
+          percentage: "0",
+          inclusive: false,
         },
       }),
     }
   );
 
-  if (plan.status !== "ACTIVE") {
-    try {
-      await paypalApi(`/v1/billing/plans/${plan.id}/activate`, {
-        method: "POST",
-      });
-    } catch {
-      // El plan puede quedar ACTIVE al crearse; ignorar si ya está activo.
-    }
-  }
-
-  planIdCache = plan.id;
-  return plan.id;
+  planIdCache = await asegurarPlanActivo(plan.id);
+  console.info(`[PayPal] Plan Fynix Pro listo: ${planIdCache}`);
+  return planIdCache;
 }
 
 export async function verificarWebhookPaypal(

@@ -1,5 +1,10 @@
 import type { Transaccion } from "@/types/finanzas";
 import { opcionesMeses } from "@/lib/fechas";
+import type { RangoPeriodoHome } from "@/lib/periodos-home";
+import {
+  gastoAplicaEnResumenHome,
+  type SeleccionFuenteHome,
+} from "@/lib/resumen-home";
 
 export interface DatoCategoria {
   categoria: string;
@@ -14,7 +19,7 @@ export interface DatoMes {
   gastos: number;
 }
 
-const COLORES_CATEGORIA = [
+export const PALETA_COLORES_CATEGORIA = [
   "#2563eb",
   "#16a34a",
   "#dc2626",
@@ -23,10 +28,38 @@ const COLORES_CATEGORIA = [
   "#0891b2",
   "#db2777",
   "#64748b",
-];
+] as const;
+
+const COLORES_CATEGORIA = [...PALETA_COLORES_CATEGORIA];
 
 export function colorCategoria(indice: number): string {
   return COLORES_CATEGORIA[indice % COLORES_CATEGORIA.length];
+}
+
+export function gastosPorCategoriaEnPeriodo(
+  transacciones: Transaccion[],
+  rango: RangoPeriodoHome,
+  moneda: string,
+  fuente?: SeleccionFuenteHome | null
+): DatoCategoria[] {
+  const mapa = new Map<string, number>();
+
+  transacciones.forEach((t) => {
+    const monto = gastoAplicaEnResumenHome(t, rango, moneda, fuente);
+    if (monto == null) return;
+    mapa.set(t.categoria, (mapa.get(t.categoria) ?? 0) + monto);
+  });
+
+  const total = Array.from(mapa.values()).reduce((s, v) => s + v, 0);
+  if (total === 0) return [];
+
+  return Array.from(mapa.entries())
+    .map(([categoria, monto]) => ({
+      categoria,
+      monto,
+      porcentaje: (monto / total) * 100,
+    }))
+    .sort((a, b) => b.monto - a.monto);
 }
 
 export function gastosPorCategoria(

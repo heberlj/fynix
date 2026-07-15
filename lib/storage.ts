@@ -1,4 +1,4 @@
-import type { ColorHome, CuentaBancaria, CuotaPopular, EstadoFinanzas, GastoFijo, IconoHomeCuenta, Prestamo, TarjetaCredito, Transaccion } from "@/types/finanzas";
+import type { ColorHome, CuentaBancaria, CuotaPopular, EstadoFinanzas, GastoFijo, IconoHomeCuenta, MetaAhorro, Prestamo, TarjetaCredito, Transaccion } from "@/types/finanzas";
 import { CONFIGURACION_DEFAULT } from "@/types/finanzas";
 import { normalizarAporteIngreso } from "@/lib/aporte-ingreso";
 import { obtenerFinanciamientoTarjeta, productoFinanciamientoActivo, sincronizarGastoFijoFinanciamiento } from "@/lib/financiamiento-cuotas";
@@ -86,6 +86,18 @@ const PRESTAMO_DEFAULT: Omit<
   tasaInteres: 0,
   tipoTasa: "anual",
 };
+
+function normalizarMetasAhorro(metas: MetaAhorro[] = []): MetaAhorro[] {
+  return metas.map((m) => ({
+    id: m.id,
+    nombre: m.nombre ?? "",
+    montoObjetivo: m.montoObjetivo ?? 0,
+    montoActual: m.montoActual ?? 0,
+    moneda: m.moneda ?? CONFIGURACION_DEFAULT.moneda,
+    fechaLimite: m.fechaLimite,
+    notas: m.notas ?? "",
+  }));
+}
 
 function normalizarPrestamos(prestamos: Prestamo[] = []): Prestamo[] {
   return prestamos.map((p) => {
@@ -205,6 +217,8 @@ export function normalizarEstado(parsed: Partial<EstadoFinanzas>): EstadoFinanza
       parsed.configuracion?.categoriasIngreso?.length
         ? parsed.configuracion.categoriasIngreso
         : CONFIGURACION_DEFAULT.categoriasIngreso,
+    coloresCategoriaGasto:
+      parsed.configuracion?.coloresCategoriaGasto ?? {},
   };
 
   const configuracionFinal = {
@@ -221,6 +235,7 @@ export function normalizarEstado(parsed: Partial<EstadoFinanzas>): EstadoFinanza
     transacciones: normalizarTransacciones(parsed.transacciones, configuracionFinal.moneda),
     tarjetas: normalizarTarjetas(parsed.tarjetas),
     prestamos: normalizarPrestamos(parsed.prestamos),
+    metasAhorro: normalizarMetasAhorro(parsed.metasAhorro),
     cuotasPopular: normalizarCuotasPopular(parsed.cuotasPopular),
     gastosFijos: normalizarGastosFijos(
       parsed.gastosFijos,
@@ -259,6 +274,7 @@ export function estadoInicial(): EstadoFinanzas {
     transacciones: [],
     tarjetas: [],
     prestamos: [],
+    metasAhorro: [],
     cuotasPopular: [],
     gastosFijos: [],
     cuentas: [],
@@ -287,6 +303,7 @@ export async function cargarEstado(usuarioId: string): Promise<EstadoFinanzas> {
       !datos.transacciones?.length &&
       !datos.tarjetas?.length &&
       !datos.prestamos?.length &&
+      !datos.metasAhorro?.length &&
       !datos.cuotasPopular?.length &&
       !datos.gastosFijos?.length &&
       !datos.cuentas?.length &&

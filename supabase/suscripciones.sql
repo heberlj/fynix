@@ -21,4 +21,17 @@ create policy "Usuario lee su suscripción"
   for select
   using (auth.uid() = usuario_id);
 
+drop policy if exists "Usuario inserta su suscripción" on public.suscripciones;
+create policy "Usuario inserta su suscripción"
+  on public.suscripciones
+  for insert
+  with check (auth.uid() = usuario_id);
+
+drop policy if exists "Usuario actualiza su suscripción" on public.suscripciones;
+create policy "Usuario actualiza su suscripción"
+  on public.suscripciones
+  for update
+  using (auth.uid() = usuario_id)
+  with check (auth.uid() = usuario_id);
+
 -- El webhook usa SUPABASE_SERVICE_ROLE_KEY (bypasea RLS)

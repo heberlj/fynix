@@ -31,3 +31,15 @@ export function opcionesMeses(cantidad = 12): { valor: string; etiqueta: string 
 
   return opciones;
 }
+
+export function opcionesAnios(cantidad = 6): { valor: string; etiqueta: string }[] {
+  const anioActual = new Date().getFullYear();
+  const opciones: { valor: string; etiqueta: string }[] = [];
+
+  for (let i = 0; i < cantidad; i++) {
+    const anio = anioActual - i;
+    opciones.push({ valor: String(anio), etiqueta: String(anio) });
+  }
+
+  return opciones;
+}

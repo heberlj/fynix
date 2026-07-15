@@ -8,12 +8,14 @@ interface GraficoCategoriasProps {
   datos: DatoCategoria[];
   moneda: string;
   titulo?: string;
+  subtitulo?: string;
 }
 
 export function GraficoCategorias({
   datos,
   moneda,
   titulo = "Gastos por categoría",
+  subtitulo = "Cada porción representa cuánto gastaste en esa categoría en el periodo seleccionado.",
 }: GraficoCategoriasProps) {
   const segmentos = datos.map((dato, i) => ({
     id: dato.categoria,
@@ -31,7 +33,7 @@ export function GraficoCategorias({
       segmentos={segmentos}
       moneda={moneda}
       titulo={titulo}
-      subtitulo="Cada porción representa cuánto gastaste en esa categoría durante el mes."
+      subtitulo={subtitulo}
       centroEtiqueta={top ? "Mayor gasto" : undefined}
       centroValor={top ? top.categoria : undefined}
       centroNota={

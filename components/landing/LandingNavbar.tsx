@@ -7,12 +7,13 @@ export function LandingNavbar() {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2.5">
           <Image
-            src="/icon.png"
+            src="/logo-fynix.png"
             alt="Fynix"
-            width={36}
-            height={36}
-            className="h-9 w-9 object-contain"
+            width={40}
+            height={40}
+            className="h-10 w-10 object-contain"
             priority
+            unoptimized
           />
           <span className="text-lg font-semibold text-white">Fynix</span>
         </Link>

@@ -1,5 +1,9 @@
 import type { OrigenFondo, Transaccion } from "@/types/finanzas";
 import { montoGastoIngresoEnMoneda, montoSalidaMovimiento } from "@/lib/cambio";
+import {
+  fechaEnRango,
+  type RangoPeriodoHome,
+} from "@/lib/periodos-home";
 
 export type SeleccionFuenteHome =
   | { tipo: "efectivo" }
@@ -12,6 +16,9 @@ export interface ResumenMensualHome {
   movimientos: number;
 }
 
+/** @deprecated Usar ResumenMensualHome — mismo shape para cualquier periodo */
+export type ResumenPeriodoHome = ResumenMensualHome;
+
 function fuenteCoincide(
   origen: OrigenFondo,
   fuente: SeleccionFuenteHome
@@ -20,8 +27,20 @@ function fuenteCoincide(
   return origen.tipo === fuente.tipo && origen.id === fuente.id;
 }
 
-function transaccionEnMes(fecha: string, mes: string): boolean {
-  return fecha.startsWith(mes);
+export function gastoAplicaEnResumenHome(
+  transaccion: Transaccion,
+  rango: RangoPeriodoHome,
+  moneda: string,
+  fuente?: SeleccionFuenteHome | null
+): number | null {
+  if (transaccion.tipo !== "gasto") return null;
+  if (!fechaEnRango(transaccion.fecha, rango)) return null;
+  if (fuente) {
+    if (!transaccion.origen || !fuenteCoincide(transaccion.origen, fuente)) {
+      return null;
+    }
+  }
+  return montoGastoIngresoEnMoneda(transaccion, moneda);
 }
 
 function montoMovimientoEnFuente(
@@ -72,12 +91,12 @@ export type FiltroDetalleHome = "ingresos" | "gastos" | "movimientos";
 
 export function transaccionIncluidaEnResumenHome(
   transaccion: Transaccion,
-  mes: string,
+  rango: RangoPeriodoHome,
   moneda: string,
   fuente: SeleccionFuenteHome | null | undefined,
   filtro: FiltroDetalleHome
 ): boolean {
-  if (!transaccionEnMes(transaccion.fecha, mes)) return false;
+  if (!fechaEnRango(transaccion.fecha, rango)) return false;
 
   if (filtro === "ingresos") {
     if (transaccion.tipo !== "ingreso") return false;
@@ -108,6 +127,36 @@ export function transaccionIncluidaEnResumenHome(
   return montoMovimientoGlobal(transaccion, moneda) != null;
 }
 
+export function filtrarTransaccionesPeriodoHome(
+  transacciones: Transaccion[],
+  rango: RangoPeriodoHome,
+  moneda: string,
+  fuente: SeleccionFuenteHome | null | undefined,
+  filtro: FiltroDetalleHome
+): Transaccion[] {
+  return transacciones
+    .filter((t) =>
+      transaccionIncluidaEnResumenHome(t, rango, moneda, fuente, filtro)
+    )
+    .sort((a, b) => b.fecha.localeCompare(a.fecha));
+}
+
+export function filtrarGastosCategoriaPeriodoHome(
+  transacciones: Transaccion[],
+  rango: RangoPeriodoHome,
+  moneda: string,
+  fuente: SeleccionFuenteHome | null | undefined,
+  categoria: string
+): Transaccion[] {
+  return transacciones
+    .filter((t) => {
+      if (t.tipo !== "gasto" || t.categoria !== categoria) return false;
+      return gastoAplicaEnResumenHome(t, rango, moneda, fuente) != null;
+    })
+    .sort((a, b) => b.fecha.localeCompare(a.fecha));
+}
+
+/** @deprecated Usar filtrarTransaccionesPeriodoHome */
 export function filtrarTransaccionesMensualHome(
   transacciones: Transaccion[],
   mes: string,
@@ -115,11 +164,19 @@ export function filtrarTransaccionesMensualHome(
   fuente: SeleccionFuenteHome | null | undefined,
   filtro: FiltroDetalleHome
 ): Transaccion[] {
-  return transacciones
-    .filter((t) =>
-      transaccionIncluidaEnResumenHome(t, mes, moneda, fuente, filtro)
-    )
-    .sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const [anio, mesNum] = mes.split("-").map(Number);
+  const fin = new Date(anio, mesNum, 0).getDate();
+  return filtrarTransaccionesPeriodoHome(
+    transacciones,
+    {
+      inicio: `${mes}-01`,
+      fin: `${mes}-${String(fin).padStart(2, "0")}`,
+      etiqueta: mes,
+    },
+    moneda,
+    fuente,
+    filtro
+  );
 }
 
 export function montoMostradoTransaccionHome(
@@ -150,9 +207,9 @@ export function montoMostradoTransaccionHome(
   return { monto: transaccion.monto, moneda: transaccion.moneda };
 }
 
-export function calcularResumenMensualHome(
+export function calcularResumenPeriodoHome(
   transacciones: Transaccion[],
-  mes: string,
+  rango: RangoPeriodoHome,
   moneda: string,
   fuente?: SeleccionFuenteHome | null
 ): ResumenMensualHome {
@@ -161,7 +218,7 @@ export function calcularResumenMensualHome(
   let movimientos = 0;
 
   transacciones
-    .filter((t) => transaccionEnMes(t.fecha, mes))
+    .filter((t) => fechaEnRango(t.fecha, rango))
     .forEach((t) => {
       if (fuente) {
         if (t.tipo === "ingreso" || t.tipo === "gasto") {
@@ -189,6 +246,26 @@ export function calcularResumenMensualHome(
     });
 
   return { ingresos, gastos, movimientos };
+}
+
+export function calcularResumenMensualHome(
+  transacciones: Transaccion[],
+  mes: string,
+  moneda: string,
+  fuente?: SeleccionFuenteHome | null
+): ResumenMensualHome {
+  const [anio, mesNum] = mes.split("-").map(Number);
+  const fin = new Date(anio, mesNum, 0).getDate();
+  return calcularResumenPeriodoHome(
+    transacciones,
+    {
+      inicio: `${mes}-01`,
+      fin: `${mes}-${String(fin).padStart(2, "0")}`,
+      etiqueta: mes,
+    },
+    moneda,
+    fuente
+  );
 }
 
 export function idSeleccionFuente(fuente: SeleccionFuenteHome): string {

@@ -7,7 +7,7 @@ const PASOS = [
   {
     titulo: "Configura tu perfil",
     descripcion:
-      "Define tus días de pago quincenales y la moneda principal (DOP por defecto). Esto alinea quincenas, resúmenes y sugerencias de presupuesto.",
+      "Define tus días de pago quincenales y la moneda principal (DOP por defecto). Esto alinea quincenas y resúmenes en toda la app.",
     enlace: { href: "/configuracion", label: "Ir a Configuración" },
   },
   {
@@ -25,7 +25,7 @@ const PASOS = [
   {
     titulo: "Define gastos fijos",
     descripcion:
-      "Lista alquiler, servicios, suscripciones y otros pagos mensuales. Márcalos como esenciales o flexibles para el presupuesto.",
+      "Lista alquiler, servicios, suscripciones y otros pagos mensuales. Márcalos como esenciales o flexibles.",
     enlace: { href: "/gastos-fijos", label: "Ir a Gastos fijos" },
   },
   {
@@ -35,10 +35,10 @@ const PASOS = [
     enlace: { href: "/quincenas", label: "Ir a Quincenas" },
   },
   {
-    titulo: "Planifica con presupuesto",
+    titulo: "Define metas de ahorro",
     descripcion:
-      "Proyecta tu próximo ingreso y usa «Sugerir qué pagar» para priorizar tarjetas, préstamos, cuotas y gastos fijos según tu liquidez.",
-    enlace: { href: "/presupuesto", label: "Ir a Presupuesto" },
+      "Crea objetivos como fondo de emergencia o un viaje, y registra aportes para ver tu progreso.",
+    enlace: { href: "/metas-ahorro", label: "Ir a Metas de ahorro" },
   },
 ] as const;
 
