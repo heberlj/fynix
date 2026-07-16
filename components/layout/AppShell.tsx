@@ -8,6 +8,7 @@ import { tituloDeRuta } from "@/components/layout/navegacion";
 import { ThemeSync } from "@/components/layout/ThemeSync";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { FinanzasProvider } from "@/context/FinanzasContext";
+import { AvisoCargaFinanzas } from "@/components/layout/AvisoCargaFinanzas";
 
 const RUTAS_AUTH = [
   "/login",
@@ -81,6 +82,7 @@ function AppRoutes({ children }: { children: React.ReactNode }) {
             onAbrirMenu={() => setMenuAbierto(true)}
             tituloPagina={tituloDeRuta(pathname)}
           />
+          <AvisoCargaFinanzas />
           <main className="flex flex-1 flex-col overflow-auto">{children}</main>
         </div>
       </div>

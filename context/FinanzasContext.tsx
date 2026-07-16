@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -34,6 +35,7 @@ import {
 import { aplicarEfectoTransaccion, origenPorDefectoPago } from "@/lib/transacciones";
 import { normalizarAporteIngreso } from "@/lib/aporte-ingreso";
 import { colorCategoria } from "@/lib/graficos";
+import { iconoDefectoParaCategoria } from "@/lib/iconos-categoria";
 import { aplicarTema } from "@/lib/tema";
 import { cargarEstado, estadoInicial, generarId, guardarEstado, normalizarEstado } from "@/lib/storage";
 
@@ -54,6 +56,8 @@ export type DatosActualizarTransaccion = Pick<
 
 interface FinanzasContextValue extends EstadoFinanzas {
   cargado: boolean;
+  errorCarga: string | null;
+  recargarDatos: () => Promise<void>;
   agregarTransaccion: (
     datos: Omit<Transaccion, "id" | "quincena" | "modoPagoTarjeta" | "cuotaPopularId">,
     planCuotasPopular?: PlanCuotasPopularNuevo
@@ -93,6 +97,7 @@ interface FinanzasContextValue extends EstadoFinanzas {
   renombrarCategoriaGasto: (anterior: string, nuevo: string) => void;
   eliminarCategoriaGasto: (nombre: string) => void;
   actualizarColorCategoriaGasto: (nombre: string, color: string) => void;
+  actualizarIconoCategoriaGasto: (nombre: string, icono: string) => void;
   agregarCategoriaIngreso: (nombre: string) => void;
   renombrarCategoriaIngreso: (anterior: string, nuevo: string) => void;
   eliminarCategoriaIngreso: (nombre: string) => void;
@@ -110,15 +115,45 @@ export function FinanzasProvider({
 }) {
   const [estado, setEstado] = useState<EstadoFinanzas>(estadoInicial);
   const [cargado, setCargado] = useState(false);
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
+  const puedePersistirRef = useRef(false);
+
+  const recargarDatos = useCallback(async () => {
+    setCargado(false);
+    setErrorCarga(null);
+    puedePersistirRef.current = false;
+
+    const resultado = await cargarEstado(usuarioId);
+    if (!resultado.ok) {
+      setErrorCarga(resultado.error);
+      setCargado(true);
+      return;
+    }
+
+    setEstado(resultado.estado);
+    aplicarTema(resultado.estado.configuracion.tema ?? "claro");
+    puedePersistirRef.current = true;
+    setCargado(true);
+  }, [usuarioId]);
 
   useEffect(() => {
     let cancelado = false;
     setCargado(false);
+    setErrorCarga(null);
+    puedePersistirRef.current = false;
 
-    void cargarEstado(usuarioId).then((datos) => {
+    void cargarEstado(usuarioId).then((resultado) => {
       if (cancelado) return;
-      setEstado(datos);
-      aplicarTema(datos.configuracion.tema ?? "claro");
+
+      if (!resultado.ok) {
+        setErrorCarga(resultado.error);
+        setCargado(true);
+        return;
+      }
+
+      setEstado(resultado.estado);
+      aplicarTema(resultado.estado.configuracion.tema ?? "claro");
+      puedePersistirRef.current = true;
       setCargado(true);
     });
 
@@ -128,14 +163,18 @@ export function FinanzasProvider({
   }, [usuarioId]);
 
   useEffect(() => {
-    if (!cargado) return;
+    if (!cargado || !puedePersistirRef.current) return;
 
     const timer = window.setTimeout(() => {
-      void guardarEstado(estado, usuarioId);
+      void guardarEstado(estado, usuarioId).then((resultado) => {
+        if (!resultado.ok && resultado.error.includes("proteger")) {
+          void recargarDatos();
+        }
+      });
     }, 500);
 
     return () => window.clearTimeout(timer);
-  }, [estado, cargado, usuarioId]);
+  }, [estado, cargado, usuarioId, recargarDatos]);
 
   const agregarTransaccion = useCallback(
     (
@@ -837,12 +876,17 @@ export function FinanzasProvider({
       if (!colores[limpio]) {
         colores[limpio] = colorCategoria(cats.length);
       }
+      const iconos = { ...(prev.configuracion.iconosCategoriaGasto ?? {}) };
+      if (!iconos[limpio]) {
+        iconos[limpio] = iconoDefectoParaCategoria(limpio);
+      }
       return {
         ...prev,
         configuracion: {
           ...prev.configuracion,
           categoriasGasto: [...cats, limpio],
           coloresCategoriaGasto: colores,
+          iconosCategoriaGasto: iconos,
         },
       };
     });
@@ -863,12 +907,18 @@ export function FinanzasProvider({
         colores[limpio] = colores[anterior];
         delete colores[anterior];
       }
+      const iconos = { ...(prev.configuracion.iconosCategoriaGasto ?? {}) };
+      if (iconos[anterior]) {
+        iconos[limpio] = iconos[anterior];
+        delete iconos[anterior];
+      }
       return {
         ...prev,
         configuracion: {
           ...prev.configuracion,
           categoriasGasto: cats.map((c) => (c === anterior ? limpio : c)),
           coloresCategoriaGasto: colores,
+          iconosCategoriaGasto: iconos,
         },
         transacciones: prev.transacciones.map((t) =>
           t.tipo === "gasto" && t.categoria === anterior
@@ -883,15 +933,18 @@ export function FinanzasProvider({
     setEstado((prev) => {
       const cats = prev.configuracion.categoriasGasto ?? [];
       if (cats.length <= 1) return prev;
-      const fallback = cats.find((c) => c !== nombre) ?? "Otros";
+      const fallback = cats.find((c) => c !== nombre) ?? cats[0];
       const colores = { ...(prev.configuracion.coloresCategoriaGasto ?? {}) };
       delete colores[nombre];
+      const iconos = { ...(prev.configuracion.iconosCategoriaGasto ?? {}) };
+      delete iconos[nombre];
       return {
         ...prev,
         configuracion: {
           ...prev.configuracion,
           categoriasGasto: cats.filter((c) => c !== nombre),
           coloresCategoriaGasto: colores,
+          iconosCategoriaGasto: iconos,
         },
         transacciones: prev.transacciones.map((t) =>
           t.tipo === "gasto" && t.categoria === nombre
@@ -911,6 +964,20 @@ export function FinanzasProvider({
         coloresCategoriaGasto: {
           ...(prev.configuracion.coloresCategoriaGasto ?? {}),
           [nombre]: color,
+        },
+      },
+    }));
+  }, []);
+
+  const actualizarIconoCategoriaGasto = useCallback((nombre: string, icono: string) => {
+    if (!icono) return;
+    setEstado((prev) => ({
+      ...prev,
+      configuracion: {
+        ...prev.configuracion,
+        iconosCategoriaGasto: {
+          ...(prev.configuracion.iconosCategoriaGasto ?? {}),
+          [nombre]: icono,
         },
       },
     }));
@@ -980,6 +1047,8 @@ export function FinanzasProvider({
   const importarEstado = useCallback((nuevo: EstadoFinanzas) => {
     const normalizado = normalizarEstado(nuevo);
     aplicarTema(normalizado.configuracion.tema ?? "claro");
+    puedePersistirRef.current = true;
+    setErrorCarga(null);
     setEstado(normalizado);
   }, []);
 
@@ -987,6 +1056,8 @@ export function FinanzasProvider({
     () => ({
       ...estado,
       cargado,
+      errorCarga,
+      recargarDatos,
       agregarTransaccion,
       eliminarTransaccion,
       actualizarTransaccion,
@@ -1023,6 +1094,7 @@ export function FinanzasProvider({
       renombrarCategoriaGasto,
       eliminarCategoriaGasto,
       actualizarColorCategoriaGasto,
+      actualizarIconoCategoriaGasto,
       agregarCategoriaIngreso,
       renombrarCategoriaIngreso,
       eliminarCategoriaIngreso,
@@ -1031,6 +1103,8 @@ export function FinanzasProvider({
     [
       estado,
       cargado,
+      errorCarga,
+      recargarDatos,
       agregarTransaccion,
       eliminarTransaccion,
       actualizarTransaccion,
@@ -1067,6 +1141,7 @@ export function FinanzasProvider({
       renombrarCategoriaGasto,
       eliminarCategoriaGasto,
       actualizarColorCategoriaGasto,
+      actualizarIconoCategoriaGasto,
       agregarCategoriaIngreso,
       renombrarCategoriaIngreso,
       eliminarCategoriaIngreso,

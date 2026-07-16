@@ -6,12 +6,14 @@ import type { Transaccion } from "@/types/finanzas";
 import {
   CATEGORIA_PAGO_TARJETA,
   CATEGORIA_TRANSFERENCIA_CUENTAS,
+  CATEGORIAS_GASTO_DEFAULT,
 } from "@/types/finanzas";
 import { fechaHoy } from "@/lib/fechas";
 import {
   obtenerCategoriasGasto,
   obtenerCategoriasIngreso,
 } from "@/lib/categorias-transacciones";
+import { SelectorCategoriaConIconos } from "@/components/ui/SelectorCategoriaConIconos";
 import {
   disponibleLimiteCuotasPopular,
   tarjetaTieneCuotasPopular,
@@ -204,7 +206,7 @@ export function FormularioTransaccion({
       setCategoria((actual) =>
         categoriasGasto.includes(actual)
           ? actual
-          : (categoriasGasto[0] ?? "Otros")
+          : (categoriasGasto[0] ?? CATEGORIAS_GASTO_DEFAULT[0])
       );
     } else if (tipo === "ingreso") {
       setCategoria((actual) =>
@@ -282,7 +284,7 @@ export function FormularioTransaccion({
   function cambiarTipo(nuevoTipo: "gasto" | "ingreso" | "transferencia") {
     setTipo(nuevoTipo);
     if (nuevoTipo === "gasto") {
-      setCategoria(categoriasGasto[0] ?? "Otros");
+      setCategoria(categoriasGasto[0] ?? CATEGORIAS_GASTO_DEFAULT[0]);
     } else if (nuevoTipo === "ingreso") {
       setCategoria(categoriasIngreso[0] ?? "Otros");
     }
@@ -712,20 +714,29 @@ export function FormularioTransaccion({
         </label>
 
         {tipo !== "transferencia" && (
-          <label className="flex flex-col gap-1.5 sm:col-span-2">
+          <div className="flex flex-col gap-1.5 sm:col-span-2">
             <span className="text-sm font-medium text-foreground">Categoría</span>
-            <select
-              value={categoria}
-              onChange={(e) => setCategoria(e.target.value)}
-              className={inputClass}
-            >
-              {categorias.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          </label>
+            {tipo === "gasto" ? (
+              <SelectorCategoriaConIconos
+                categorias={categorias}
+                valor={categoria}
+                onChange={setCategoria}
+                configuracion={configuracion}
+              />
+            ) : (
+              <select
+                value={categoria}
+                onChange={(e) => setCategoria(e.target.value)}
+                className={inputClass}
+              >
+                {categorias.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
         )}
 
         {tipo === "gasto" &&

@@ -5,9 +5,13 @@ import { useFinanzas } from "@/context/FinanzasContext";
 import { confirmarAccion } from "@/lib/confirmar";
 import {
   colorCategoriaGasto,
+  iconoCategoriaGasto,
   obtenerCategoriasGasto,
 } from "@/lib/categorias-transacciones";
+import type { IconoCategoriaId } from "@/lib/iconos-categoria";
 import { PALETA_COLORES_CATEGORIA } from "@/lib/graficos";
+import { IconoCategoria } from "@/components/ui/IconoCategoria";
+import { SelectorIconoCategoria } from "@/components/ui/SelectorIconoCategoria";
 
 const inputClass =
   "rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent";
@@ -20,12 +24,14 @@ export function EdicionCategoriasGastoHome() {
     renombrarCategoriaGasto,
     eliminarCategoriaGasto,
     actualizarColorCategoriaGasto,
+    actualizarIconoCategoriaGasto,
   } = useFinanzas();
 
   const categorias = obtenerCategoriasGasto(configuracion);
   const [nueva, setNueva] = useState("");
   const [editando, setEditando] = useState<string | null>(null);
   const [nombreEditado, setNombreEditado] = useState("");
+  const [iconoEditado, setIconoEditado] = useState<IconoCategoriaId>("otros");
   const [error, setError] = useState("");
 
   function contarUso(nombre: string) {
@@ -50,6 +56,20 @@ export function EdicionCategoriasGastoHome() {
     setNueva("");
   }
 
+  function iniciarEdicion(categoria: string) {
+    setEditando(categoria);
+    setNombreEditado(categoria);
+    setIconoEditado(iconoCategoriaGasto(configuracion, categoria));
+    setError("");
+  }
+
+  function cancelarEdicion() {
+    setEditando(null);
+    setNombreEditado("");
+    setIconoEditado("otros");
+    setError("");
+  }
+
   function guardarEdicion(anterior: string) {
     setError("");
     const limpio = nombreEditado.trim();
@@ -64,9 +84,11 @@ export function EdicionCategoriasGastoHome() {
       setError("Ya existe una categoría con ese nombre");
       return;
     }
-    renombrarCategoriaGasto(anterior, limpio);
-    setEditando(null);
-    setNombreEditado("");
+    if (limpio !== anterior) {
+      renombrarCategoriaGasto(anterior, limpio);
+    }
+    actualizarIconoCategoriaGasto(limpio, iconoEditado);
+    cancelarEdicion();
   }
 
   function eliminar(nombre: string) {
@@ -81,14 +103,14 @@ export function EdicionCategoriasGastoHome() {
         : `¿Eliminar la categoría "${nombre}"?`;
     if (!confirmarAccion(msg)) return;
     eliminarCategoriaGasto(nombre);
-    if (editando === nombre) setEditando(null);
+    if (editando === nombre) cancelarEdicion();
   }
 
   return (
     <div className="rounded-xl border border-border bg-background p-4">
       <p className="text-xs text-muted">
-        Cambia el nombre y el color de cada categoría. Los colores se reflejan en
-        el gráfico.
+        Cambia el nombre, el icono y el color de cada categoría. Los cambios se
+        reflejan en transacciones y gráficos.
       </p>
 
       <form onSubmit={handleAgregar} className="mt-4 flex flex-col gap-2 sm:flex-row">
@@ -109,109 +131,124 @@ export function EdicionCategoriasGastoHome() {
 
       {error && <p className="mt-2 text-sm text-gasto">{error}</p>}
 
-      <ul className="mt-4 divide-y divide-border">
+      <ul className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {categorias.map((cat, indice) => {
           const enEdicion = editando === cat;
           const uso = contarUso(cat);
           const color = colorCategoriaGasto(configuracion, cat, indice);
+          const icono = iconoCategoriaGasto(configuracion, cat);
 
           return (
             <li
               key={cat}
-              className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center"
+              className={`rounded-lg border border-border bg-surface ${
+                enEdicion ? "col-span-full p-3" : "p-2.5"
+              }`}
             >
-              <div className="flex min-w-0 flex-1 items-center gap-3">
-                <label className="relative shrink-0 cursor-pointer">
-                  <span
-                    className="block h-9 w-9 rounded-full border-2 border-border shadow-sm"
-                    style={{ backgroundColor: color }}
-                  />
-                  <input
-                    type="color"
-                    value={color}
-                    onChange={(e) =>
-                      actualizarColorCategoriaGasto(cat, e.target.value)
-                    }
-                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                    aria-label={`Color de ${cat}`}
-                  />
-                </label>
-
-                <div className="flex flex-wrap gap-1.5">
-                  {PALETA_COLORES_CATEGORIA.map((tono) => (
-                    <button
-                      key={tono}
-                      type="button"
-                      onClick={() => actualizarColorCategoriaGasto(cat, tono)}
-                      className={`h-6 w-6 rounded-full border-2 transition-transform hover:scale-110 ${
-                        color === tono ? "border-foreground" : "border-transparent"
-                      }`}
-                      style={{ backgroundColor: tono }}
-                      aria-label={`Usar color ${tono}`}
-                    />
-                  ))}
-                </div>
-              </div>
-
               {enEdicion ? (
-                <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-                  <input
-                    type="text"
-                    value={nombreEditado}
-                    onChange={(e) => setNombreEditado(e.target.value)}
-                    className={`${inputClass} flex-1`}
-                    autoFocus
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => guardarEdicion(cat)}
-                      className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-hover"
-                    >
-                      Guardar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditando(null);
-                        setNombreEditado("");
-                        setError("");
-                      }}
-                      className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted hover:bg-surface-hover"
-                    >
-                      Cancelar
-                    </button>
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <input
+                      type="text"
+                      value={nombreEditado}
+                      onChange={(e) => setNombreEditado(e.target.value)}
+                      className={`${inputClass} flex-1`}
+                      autoFocus
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => guardarEdicion(cat)}
+                        className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-hover"
+                      >
+                        Guardar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelarEdicion}
+                        className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted hover:bg-surface-hover"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-xs font-medium text-muted">Icono</p>
+                    <SelectorIconoCategoria
+                      valor={iconoEditado}
+                      onChange={setIconoEditado}
+                    />
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-xs font-medium text-muted">Color</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="relative shrink-0 cursor-pointer">
+                        <span
+                          className="block h-9 w-9 rounded-full border-2 border-border shadow-sm"
+                          style={{ backgroundColor: color }}
+                        />
+                        <input
+                          type="color"
+                          value={color}
+                          onChange={(e) =>
+                            actualizarColorCategoriaGasto(cat, e.target.value)
+                          }
+                          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                          aria-label={`Color de ${cat}`}
+                        />
+                      </label>
+                      {PALETA_COLORES_CATEGORIA.map((tono) => (
+                        <button
+                          key={tono}
+                          type="button"
+                          onClick={() =>
+                            actualizarColorCategoriaGasto(cat, tono)
+                          }
+                          className={`h-6 w-6 rounded-full border-2 transition-transform hover:scale-110 ${
+                            color === tono
+                              ? "border-foreground"
+                              : "border-transparent"
+                          }`}
+                          style={{ backgroundColor: tono }}
+                          aria-label={`Usar color ${tono}`}
+                        />
+                      ))}
+                    </div>
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground">{cat}</p>
+                <div className="flex items-start gap-2">
+                  <span
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border"
+                    style={{ backgroundColor: `${color}22`, color }}
+                  >
+                    <IconoCategoria icono={icono} className="h-3.5 w-3.5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-medium text-foreground">
+                      {cat}
+                    </p>
                     {uso > 0 && (
-                      <p className="text-xs text-muted">
-                        {uso} transacción{uso !== 1 ? "es" : ""}
-                      </p>
+                      <p className="text-[10px] text-muted">{uso} mov.</p>
                     )}
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditando(cat);
-                        setNombreEditado(cat);
-                        setError("");
-                      }}
-                      className="rounded-lg px-2 py-1 text-xs font-medium text-accent hover:bg-accent/10"
-                    >
-                      Renombrar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => eliminar(cat)}
-                      className="rounded-lg px-2 py-1 text-xs text-muted hover:bg-gasto/10 hover:text-gasto"
-                    >
-                      Eliminar
-                    </button>
+                    <div className="mt-1.5 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => iniciarEdicion(cat)}
+                        className="text-[11px] font-medium text-accent hover:underline"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => eliminar(cat)}
+                        className="text-[11px] text-muted hover:text-gasto hover:underline"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

@@ -263,6 +263,8 @@ export interface ConfiguracionUsuario {
   categoriasIngreso: string[];
   /** Color por categoría de gasto (hex), ej. { Comida: "#16a34a" } */
   coloresCategoriaGasto?: Record<string, string>;
+  /** Icono por categoría de gasto, ej. { Comida: "bares-restaurantes" } */
+  iconosCategoriaGasto?: Record<string, string>;
   /** Aporte opcional según % de ingresos (desactivado por defecto) */
   aporteIngreso?: AporteSegunIngreso;
 }
@@ -317,18 +319,23 @@ export const CATEGORIAS_GASTOS_FIJOS_DEFAULT = [
 ] as const;
 
 export const CATEGORIAS_GASTO_DEFAULT = [
-  "Vivienda",
-  "Servicios",
-  "Suscripciones",
-  "Seguros",
-  "Comida",
   "Transporte",
+  "Combustible",
+  "Bares y Restaurantes",
+  "Delivery",
+  "Supermercado",
+  "Suscripciones y Streaming",
+  "Cuidado personal",
+  "Viajes y Vacaciones",
   "Salud",
-  "Entretenimiento",
-  "Compras",
+  "Ropa y Accesorios",
+  "Compras Online",
+  "Retiro de Efectivo",
+  "Servicios Básicos",
+  "Pago de Préstamo",
   "Educación",
-  "Donaciones",
-  "Otros",
+  "Gimnasio",
+  "Servicios del Hogar",
 ] as const;
 
 export const CATEGORIAS_INGRESO_DEFAULT = [

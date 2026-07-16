@@ -3,6 +3,7 @@ export type SeccionConfiguracionId =
   | "apariencia"
   | "diezmos"
   | "suscripcion"
+  | "soporte"
   | "acerca";
 
 export interface SeccionConfiguracion {
@@ -31,6 +32,11 @@ export const SECCIONES_CONFIGURACION: SeccionConfiguracion[] = [
     id: "suscripcion",
     label: "Suscripción",
     descripcion: "Plan y beneficios",
+  },
+  {
+    id: "soporte",
+    label: "Soporte",
+    descripcion: "Reportes y sugerencias",
   },
   {
     id: "acerca",

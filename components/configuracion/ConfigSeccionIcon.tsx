@@ -48,6 +48,13 @@ export function ConfigSeccionIcon({
           <path d="M12 2l2.4 4.9 5.4.8-3.9 3.8.9 5.3L12 14.8 7.2 16.8l.9-5.3L4.2 7.7l5.4-.8L12 2Z" />
         </svg>
       );
+    case "soporte":
+      return (
+        <svg {...props}>
+          <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+          <path d="M8 10h8M8 14h5" />
+        </svg>
+      );
     case "acerca":
       return (
         <svg {...props}>

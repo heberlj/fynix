@@ -1,5 +1,6 @@
 import type { SesionActiva } from "@/types/auth";
 import type { Session } from "@supabase/supabase-js";
+import { urlAuthCallback } from "@/lib/app-url";
 import { crearClienteSupabase } from "@/lib/supabase/client";
 import { validarContraseña } from "@/lib/validar-contraseña";
 
@@ -67,7 +68,10 @@ export async function registrarUsuario(datos: {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { nombre } },
+    options: {
+      data: { nombre },
+      emailRedirectTo: urlAuthCallback("/login"),
+    },
   });
 
   if (error) {
@@ -141,9 +145,8 @@ export async function cerrarSesion(): Promise<void> {
   await supabase.auth.signOut();
 }
 
-function urlRestablecerContrasena(): string | undefined {
-  if (typeof window === "undefined") return undefined;
-  return `${window.location.origin}/restablecer-contrasena`;
+function urlRestablecerContrasena(): string {
+  return urlAuthCallback("/restablecer-contrasena");
 }
 
 export async function solicitarRecuperacionContrasena(

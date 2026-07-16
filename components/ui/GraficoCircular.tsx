@@ -1,6 +1,9 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { formatearMoneda } from "@/lib/quincenas";
+import { IconoCategoria } from "@/components/ui/IconoCategoria";
+import { esIconoCategoriaId } from "@/lib/iconos-categoria";
 
 export interface SegmentoCircular {
   id: string;
@@ -8,6 +11,7 @@ export interface SegmentoCircular {
   valor: number;
   color: string;
   descripcion?: string;
+  iconoId?: string;
 }
 
 interface GraficoCircularProps {
@@ -21,6 +25,7 @@ interface GraficoCircularProps {
   totalReferencia?: number;
   mensajeVacio?: string;
   className?: string;
+  accionHeader?: ReactNode;
   segmentoSeleccionado?: string | null;
   onSegmentoClick?: (id: string) => void;
 }
@@ -36,6 +41,7 @@ export function GraficoCircular({
   totalReferencia,
   mensajeVacio = "Sin datos para mostrar",
   className = "",
+  accionHeader,
   segmentoSeleccionado = null,
   onSegmentoClick,
 }: GraficoCircularProps) {
@@ -61,10 +67,15 @@ export function GraficoCircular({
     <div
       className={`flex h-full flex-col rounded-xl border border-border bg-surface p-4 shadow-sm sm:p-6 ${className}`}
     >
-      <h3 className="text-base font-semibold text-foreground">{titulo}</h3>
-      {subtitulo && (
-        <p className="mt-1 text-xs leading-relaxed text-muted">{subtitulo}</p>
-      )}
+      <div>
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="text-base font-semibold text-foreground">{titulo}</h3>
+          {accionHeader && <div className="shrink-0">{accionHeader}</div>}
+        </div>
+        {subtitulo && (
+          <p className="mt-1 text-xs leading-relaxed text-muted">{subtitulo}</p>
+        )}
+      </div>
 
       {segmentosActivos.length === 0 || total <= 0 ? (
         <div className="mt-6 flex flex-1 items-center justify-center rounded-lg border border-dashed border-border bg-background min-h-[12rem]">
@@ -113,10 +124,22 @@ export function GraficoCircular({
                 <>
                   <div className="flex items-start gap-2.5">
                     <span
-                      className="mt-1 h-3 w-3 shrink-0 rounded-full"
-                      style={{ backgroundColor: seg.color }}
-                      aria-hidden
-                    />
+                      className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border"
+                      style={{
+                        backgroundColor: `${seg.color}22`,
+                        color: seg.color,
+                      }}
+                    >
+                      {seg.iconoId && esIconoCategoriaId(seg.iconoId) ? (
+                        <IconoCategoria icono={seg.iconoId} className="h-3.5 w-3.5" />
+                      ) : (
+                        <span
+                          className="h-3 w-3 rounded-full"
+                          style={{ backgroundColor: seg.color }}
+                          aria-hidden
+                        />
+                      )}
+                    </span>
                     <div className="min-w-0 flex-1 text-left">
                       <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
                         <span className="text-sm font-medium text-foreground">

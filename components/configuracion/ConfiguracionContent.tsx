@@ -7,6 +7,7 @@ import { ConfiguracionApariencia } from "@/components/configuracion/Configuracio
 import { ConfiguracionAporteIngreso } from "@/components/configuracion/ConfiguracionAporteIngreso";
 import { ConfiguracionSuscripcion } from "@/components/configuracion/ConfiguracionSuscripcion";
 import { ConfiguracionAcercaDe } from "@/components/configuracion/ConfiguracionAcercaDe";
+import { ConfiguracionSoporte } from "@/components/configuracion/ConfiguracionSoporte";
 import {
   SECCIONES_CONFIGURACION,
   type SeccionConfiguracionId,
@@ -26,6 +27,8 @@ function ContenidoSeccion({ seccion }: { seccion: SeccionConfiguracionId }) {
       return <ConfiguracionAporteIngreso />;
     case "suscripcion":
       return <ConfiguracionSuscripcion />;
+    case "soporte":
+      return <ConfiguracionSoporte />;
     case "acerca":
       return <ConfiguracionAcercaDe />;
     default:

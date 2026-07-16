@@ -1,6 +1,7 @@
 import type { ColorHome, CuentaBancaria, CuotaPopular, EstadoFinanzas, GastoFijo, IconoHomeCuenta, MetaAhorro, Prestamo, TarjetaCredito, Transaccion } from "@/types/finanzas";
 import { CONFIGURACION_DEFAULT } from "@/types/finanzas";
 import { normalizarAporteIngreso } from "@/lib/aporte-ingreso";
+import { sincronizarCategoriasGastoEnEstado } from "@/lib/migracion-categorias";
 import { obtenerFinanciamientoTarjeta, productoFinanciamientoActivo, sincronizarGastoFijoFinanciamiento } from "@/lib/financiamiento-cuotas";
 import { quincenaNumeroDeDia, tipoPresupuestoPorDefecto } from "@/lib/gastos-fijos";
 import { crearClienteSupabase } from "@/lib/supabase/client";
@@ -201,6 +202,23 @@ function normalizarTransacciones(
   }));
 }
 
+export function estadoTieneDatos(estado: EstadoFinanzas): boolean {
+  return (
+    (estado.transacciones?.length ?? 0) > 0 ||
+    (estado.tarjetas?.length ?? 0) > 0 ||
+    (estado.prestamos?.length ?? 0) > 0 ||
+    (estado.metasAhorro?.length ?? 0) > 0 ||
+    (estado.cuotasPopular?.length ?? 0) > 0 ||
+    (estado.gastosFijos?.length ?? 0) > 0 ||
+    (estado.cuentas?.length ?? 0) > 0 ||
+    (estado.efectivo ?? 0) !== 0
+  );
+}
+
+export type ResultadoCargaEstado =
+  | { ok: true; estado: EstadoFinanzas }
+  | { ok: false; error: string };
+
 export function normalizarEstado(parsed: Partial<EstadoFinanzas>): EstadoFinanzas {
   const configuracion = {
     ...CONFIGURACION_DEFAULT,
@@ -219,6 +237,8 @@ export function normalizarEstado(parsed: Partial<EstadoFinanzas>): EstadoFinanza
         : CONFIGURACION_DEFAULT.categoriasIngreso,
     coloresCategoriaGasto:
       parsed.configuracion?.coloresCategoriaGasto ?? {},
+    iconosCategoriaGasto:
+      parsed.configuracion?.iconosCategoriaGasto ?? {},
   };
 
   const configuracionFinal = {
@@ -245,6 +265,8 @@ export function normalizarEstado(parsed: Partial<EstadoFinanzas>): EstadoFinanza
     efectivo: parsed.efectivo ?? 0,
     configuracion: configuracionFinal,
   };
+
+  estado = sincronizarCategoriasGastoEnEstado(estado);
 
   for (const tarjeta of estado.tarjetas) {
     const fin = tarjeta.financiamientoCuotas ?? obtenerFinanciamientoTarjeta(tarjeta);
@@ -283,19 +305,43 @@ export function estadoInicial(): EstadoFinanzas {
   };
 }
 
-export async function cargarEstado(usuarioId: string): Promise<EstadoFinanzas> {
-  if (typeof window === "undefined" || !usuarioId) return estadoInicial();
+export async function cargarEstado(
+  usuarioId: string
+): Promise<ResultadoCargaEstado> {
+  if (typeof window === "undefined" || !usuarioId) {
+    return { ok: true, estado: estadoInicial() };
+  }
 
   try {
     const supabase = crearClienteSupabase();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      return {
+        ok: false,
+        error: "No hay sesión activa. Cierra sesión e inicia de nuevo.",
+      };
+    }
+
     const { data, error } = await supabase
       .from("estado_finanzas")
       .select("datos")
       .eq("usuario_id", usuarioId)
       .maybeSingle();
 
-    if (error || !data?.datos || typeof data.datos !== "object") {
-      return estadoInicial();
+    if (error) {
+      console.error("Error al cargar estado_finanzas:", error.message);
+      return {
+        ok: false,
+        error:
+          "No se pudieron cargar tus datos. Revisa tu conexión e intenta de nuevo.",
+      };
+    }
+
+    if (!data?.datos || typeof data.datos !== "object") {
+      return { ok: true, estado: estadoInicial() };
     }
 
     const datos = data.datos as EstadoFinanzas;
@@ -310,22 +356,52 @@ export async function cargarEstado(usuarioId: string): Promise<EstadoFinanzas> {
       (datos.efectivo ?? 0) === 0;
 
     if (vacio && Object.keys(datos).length <= 1) {
-      return estadoInicial();
+      return { ok: true, estado: estadoInicial() };
     }
 
-    return normalizarEstado(datos);
-  } catch {
-    return estadoInicial();
+    return { ok: true, estado: normalizarEstado(datos) };
+  } catch (error) {
+    console.error("Error inesperado al cargar datos:", error);
+    return {
+      ok: false,
+      error: "Ocurrió un error al cargar tus datos financieros.",
+    };
   }
 }
 
 export async function guardarEstado(
   estado: EstadoFinanzas,
   usuarioId: string
-): Promise<void> {
-  if (typeof window === "undefined" || !usuarioId) return;
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (typeof window === "undefined" || !usuarioId) {
+    return { ok: false, error: "Entorno no válido" };
+  }
 
   const supabase = crearClienteSupabase();
+
+  if (!estadoTieneDatos(estado)) {
+    const { data, error } = await supabase
+      .from("estado_finanzas")
+      .select("datos")
+      .eq("usuario_id", usuarioId)
+      .maybeSingle();
+
+    if (
+      !error &&
+      data?.datos &&
+      typeof data.datos === "object" &&
+      estadoTieneDatos(data.datos as EstadoFinanzas)
+    ) {
+      console.error(
+        "Bloqueado guardado vacío: ya existen datos en la nube para este usuario."
+      );
+      return {
+        ok: false,
+        error: "No se guardó un estado vacío para proteger tus datos existentes.",
+      };
+    }
+  }
+
   const { error } = await supabase.from("estado_finanzas").upsert({
     usuario_id: usuarioId,
     datos: estado,
@@ -334,7 +410,10 @@ export async function guardarEstado(
 
   if (error) {
     console.error("Error al guardar en Supabase:", error.message);
+    return { ok: false, error: error.message };
   }
+
+  return { ok: true };
 }
 
 /** Asegura fila vacía en la nube para usuarios nuevos */

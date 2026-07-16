@@ -13,6 +13,10 @@ import {
   type SeleccionFuenteHome,
 } from "@/lib/resumen-home";
 import { etiquetaOrigen, etiquetaTransferencia } from "@/lib/transacciones";
+import { iconoCategoriaGasto } from "@/lib/categorias-transacciones";
+import { useFinanzas } from "@/context/FinanzasContext";
+import { IconoCategoria } from "@/components/ui/IconoCategoria";
+import { InsigniaCategoriaGasto } from "@/components/ui/SelectorCategoriaConIconos";
 import { EstadoVacio } from "@/components/ui/EstadoVacio";
 
 const ETIQUETAS_FILTRO: Record<FiltroDetalleHome, string> = {
@@ -42,6 +46,8 @@ export function ListaTransaccionesHome({
   detallado = false,
   className = "",
 }: ListaTransaccionesHomeProps) {
+  const { configuracion } = useFinanzas();
+
   if (transacciones.length === 0) {
     return (
       <EstadoVacio
@@ -79,7 +85,16 @@ export function ListaTransaccionesHome({
                       : "bg-accent/10 text-accent"
                 }`}
               >
-                {esIngreso ? "+" : esGasto ? "−" : "⇄"}
+                {esGasto ? (
+                  <IconoCategoria
+                    icono={iconoCategoriaGasto(configuracion, t.categoria)}
+                    className="h-4 w-4"
+                  />
+                ) : esIngreso ? (
+                  "+"
+                ) : (
+                  "⇄"
+                )}
               </div>
 
               <div className="min-w-0 flex-1">
@@ -87,9 +102,16 @@ export function ListaTransaccionesHome({
                   {t.descripcion}
                 </p>
                 <div className="mt-1 flex flex-wrap gap-1">
-                  <span className="rounded-full bg-background px-2 py-0.5 text-xs text-muted">
-                    {t.categoria}
-                  </span>
+                  {esGasto ? (
+                    <InsigniaCategoriaGasto
+                      categoria={t.categoria}
+                      configuracion={configuracion}
+                    />
+                  ) : (
+                    <span className="rounded-full bg-background px-2 py-0.5 text-xs text-muted">
+                      {t.categoria}
+                    </span>
+                  )}
                   {t.moneda !== moneda && (
                     <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
                       {t.moneda}

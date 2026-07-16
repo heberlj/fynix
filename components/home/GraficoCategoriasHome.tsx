@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CuentaBancaria, TarjetaCredito, Transaccion } from "@/types/finanzas";
 import type { DatoCategoria } from "@/lib/graficos";
-import { colorCategoriaGasto } from "@/lib/categorias-transacciones";
+import { colorCategoriaGasto, iconoCategoriaGasto } from "@/lib/categorias-transacciones";
 import { filtrarGastosCategoriaPeriodoHome, type SeleccionFuenteHome } from "@/lib/resumen-home";
 import type { RangoPeriodoHome, TipoPeriodoHome } from "@/lib/periodos-home";
 import { useFinanzas } from "@/context/FinanzasContext";
@@ -22,6 +22,31 @@ interface GraficoCategoriasHomeProps {
   cuentas: CuentaBancaria[];
   tarjetas: TarjetaCredito[];
   subtitulo?: string;
+}
+
+const cardClass =
+  "flex h-full flex-col rounded-xl border border-border bg-surface p-4 shadow-sm sm:p-6";
+
+function BotonEditarCategorias({
+  modoEdicion,
+  onClick,
+}: {
+  modoEdicion: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+        modoEdicion
+          ? "bg-accent text-white"
+          : "border border-border bg-background text-muted hover:text-foreground"
+      }`}
+    >
+      {modoEdicion ? "Listo" : "Editar categorías"}
+    </button>
+  );
 }
 
 export function GraficoCategoriasHome({
@@ -54,6 +79,7 @@ export function GraficoCategoriasHome({
         etiqueta: dato.categoria,
         valor: dato.monto,
         color: colorCategoriaGasto(configuracion, dato.categoria, i),
+        iconoId: iconoCategoriaGasto(configuracion, dato.categoria),
         descripcion: `${dato.porcentaje.toFixed(1)}% del total de gastos del periodo.`,
       })),
     [datos, configuracion]
@@ -88,31 +114,33 @@ export function GraficoCategoriasHome({
     });
   }
 
+  const botonEditar = (
+    <BotonEditarCategorias modoEdicion={modoEdicion} onClick={alternarEdicion} />
+  );
+
   return (
     <div>
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <p className="text-xs text-muted sm:max-w-md">{subtitulo}</p>
-        <button
-          type="button"
-          onClick={alternarEdicion}
-          className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-            modoEdicion
-              ? "bg-accent text-white"
-              : "border border-border bg-background text-muted hover:text-foreground"
-          }`}
-        >
-          {modoEdicion ? "Listo" : "Editar categorías"}
-        </button>
-      </div>
-
       {modoEdicion ? (
-        <EdicionCategoriasGastoHome />
+        <div className={cardClass}>
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="text-base font-semibold text-foreground">
+              Gastos por categoría
+            </h3>
+            {botonEditar}
+          </div>
+          <p className="mt-1 text-xs leading-relaxed text-muted">{subtitulo}</p>
+          <div className="mt-4">
+            <EdicionCategoriasGastoHome />
+          </div>
+        </div>
       ) : (
         <>
           <GraficoCircular
             segmentos={segmentos}
             moneda={moneda}
             titulo="Gastos por categoría"
+            subtitulo={subtitulo}
+            accionHeader={botonEditar}
             centroEtiqueta={top ? "Mayor gasto" : undefined}
             centroValor={top ? top.categoria : undefined}
             centroNota={

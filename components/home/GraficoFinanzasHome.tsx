@@ -353,47 +353,51 @@ export function GraficoFinanzasHome({
         </div>
       </div>
 
-      <GraficoCircular
-        segmentos={segmentos}
-        moneda={moneda}
-        titulo={`Resumen del ${tipoEtiqueta}`}
-        subtitulo={subtitulo}
-        centroEtiqueta={etiquetaCentro(filtro)}
-        centroValor={formatearMoneda(total, moneda)}
-        centroNota={
-          filtro === "todos"
-            ? `Ingresos: ${formatearMoneda(resumen.ingresos, moneda)}`
-            : undefined
-        }
-        mensajeVacio={`No hay transacciones en este ${tipoEtiqueta} para mostrar.`}
-        segmentoSeleccionado={segmentoExpandido}
-        onSegmentoClick={manejarClicSegmento}
-      />
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+        <div className="min-w-0">
+          <GraficoCircular
+            segmentos={segmentos}
+            moneda={moneda}
+            titulo={`Resumen del ${tipoEtiqueta}`}
+            subtitulo={subtitulo}
+            centroEtiqueta={etiquetaCentro(filtro)}
+            centroValor={formatearMoneda(total, moneda)}
+            centroNota={
+              filtro === "todos"
+                ? `Ingresos: ${formatearMoneda(resumen.ingresos, moneda)}`
+                : undefined
+            }
+            mensajeVacio={`No hay transacciones en este ${tipoEtiqueta} para mostrar.`}
+            segmentoSeleccionado={segmentoExpandido}
+            onSegmentoClick={manejarClicSegmento}
+          />
 
-      {segmentoExpandido && (
-        <DetalleTransaccionesHome
-          transacciones={transaccionesSegmento}
-          filtro={segmentoExpandido}
-          moneda={moneda}
-          fuente={fuenteSeleccionada}
-          cuentas={cuentas}
-          tarjetas={tarjetas}
-          onVerMas={() => setModalDetalleAbierto(true)}
-        />
-      )}
+          {segmentoExpandido && (
+            <DetalleTransaccionesHome
+              transacciones={transaccionesSegmento}
+              filtro={segmentoExpandido}
+              moneda={moneda}
+              fuente={fuenteSeleccionada}
+              cuentas={cuentas}
+              tarjetas={tarjetas}
+              onVerMas={() => setModalDetalleAbierto(true)}
+            />
+          )}
+        </div>
 
-      <div className="mt-6">
-        <GraficoCategoriasHome
-          datos={datosCategoria}
-          transacciones={transacciones}
-          rango={rango}
-          tipoPeriodo={tipoPeriodo}
-          moneda={moneda}
-          fuente={fuenteSeleccionada}
-          cuentas={cuentas}
-          tarjetas={tarjetas}
-          subtitulo={subtituloCategorias}
-        />
+        <div className="min-w-0">
+          <GraficoCategoriasHome
+            datos={datosCategoria}
+            transacciones={transacciones}
+            rango={rango}
+            tipoPeriodo={tipoPeriodo}
+            moneda={moneda}
+            fuente={fuenteSeleccionada}
+            cuentas={cuentas}
+            tarjetas={tarjetas}
+            subtitulo={subtituloCategorias}
+          />
+        </div>
       </div>
 
       {segmentoExpandido && (
