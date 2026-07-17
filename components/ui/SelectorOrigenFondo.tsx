@@ -16,6 +16,8 @@ interface SelectorOrigenFondoProps {
   soloLiquido?: boolean;
   /** No mostrar esta opción (ej. mismo origen en transferencias) */
   excluirValor?: string;
+  /** Bloquea el destino cuando viene desde una meta de ahorro */
+  destinoMetaFijo?: boolean;
 }
 
 export function SelectorOrigenFondo({
@@ -24,8 +26,9 @@ export function SelectorOrigenFondo({
   tipo,
   soloLiquido = false,
   excluirValor,
+  destinoMetaFijo,
 }: SelectorOrigenFondoProps) {
-  const { cuentas, tarjetas, efectivo, configuracion } = useFinanzas();
+  const { cuentas, tarjetas, efectivo, metasAhorro, configuracion } = useFinanzas();
 
   const etiqueta =
     tipo === "gasto"
@@ -81,6 +84,14 @@ export function SelectorOrigenFondo({
           label: `${t.banco} · ${t.nombreTarjeta} ·••• ${t.ultimosCuatro} (deuda: ${formatearMoneda(t.deudaActual, t.moneda)})`,
         });
       });
+
+      metasAhorro.forEach((meta) => {
+        items.push({
+          valor: codificarOrigen({ tipo: "meta-ahorro", id: meta.id }),
+          grupo: "Metas de ahorro",
+          label: `${meta.nombre} (${formatearMoneda(meta.montoActual, meta.moneda)} / ${formatearMoneda(meta.montoObjetivo, meta.moneda)})`,
+        });
+      });
     }
 
     if (!soloLiquidoEfectivo && !destinoTransferencia) {
@@ -102,6 +113,7 @@ export function SelectorOrigenFondo({
     soloLiquidoEfectivo,
     destinoTransferencia,
     excluirValor,
+    metasAhorro,
   ]);
 
   const grupos = useMemo(() => {
@@ -122,6 +134,7 @@ export function SelectorOrigenFondo({
         onChange={(e) => onChange(e.target.value)}
         className={selectClass}
         required
+        disabled={destinoMetaFijo && destinoTransferencia}
       >
         <option value="">Seleccionar...</option>
         {grupos.map(([grupo, ops]) => (
@@ -151,7 +164,7 @@ export function SelectorOrigenFondo({
       )}
       {tipo === "transferencia-destino" && (
         <span className="text-xs text-muted">
-          Elige otra cuenta, efectivo o una tarjeta para pagar su deuda
+          Elige otra cuenta, efectivo, una tarjeta para pagar su deuda o una meta de ahorro
         </span>
       )}
     </label>

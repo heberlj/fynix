@@ -185,6 +185,9 @@ function normalizarGastosFijos(
       tipoPresupuesto:
         legacy.tipoPresupuesto ??
         tipoPresupuestoPorDefecto(g.categoria ?? "Otros"),
+      tipoRecurrencia: g.tipoRecurrencia ?? "recurrente",
+      fechaVencimiento: g.fechaVencimiento,
+      pagado: g.pagado ?? false,
     };
   });
 }

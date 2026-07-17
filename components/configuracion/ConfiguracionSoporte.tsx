@@ -133,8 +133,8 @@ export function ConfiguracionSoporte() {
       </div>
 
       <p className="mt-4 text-xs text-muted">
-        Al tocar una opción se abrirá WhatsApp con un mensaje inicial. Solo
-        tienes que completar el detalle y enviarlo.
+        Al tocar una opción se abrirá WhatsApp (+1 809-727-3599) con un mensaje
+        listo para que completes el detalle y lo envíes.
       </p>
     </PanelConfiguracion>
   );

@@ -1,7 +1,8 @@
 export type OrigenFondo =
   | { tipo: "cuenta"; id: string }
   | { tipo: "tarjeta"; id: string }
-  | { tipo: "efectivo" };
+  | { tipo: "efectivo" }
+  | { tipo: "meta-ahorro"; id: string };
 
 export type ModoPagoTarjeta = "rotativo" | "cuotas-popular";
 
@@ -221,11 +222,19 @@ export interface GastoFijo {
   notas: string;
   /** Prioridad manual para sugerencias de presupuesto */
   tipoPresupuesto: TipoPresupuestoGasto;
+  /** recurrente = cada mes; unico = pago único */
+  tipoRecurrencia?: TipoRecurrenciaGasto;
+  /** Solo gastos únicos: fecha límite de pago (YYYY-MM-DD) */
+  fechaVencimiento?: string;
+  /** Solo gastos únicos: se marca al registrar el pago */
+  pagado?: boolean;
   /** Tarjeta que originó este gasto (financiamiento en cuotas) */
   tarjetaFinanciamientoId?: string;
   /** Producto bancario asociado */
   productoFinanciamiento?: ProductoFinanciamientoActivo;
 }
+
+export type TipoRecurrenciaGasto = "recurrente" | "unico";
 
 export type TipoPresupuestoGasto = "esencial" | "flexible";
 
@@ -373,3 +382,4 @@ export const CATEGORIAS_INGRESO = CATEGORIAS_INGRESO_DEFAULT;
 
 export const CATEGORIA_PAGO_TARJETA = "Pago tarjeta";
 export const CATEGORIA_TRANSFERENCIA_CUENTAS = "Transferencia entre cuentas";
+export const CATEGORIA_APORTE_META_AHORRO = "Aporte a meta de ahorro";

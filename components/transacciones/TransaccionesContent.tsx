@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { Transaccion } from "@/types/finanzas";
 import { useFinanzas } from "@/context/FinanzasContext";
 import { PageContainer } from "@/components/layout/PageContainer";
@@ -12,6 +13,22 @@ import { GestionCategoriasTransacciones } from "@/components/transacciones/Gesti
 import { ListaTransacciones } from "@/components/transacciones/ListaTransacciones";
 
 export function TransaccionesContent() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-1 items-center justify-center p-8">
+          <p className="text-muted">Cargando transacciones...</p>
+        </div>
+      }
+    >
+      <TransaccionesContentInner />
+    </Suspense>
+  );
+}
+
+function TransaccionesContentInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { transacciones, cargado } = useFinanzas();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [gestionarCategorias, setGestionarCategorias] = useState(false);
@@ -23,6 +40,15 @@ export function TransaccionesContent() {
     setMostrarFormulario(false);
     setTransaccionEditando(null);
   }
+
+  useEffect(() => {
+    if (searchParams.get("nueva") !== "1") return;
+
+    setMostrarFormulario(true);
+    setTransaccionEditando(null);
+    setGestionarCategorias(false);
+    router.replace("/transacciones");
+  }, [searchParams, router]);
 
   const formularioAbierto = mostrarFormulario || Boolean(transaccionEditando);
   const tituloFormulario = transaccionEditando

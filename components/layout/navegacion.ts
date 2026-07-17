@@ -25,7 +25,7 @@ export const NAV_GRUPOS: NavGrupo[] = [
     titulo: "Movimientos",
     items: [
       { href: "/transacciones", label: "Transacciones", icon: "transacciones" },
-      { href: "/gastos-fijos", label: "Gastos fijos", icon: "gastos-fijos" },
+      { href: "/gastos", label: "Gastos", icon: "gastos-fijos" },
       { href: "/quincenas", label: "Quincenas", icon: "quincenas" },
     ],
   },

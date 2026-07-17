@@ -6,7 +6,6 @@ import {
   calcularResumenQuincena,
   obtenerGastosFijosDetalle,
   obtenerCuotasPopularDetalle,
-  obtenerPagosTarjetasDetalle,
   obtenerTransaccionesEnPeriodo,
 } from "@/lib/calculos";
 import { mesActual, opcionesMeses } from "@/lib/fechas";
@@ -58,7 +57,6 @@ export function QuincenasContent() {
           periodo,
           configuracion.moneda
         ),
-        pagosTarjetas: obtenerPagosTarjetasDetalle(tarjetas, periodo),
         cuotasPopular: obtenerCuotasPopularDetalle(cuotasPopular, tarjetas, periodo, transacciones),
         gastosFijos: obtenerGastosFijosDetalle(gastosFijos, periodo, transacciones),
         esActual: quincenaActual
@@ -146,7 +144,7 @@ export function QuincenasContent() {
         </div>
       ) : (
         <div data-ayuda="detalle" className="space-y-6">
-          {datosQuincenas.map(({ periodo, resumen, transacciones: txs, pagosTarjetas, cuotasPopular: cuotasPopularDetalle, gastosFijos: gastosFijosDetalle, esActual }) => (
+          {datosQuincenas.map(({ periodo, resumen, transacciones: txs, cuotasPopular: cuotasPopularDetalle, gastosFijos: gastosFijosDetalle, esActual }) => (
             <TarjetaQuincena
               key={`${periodo.inicio}-${periodo.fin}`}
               periodo={periodo}
@@ -154,7 +152,6 @@ export function QuincenasContent() {
               moneda={configuracion.moneda}
               esActual={esActual}
               transacciones={txs}
-              pagosTarjetas={pagosTarjetas}
               cuotasPopular={cuotasPopularDetalle}
               gastosFijos={gastosFijosDetalle}
             />

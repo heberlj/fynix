@@ -46,7 +46,7 @@ export function ListaTransaccionesHome({
   detallado = false,
   className = "",
 }: ListaTransaccionesHomeProps) {
-  const { configuracion } = useFinanzas();
+  const { configuracion, metasAhorro } = useFinanzas();
 
   if (transacciones.length === 0) {
     return (
@@ -54,6 +54,7 @@ export function ListaTransaccionesHome({
         titulo={`Sin ${ETIQUETAS_FILTRO[filtro].toLowerCase()} en este periodo`}
         descripcion="No hay transacciones que coincidan con el filtro seleccionado."
         className={className}
+        compacto
       />
     );
   }
@@ -133,14 +134,15 @@ export function ListaTransaccionesHome({
                             t.origen,
                             cuentas,
                             tarjetas,
-                            t.modoPagoTarjeta
+                            t.modoPagoTarjeta,
+                            metasAhorro
                           )}
                         </p>
                         <p>
                           <span className="font-medium text-foreground">
                             Destino:{" "}
                           </span>
-                          {etiquetaOrigen(t.destino, cuentas, tarjetas)}
+                          {etiquetaOrigen(t.destino, cuentas, tarjetas, undefined, metasAhorro)}
                         </p>
                         <p>
                           <span className="font-medium text-foreground">
@@ -150,7 +152,8 @@ export function ListaTransaccionesHome({
                             t.origen,
                             t.destino,
                             cuentas,
-                            tarjetas
+                            tarjetas,
+                            metasAhorro
                           )}
                         </p>
                       </>
@@ -164,7 +167,8 @@ export function ListaTransaccionesHome({
                             t.origen,
                             cuentas,
                             tarjetas,
-                            t.modoPagoTarjeta
+                            t.modoPagoTarjeta,
+                            metasAhorro
                           )}
                         </p>
                       )
@@ -189,7 +193,8 @@ export function ListaTransaccionesHome({
                         t.origen,
                         t.destino,
                         cuentas,
-                        tarjetas
+                        tarjetas,
+                        metasAhorro
                       )}
                     </p>
                   ) : (
@@ -199,7 +204,8 @@ export function ListaTransaccionesHome({
                           t.origen,
                           cuentas,
                           tarjetas,
-                          t.modoPagoTarjeta
+                          t.modoPagoTarjeta,
+                          metasAhorro
                         )}
                       </p>
                     )

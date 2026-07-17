@@ -75,6 +75,11 @@ export function GraficoCircular({
         {subtitulo && (
           <p className="mt-1 text-xs leading-relaxed text-muted">{subtitulo}</p>
         )}
+        {onSegmentoClick && segmentosActivos.length > 0 && (
+          <p className="mt-2 text-xs text-muted sm:hidden">
+            Toca un ítem del listado para ver el detalle.
+          </p>
+        )}
       </div>
 
       {segmentosActivos.length === 0 || total <= 0 ? (
@@ -171,7 +176,7 @@ export function GraficoCircular({
                       type="button"
                       onClick={() => onSegmentoClick?.(seg.id)}
                       disabled={seg.valor <= 0}
-                      className={`w-full rounded-lg border px-3 py-2.5 text-left transition-colors ${
+                      className={`w-full touch-manipulation rounded-lg border px-3 py-3 text-left transition-colors sm:py-2.5 ${
                         seleccionado
                           ? "border-accent bg-accent/10 ring-1 ring-accent/30"
                           : "border-border bg-background hover:border-accent/40 hover:bg-surface-hover"

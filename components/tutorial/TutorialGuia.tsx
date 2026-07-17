@@ -26,7 +26,7 @@ const PASOS = [
     titulo: "Define gastos fijos",
     descripcion:
       "Lista alquiler, servicios, suscripciones y otros pagos mensuales. Márcalos como esenciales o flexibles.",
-    enlace: { href: "/gastos-fijos", label: "Ir a Gastos fijos" },
+    enlace: { href: "/gastos", label: "Ir a Gastos" },
   },
   {
     titulo: "Revisa tus quincenas",

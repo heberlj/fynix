@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useFinanzas } from "@/context/FinanzasContext";
 import type { Transaccion } from "@/types/finanzas";
 import {
+  CATEGORIA_APORTE_META_AHORRO,
   CATEGORIA_PAGO_TARJETA,
   CATEGORIA_TRANSFERENCIA_CUENTAS,
-  CATEGORIAS_GASTO_DEFAULT,
 } from "@/types/finanzas";
 import { fechaHoy } from "@/lib/fechas";
 import {
@@ -54,6 +54,7 @@ export function FormularioTransaccion({
   onCancelar,
   gastoFijoInicialId,
   aporteIngresoInicial,
+  metaAhorroInicialId,
   transaccion,
   enModal = false,
 }: {
@@ -61,6 +62,7 @@ export function FormularioTransaccion({
   onCancelar?: () => void;
   gastoFijoInicialId?: string;
   aporteIngresoInicial?: boolean;
+  metaAhorroInicialId?: string;
   transaccion?: Transaccion;
   enModal?: boolean;
 } = {}) {
@@ -74,6 +76,7 @@ export function FormularioTransaccion({
     cuentas,
     efectivo,
     gastosFijos,
+    metasAhorro,
     transacciones,
   } = useFinanzas();
   const [tipo, setTipo] = useState<"gasto" | "ingreso" | "transferencia">("gasto");
@@ -82,7 +85,7 @@ export function FormularioTransaccion({
   const [moneda, setMoneda] = useState(configuracion.moneda);
   const [categoria, setCategoria] = useState("");
   const [fecha, setFecha] = useState(fechaHoy());
-  const [origenValor, setOrigenValor] = useState("efectivo");
+  const [origenValor, setOrigenValor] = useState("");
   const [destinoValor, setDestinoValor] = useState("");
   const [tasaCambio, setTasaCambio] = useState("");
   const [usarCuotasPopular, setUsarCuotasPopular] = useState(false);
@@ -136,11 +139,11 @@ export function FormularioTransaccion({
       : undefined;
 
   const monedaOrigenTransferencia = origen
-    ? monedaDeOrigen(origen, cuentas, tarjetas, configuracion.moneda)
+    ? monedaDeOrigen(origen, cuentas, tarjetas, configuracion.moneda, metasAhorro)
     : configuracion.moneda;
 
   const monedaDestinoTransferencia = destino
-    ? monedaDeOrigen(destino, cuentas, tarjetas, configuracion.moneda)
+    ? monedaDeOrigen(destino, cuentas, tarjetas, configuracion.moneda, metasAhorro)
     : moneda;
 
   const requiereTasaCambio =
@@ -149,7 +152,7 @@ export function FormularioTransaccion({
     movimientoConCambio(monedaOrigenTransferencia, monedaDestinoTransferencia);
 
   const monedaOrigenPago = origen
-    ? monedaDeOrigen(origen, cuentas, tarjetas, configuracion.moneda)
+    ? monedaDeOrigen(origen, cuentas, tarjetas, configuracion.moneda, metasAhorro)
     : configuracion.moneda;
 
   const requiereTasaCambioGastoIngreso =
@@ -178,6 +181,16 @@ export function FormularioTransaccion({
   }, [tarjetaSeleccionada, cuotasPopular]);
 
   useEffect(() => {
+    if (!metaAhorroInicialId) return;
+    const meta = metasAhorro.find((m) => m.id === metaAhorroInicialId);
+    if (!meta) return;
+    setTipo("transferencia");
+    setDestinoValor(codificarOrigen({ tipo: "meta-ahorro", id: meta.id }));
+    setDescripcion(`Aporte a ${meta.nombre}`);
+    setMoneda(meta.moneda);
+  }, [metaAhorroInicialId, metasAhorro]);
+
+  useEffect(() => {
     if (!transaccion) return;
     setTipo(transaccion.tipo);
     setDescripcion(transaccion.descripcion);
@@ -202,20 +215,15 @@ export function FormularioTransaccion({
   }, [transaccion]);
 
   useEffect(() => {
-    if (tipo === "gasto") {
+    if (modoEdicion) return;
+    if (gastoFijoInicialId || aporteIngresoInicial || metaAhorroInicialId) return;
+
+    if (tipo === "gasto" || tipo === "ingreso") {
       setCategoria((actual) =>
-        categoriasGasto.includes(actual)
-          ? actual
-          : (categoriasGasto[0] ?? CATEGORIAS_GASTO_DEFAULT[0])
-      );
-    } else if (tipo === "ingreso") {
-      setCategoria((actual) =>
-        categoriasIngreso.includes(actual)
-          ? actual
-          : (categoriasIngreso[0] ?? "Otros")
+        actual && categorias.includes(actual) ? actual : ""
       );
     }
-  }, [tipo, categoriasGasto, categoriasIngreso]);
+  }, [tipo, categorias, modoEdicion, gastoFijoInicialId, aporteIngresoInicial, metaAhorroInicialId]);
 
   useEffect(() => {
     if (!gastoFijoInicialId) return;
@@ -262,32 +270,18 @@ export function FormularioTransaccion({
     setCategoria(gasto.categoria);
     setMoneda(gasto.moneda);
 
-    if (gastoFijoInicialId === gastoFijoId && !modoEdicion) {
-      const tarjeta = tarjetas.find((t) => t.moneda === gasto.moneda);
-      const cuenta = cuentas.find((c) => c.moneda === gasto.moneda);
-      if (tarjeta) {
-        setOrigenValor(codificarOrigen({ tipo: "tarjeta", id: tarjeta.id }));
-      } else if (cuenta) {
-        setOrigenValor(codificarOrigen({ tipo: "cuenta", id: cuenta.id }));
-      }
-    }
   }, [
     gastoFijoId,
     gastosFijos,
     tipo,
     gastoFijoInicialId,
     modoEdicion,
-    tarjetas,
-    cuentas,
   ]);
 
   function cambiarTipo(nuevoTipo: "gasto" | "ingreso" | "transferencia") {
     setTipo(nuevoTipo);
-    if (nuevoTipo === "gasto") {
-      setCategoria(categoriasGasto[0] ?? CATEGORIAS_GASTO_DEFAULT[0]);
-    } else if (nuevoTipo === "ingreso") {
-      setCategoria(categoriasIngreso[0] ?? "Otros");
-    }
+    setCategoria("");
+    setOrigenValor("");
     setUsarCuotasPopular(false);
     setCuotasValores(CUOTAS_INICIAL);
     setDestinoValor("");
@@ -324,6 +318,11 @@ export function FormularioTransaccion({
       return;
     }
 
+    if (tipo !== "transferencia" && !categoria.trim()) {
+      setError("Selecciona una categoría");
+      return;
+    }
+
     const origenDecodificado = decodificarOrigen(origenValor);
     if (!origenDecodificado) {
       setError("Selecciona de dónde sale o entra el dinero");
@@ -349,13 +348,15 @@ export function FormularioTransaccion({
         origenDecodificado,
         cuentas,
         tarjetas,
-        configuracion.moneda
+        configuracion.moneda,
+        metasAhorro
       );
       const monedaDestino = monedaDeOrigen(
         destinoDecodificado,
         cuentas,
         tarjetas,
-        configuracion.moneda
+        configuracion.moneda,
+        metasAhorro
       );
 
       if (destinoDecodificado.tipo === "tarjeta") {
@@ -368,6 +369,12 @@ export function FormularioTransaccion({
         const cuenta = cuentas.find((c) => c.id === destinoDecodificado.id);
         if (!cuenta) {
           setError("Cuenta de destino no encontrada");
+          return;
+        }
+      } else if (destinoDecodificado.tipo === "meta-ahorro") {
+        const meta = metasAhorro.find((m) => m.id === destinoDecodificado.id);
+        if (!meta) {
+          setError("Meta de ahorro no encontrada");
           return;
         }
       }
@@ -401,13 +408,16 @@ export function FormularioTransaccion({
       }
 
       const esPagoTarjeta = destinoDecodificado.tipo === "tarjeta";
+      const esAporteMeta = destinoDecodificado.tipo === "meta-ahorro";
 
       const datosTransferencia = {
         descripcion: descripcion.trim(),
         monto: montoNumerico,
         categoria: esPagoTarjeta
           ? CATEGORIA_PAGO_TARJETA
-          : CATEGORIA_TRANSFERENCIA_CUENTAS,
+          : esAporteMeta
+            ? CATEGORIA_APORTE_META_AHORRO
+            : CATEGORIA_TRANSFERENCIA_CUENTAS,
         fecha,
         moneda: monedaDestino,
         monedaOrigen: monedaOrigen,
@@ -417,6 +427,7 @@ export function FormularioTransaccion({
           : undefined,
         origen: origenDecodificado,
         destino: destinoDecodificado,
+        metaAhorroId: esAporteMeta ? destinoDecodificado.id : undefined,
       };
 
       if (modoEdicion && transaccion) {
@@ -431,6 +442,8 @@ export function FormularioTransaccion({
       setDescripcion("");
       setMonto("");
       setMoneda(configuracion.moneda);
+      setCategoria("");
+      setOrigenValor("");
       setFecha(fechaHoy());
       setDestinoValor("");
       setTasaCambio("");
@@ -442,7 +455,8 @@ export function FormularioTransaccion({
       origenDecodificado,
       cuentas,
       tarjetas,
-      configuracion.moneda
+      configuracion.moneda,
+      metasAhorro
     );
 
     if (origenDecodificado.tipo === "tarjeta" && moneda !== monedaOrigen) {
@@ -559,6 +573,8 @@ export function FormularioTransaccion({
     setDescripcion("");
     setMonto("");
     setMoneda(configuracion.moneda);
+    setCategoria("");
+    setOrigenValor("");
     setFecha(fechaHoy());
     setGastoFijoId("");
     setEsPagoAporte(false);
@@ -599,7 +615,8 @@ export function FormularioTransaccion({
         </p>
       ) : (
       !gastoFijoInicialId &&
-      !aporteIngresoInicial && (
+      !aporteIngresoInicial &&
+      !metaAhorroInicialId && (
       <div className="mt-4 flex rounded-lg border border-border p-0.5 sm:p-1">
         <button
           type="button"
@@ -661,7 +678,9 @@ export function FormularioTransaccion({
             {tipo === "transferencia" && destino
               ? destino.tipo === "tarjeta"
                 ? `Monto a pagar (${monedaDestinoTransferencia})`
-                : `Monto a transferir (${monedaDestinoTransferencia})`
+                : destino.tipo === "meta-ahorro"
+                  ? `Monto del aporte (${monedaDestinoTransferencia})`
+                  : `Monto a transferir (${monedaDestinoTransferencia})`
               : "Monto"}
           </span>
           <input
@@ -716,26 +735,13 @@ export function FormularioTransaccion({
         {tipo !== "transferencia" && (
           <div className="flex flex-col gap-1.5 sm:col-span-2">
             <span className="text-sm font-medium text-foreground">Categoría</span>
-            {tipo === "gasto" ? (
-              <SelectorCategoriaConIconos
-                categorias={categorias}
-                valor={categoria}
-                onChange={setCategoria}
-                configuracion={configuracion}
-              />
-            ) : (
-              <select
-                value={categoria}
-                onChange={(e) => setCategoria(e.target.value)}
-                className={inputClass}
-              >
-                {categorias.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
-            )}
+            <SelectorCategoriaConIconos
+              categorias={categorias}
+              valor={categoria}
+              onChange={setCategoria}
+              configuracion={configuracion}
+              conIconos={tipo === "gasto"}
+            />
           </div>
         )}
 
@@ -784,6 +790,7 @@ export function FormularioTransaccion({
               }}
               tipo="transferencia-destino"
               excluirValor={origenValor}
+              destinoMetaFijo={Boolean(metaAhorroInicialId)}
             />
 
             {requiereTasaCambio && (
@@ -821,6 +828,8 @@ export function FormularioTransaccion({
                       {" "}
                       {destino?.tipo === "tarjeta"
                         ? "a la tarjeta."
+                        : destino?.tipo === "meta-ahorro"
+                          ? "a la meta de ahorro."
                         : destino?.tipo === "efectivo"
                           ? "en efectivo."
                           : "en la cuenta destino."}

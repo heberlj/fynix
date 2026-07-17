@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 import { useFinanzas } from "@/context/FinanzasContext";
 import type { GastoFijo, TipoPresupuestoGasto } from "@/types/finanzas";
 import {
+  esGastoRecurrente,
   obtenerCategoriasGastosFijos,
   quincenaNumeroDeDia,
   tipoPresupuestoPorDefecto,
 } from "@/lib/gastos-fijos";
+import { fechaHoy } from "@/lib/fechas";
 import { SelectorMoneda } from "@/components/ui/SelectorMoneda";
 
 const inputClass =
@@ -21,11 +23,15 @@ interface EditarGastoFijoFormProps {
 export function EditarGastoFijoForm({ gasto, onCancelar }: EditarGastoFijoFormProps) {
   const { actualizarGastoFijo, configuracion } = useFinanzas();
   const categorias = obtenerCategoriasGastosFijos(configuracion);
+  const esRecurrente = esGastoRecurrente(gasto);
 
   const [nombre, setNombre] = useState(gasto.nombre);
   const [monto, setMonto] = useState(String(gasto.monto));
   const [categoria, setCategoria] = useState(gasto.categoria);
   const [diaPago, setDiaPago] = useState(String(gasto.diaPago));
+  const [fechaVencimiento, setFechaVencimiento] = useState(
+    gasto.fechaVencimiento ?? fechaHoy()
+  );
   const [quincena, setQuincena] = useState<"1" | "2">(String(gasto.quincena) as "1" | "2");
   const [quincenaManual, setQuincenaManual] = useState(false);
   const [tipoPresupuesto, setTipoPresupuesto] = useState<TipoPresupuestoGasto>(
@@ -38,12 +44,20 @@ export function EditarGastoFijoForm({ gasto, onCancelar }: EditarGastoFijoFormPr
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (quincenaManual) return;
+    if (!esRecurrente || quincenaManual) return;
     const diaNum = parseInt(diaPago, 10);
     if (isNaN(diaNum) || diaNum < 1 || diaNum > 31) return;
     const q = quincenaNumeroDeDia(diaNum);
     setQuincena(String(q) as "1" | "2");
-  }, [diaPago, quincenaManual]);
+  }, [diaPago, quincenaManual, esRecurrente]);
+
+  useEffect(() => {
+    if (esRecurrente) return;
+    const [, , dia] = fechaVencimiento.split("-").map(Number);
+    if (!isNaN(dia) && !quincenaManual) {
+      setQuincena(String(quincenaNumeroDeDia(dia)) as "1" | "2");
+    }
+  }, [fechaVencimiento, esRecurrente, quincenaManual]);
 
   useEffect(() => {
     if (tipoManual) return;
@@ -55,7 +69,9 @@ export function EditarGastoFijoForm({ gasto, onCancelar }: EditarGastoFijoFormPr
     setError("");
 
     const montoNum = parseFloat(monto);
-    const diaNum = parseInt(diaPago, 10);
+    const diaNum = esRecurrente
+      ? parseInt(diaPago, 10)
+      : parseInt(fechaVencimiento.split("-")[2] ?? "0", 10);
 
     if (!nombre.trim()) {
       setError("El nombre es obligatorio");
@@ -65,8 +81,12 @@ export function EditarGastoFijoForm({ gasto, onCancelar }: EditarGastoFijoFormPr
       setError("Ingresa un monto válido");
       return;
     }
-    if (isNaN(diaNum) || diaNum < 1 || diaNum > 31) {
+    if (esRecurrente && (isNaN(diaNum) || diaNum < 1 || diaNum > 31)) {
       setError("El día de pago debe estar entre 1 y 31");
+      return;
+    }
+    if (!esRecurrente && !fechaVencimiento) {
+      setError("Selecciona la fecha del gasto");
       return;
     }
 
@@ -78,8 +98,9 @@ export function EditarGastoFijoForm({ gasto, onCancelar }: EditarGastoFijoFormPr
       quincena: Number(quincena) as 1 | 2,
       moneda,
       notas: notas.trim(),
-      activo,
+      activo: esRecurrente ? activo : gasto.activo,
       tipoPresupuesto,
+      fechaVencimiento: esRecurrente ? undefined : fechaVencimiento,
     });
 
     onCancelar();
@@ -87,7 +108,7 @@ export function EditarGastoFijoForm({ gasto, onCancelar }: EditarGastoFijoFormPr
 
   return (
     <form onSubmit={handleSubmit} className="mt-6 space-y-4 border-t border-border pt-6">
-      <h4 className="text-sm font-semibold text-foreground">Editar gasto fijo</h4>
+      <h4 className="text-sm font-semibold text-foreground">Editar gasto</h4>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5 sm:col-span-2">
@@ -96,7 +117,9 @@ export function EditarGastoFijoForm({ gasto, onCancelar }: EditarGastoFijoFormPr
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-foreground">Monto mensual</span>
+          <span className="text-sm font-medium text-foreground">
+            {esRecurrente ? "Monto mensual" : "Monto"}
+          </span>
           <input type="number" min="0.01" step="0.01" value={monto} onChange={(e) => setMonto(e.target.value)} className={inputClass} />
         </label>
 
@@ -116,10 +139,22 @@ export function EditarGastoFijoForm({ gasto, onCancelar }: EditarGastoFijoFormPr
           </select>
         </label>
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-foreground">Día de pago</span>
-          <input type="number" min={1} max={31} value={diaPago} onChange={(e) => setDiaPago(e.target.value)} className={inputClass} />
-        </label>
+        {esRecurrente ? (
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium text-foreground">Día de pago</span>
+            <input type="number" min={1} max={31} value={diaPago} onChange={(e) => setDiaPago(e.target.value)} className={inputClass} />
+          </label>
+        ) : (
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium text-foreground">Fecha del gasto</span>
+            <input
+              type="date"
+              value={fechaVencimiento}
+              onChange={(e) => setFechaVencimiento(e.target.value)}
+              className={inputClass}
+            />
+          </label>
+        )}
 
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium text-foreground">Quincena</span>
@@ -158,15 +193,17 @@ export function EditarGastoFijoForm({ gasto, onCancelar }: EditarGastoFijoFormPr
           <input type="text" value={notas} onChange={(e) => setNotas(e.target.value)} className={inputClass} />
         </label>
 
-        <label className="flex items-center gap-2 sm:col-span-2">
-          <input
-            type="checkbox"
-            checked={activo}
-            onChange={(e) => setActivo(e.target.checked)}
-            className="rounded border-border"
-          />
-          <span className="text-sm text-foreground">Activo (incluir en compromisos mensuales)</span>
-        </label>
+        {esRecurrente && (
+          <label className="flex items-center gap-2 sm:col-span-2">
+            <input
+              type="checkbox"
+              checked={activo}
+              onChange={(e) => setActivo(e.target.checked)}
+              className="rounded border-border"
+            />
+            <span className="text-sm text-foreground">Activo (incluir en el presupuesto mensual)</span>
+          </label>
+        )}
       </div>
 
       {error && <p className="text-sm text-gasto">{error}</p>}

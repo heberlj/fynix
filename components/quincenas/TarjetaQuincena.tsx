@@ -6,7 +6,6 @@ import type { PeriodoQuincena, ResumenQuincena } from "@/types/finanzas";
 import {
   obtenerGastosFijosDetalle,
   obtenerCuotasPopularDetalle,
-  obtenerPagosTarjetasDetalle,
   obtenerTransaccionesEnPeriodo,
 } from "@/lib/calculos";
 import { formatearFecha } from "@/lib/fechas";
@@ -19,7 +18,6 @@ interface TarjetaQuincenaProps {
   moneda: string;
   esActual: boolean;
   transacciones: ReturnType<typeof obtenerTransaccionesEnPeriodo>;
-  pagosTarjetas: ReturnType<typeof obtenerPagosTarjetasDetalle>;
   cuotasPopular: ReturnType<typeof obtenerCuotasPopularDetalle>;
   gastosFijos: ReturnType<typeof obtenerGastosFijosDetalle>;
 }
@@ -60,12 +58,16 @@ function LeyendaBarraDistribucion({
   moneda: string;
 }) {
   const compromisosTotal =
-    resumen.pagosTarjetas +
     resumen.cuotasPopular +
     resumen.gastosFijos;
 
   if (resumen.ingresosTotales <= 0) {
-    if (compromisosTotal <= 0 && resumen.gastosTotales <= 0 && resumen.movimientosTotales <= 0) {
+    if (
+      compromisosTotal <= 0 &&
+      resumen.gastosTotales <= 0 &&
+      resumen.movimientosTotales <= 0 &&
+      resumen.pagosTarjetas <= 0
+    ) {
       return null;
     }
     return (
@@ -101,10 +103,16 @@ function LeyendaBarraDistribucion({
       desc: "pagos a tarjetas desde cuenta o efectivo",
     },
     {
+      color: "bg-orange-500",
+      label: "Tarjetas pendientes",
+      monto: resumen.pagosTarjetas,
+      desc: "deuda de tarjetas con fecha de pago en esta quincena",
+    },
+    {
       color: "bg-yellow-500",
       label: "Compromisos",
       monto: compromisosTotal,
-      desc: "tarjetas, cuotas popular y gastos fijos del periodo",
+      desc: "cuotas popular y gastos del periodo",
     },
     {
       color: "bg-ingreso",
@@ -160,13 +168,13 @@ function BarraDistribucionIngresos({ resumen }: { resumen: ResumenQuincena }) {
   if (ingresos <= 0) return null;
 
   const compromisosTotal =
-    resumen.pagosTarjetas +
     resumen.cuotasPopular +
     resumen.gastosFijos;
 
   const segmentos = [
     { monto: resumen.gastosTotales, className: "bg-gasto" },
     { monto: resumen.movimientosTotales, className: "bg-accent" },
+    { monto: resumen.pagosTarjetas, className: "bg-orange-500" },
     { monto: compromisosTotal, className: "bg-yellow-500" },
     { monto: Math.max(0, resumen.disponible), className: "bg-ingreso" },
   ].filter((s) => s.monto > 0);
@@ -195,12 +203,11 @@ export function TarjetaQuincena({
   moneda,
   esActual,
   transacciones,
-  pagosTarjetas,
   cuotasPopular,
   gastosFijos,
 }: TarjetaQuincenaProps) {
   const [expandida, setExpandida] = useState(esActual);
-  const { cuentas, tarjetas } = useFinanzas();
+  const { cuentas, tarjetas, metasAhorro } = useFinanzas();
 
   const ingresos = transacciones.filter((t) => t.tipo === "ingreso");
   const gastos = transacciones.filter((t) => t.tipo === "gasto");
@@ -260,40 +267,34 @@ export function TarjetaQuincena({
       </button>
 
       <div className="border-t border-border px-6 py-4">
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6">
-          <div>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="min-w-0">
             <p className="text-xs text-muted">Ingresos</p>
-            <p className="text-sm font-semibold text-ingreso">
+            <p className="text-sm font-semibold text-ingreso break-words">
               {formatearMoneda(resumen.ingresosTotales, moneda)}
             </p>
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-xs text-muted">Gastos</p>
-            <p className="text-sm font-semibold text-gasto">
+            <p className="text-sm font-semibold text-gasto break-words">
               {formatearMoneda(resumen.gastosTotales, moneda)}
             </p>
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-xs text-muted">Movimientos</p>
-            <p className="text-sm font-semibold text-accent">
+            <p className="text-sm font-semibold text-accent break-words">
               {formatearMoneda(resumen.movimientosTotales, moneda)}
             </p>
           </div>
-          <div>
-            <p className="text-xs text-muted">Tarjetas</p>
-            <p className="text-sm font-semibold text-foreground">
-              {formatearMoneda(resumen.pagosTarjetas, moneda)}
-            </p>
-          </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-xs text-muted">Cuotas Popular</p>
-            <p className="text-sm font-semibold text-foreground">
+            <p className="text-sm font-semibold text-foreground break-words">
               {formatearMoneda(resumen.cuotasPopular, moneda)}
             </p>
           </div>
-          <div>
-            <p className="text-xs text-muted">Gastos fijos</p>
-            <p className="text-sm font-semibold text-foreground">
+          <div className="min-w-0 col-span-2 sm:col-span-1">
+            <p className="text-xs text-muted">Compromisos</p>
+            <p className="text-sm font-semibold text-foreground break-words">
               {formatearMoneda(resumen.gastosFijos, moneda)}
             </p>
           </div>
@@ -314,15 +315,15 @@ export function TarjetaQuincena({
                 {ingresos.map((t) => (
                   <div
                     key={t.id}
-                    className="flex items-center justify-between px-3 py-2 text-sm"
+                    className="flex flex-col gap-2 px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <div>
-                      <p className="font-medium text-foreground">{t.descripcion}</p>
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground break-words">{t.descripcion}</p>
                       <p className="text-xs text-muted">
                         {formatearFecha(t.fecha)} · {t.categoria}
                       </p>
                     </div>
-                    <span className="font-medium text-ingreso">
+                    <span className="shrink-0 font-medium text-ingreso">
                       +{formatearMoneda(t.monto, moneda)}
                     </span>
                   </div>
@@ -340,15 +341,15 @@ export function TarjetaQuincena({
                 {gastos.map((t) => (
                   <div
                     key={t.id}
-                    className="flex items-center justify-between px-3 py-2 text-sm"
+                    className="flex flex-col gap-2 px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <div>
-                      <p className="font-medium text-foreground">{t.descripcion}</p>
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground break-words">{t.descripcion}</p>
                       <p className="text-xs text-muted">
                         {formatearFecha(t.fecha)} · {t.categoria}
                       </p>
                     </div>
-                    <span className="font-medium text-gasto">
+                    <span className="shrink-0 font-medium text-gasto">
                       −{formatearMoneda(t.monto, moneda)}
                     </span>
                   </div>
@@ -417,7 +418,7 @@ export function TarjetaQuincena({
                         {t.origen && t.destino && (
                           <>
                             {" · "}
-                            {etiquetaTransferencia(t.origen, t.destino, cuentas, tarjetas)}
+                            {etiquetaTransferencia(t.origen, t.destino, cuentas, tarjetas, metasAhorro)}
                           </>
                         )}
                       </p>
@@ -431,23 +432,12 @@ export function TarjetaQuincena({
             </div>
           )}
 
-          {(pagosTarjetas.length > 0 ||
-            cuotasPopular.length > 0 ||
-            gastosFijos.length > 0) && (
+          {(cuotasPopular.length > 0 || gastosFijos.length > 0) && (
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
                 Compromisos del periodo
               </p>
               <div className="rounded-lg border border-border bg-background px-3 py-2">
-                {pagosTarjetas.map((p) => (
-                  <FilaDetalle
-                    key={`t-${p.nombre}`}
-                    etiqueta={`${p.nombre} (día ${p.dia})`}
-                    monto={p.monto}
-                    moneda={p.moneda}
-                    variante="gasto"
-                  />
-                ))}
                 {cuotasPopular.map((p) => (
                   <FilaDetalle
                     key={`cp-${p.nombre}`}
@@ -483,7 +473,6 @@ export function TarjetaQuincena({
           )}
 
           {transacciones.length === 0 &&
-            pagosTarjetas.length === 0 &&
             cuotasPopular.length === 0 &&
             gastosFijos.length === 0 && (
               <p className="py-4 text-center text-sm text-muted">
@@ -512,9 +501,17 @@ export function TarjetaQuincena({
                 variante="gasto"
               />
             )}
+            {resumen.pagosTarjetas > 0 && (
+              <FilaDetalle
+                etiqueta="Menos pagos pendientes de tarjetas"
+                monto={-resumen.pagosTarjetas}
+                moneda={moneda}
+                variante="gasto"
+              />
+            )}
             <FilaDetalle
               etiqueta="Menos compromisos del periodo"
-              monto={-(resumen.pagosTarjetas + resumen.cuotasPopular + resumen.gastosFijos)}
+              monto={-(resumen.cuotasPopular + resumen.gastosFijos)}
               moneda={moneda}
               variante="gasto"
             />

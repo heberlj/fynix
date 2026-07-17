@@ -1,6 +1,7 @@
 import type {
   CuentaBancaria,
   EstadoFinanzas,
+  MetaAhorro,
   OrigenFondo,
   TarjetaCredito,
   Transaccion,
@@ -103,6 +104,16 @@ export function aplicarEfectoTransaccion(
             : c
         ),
       };
+    } else if (transaccion.destino.tipo === "meta-ahorro") {
+      const metaId = transaccion.destino.id;
+      result = {
+        ...result,
+        metasAhorro: result.metasAhorro.map((m) =>
+          m.id === metaId
+            ? { ...m, montoActual: redondear(m.montoActual + montoDestino) }
+            : m
+        ),
+      };
     }
 
     return result;
@@ -170,8 +181,12 @@ export function monedaDeOrigen(
   origen: OrigenFondo,
   cuentas: CuentaBancaria[],
   tarjetas: TarjetaCredito[],
-  monedaDefecto: string
+  monedaDefecto: string,
+  metas: MetaAhorro[] = []
 ): string {
+  if (origen.tipo === "meta-ahorro") {
+    return metas.find((m) => m.id === origen.id)?.moneda ?? monedaDefecto;
+  }
   if (origen.tipo === "cuenta") {
     return cuentas.find((c) => c.id === origen.id)?.moneda ?? monedaDefecto;
   }
@@ -189,7 +204,10 @@ export function codificarOrigen(origen: OrigenFondo): string {
 export function decodificarOrigen(valor: string): OrigenFondo | null {
   if (valor === "efectivo") return { tipo: "efectivo" };
   const [tipo, id] = valor.split(":");
-  if ((tipo === "cuenta" || tipo === "tarjeta") && id) {
+  if (
+    (tipo === "cuenta" || tipo === "tarjeta" || tipo === "meta-ahorro") &&
+    id
+  ) {
     return { tipo, id };
   }
   return null;
@@ -199,10 +217,16 @@ export function etiquetaOrigen(
   origen: OrigenFondo | undefined,
   cuentas: CuentaBancaria[],
   tarjetas: TarjetaCredito[],
-  modoPagoTarjeta?: Transaccion["modoPagoTarjeta"]
+  modoPagoTarjeta?: Transaccion["modoPagoTarjeta"],
+  metas: MetaAhorro[] = []
 ): string {
   if (!origen) return "Sin origen";
   if (origen.tipo === "efectivo") return "Efectivo";
+
+  if (origen.tipo === "meta-ahorro") {
+    const meta = metas.find((m) => m.id === origen.id);
+    return meta ? `Meta: ${meta.nombre}` : "Meta eliminada";
+  }
 
   if (origen.tipo === "cuenta") {
     const cuenta = cuentas.find((c) => c.id === origen.id);
@@ -222,7 +246,8 @@ export function etiquetaTransferencia(
   origen: OrigenFondo,
   destino: OrigenFondo,
   cuentas: CuentaBancaria[],
-  tarjetas: TarjetaCredito[]
+  tarjetas: TarjetaCredito[],
+  metas: MetaAhorro[] = []
 ): string {
-  return `${etiquetaOrigen(origen, cuentas, tarjetas)} → ${etiquetaOrigen(destino, cuentas, tarjetas)}`;
+  return `${etiquetaOrigen(origen, cuentas, tarjetas, undefined, metas)} → ${etiquetaOrigen(destino, cuentas, tarjetas, undefined, metas)}`;
 }

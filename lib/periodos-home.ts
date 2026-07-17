@@ -23,7 +23,8 @@ function parseFechaLocal(fecha: string): Date {
 }
 
 export function fechaEnRango(fecha: string, rango: RangoPeriodoHome): boolean {
-  return fecha >= rango.inicio && fecha <= rango.fin;
+  const dia = fecha.slice(0, 10);
+  return dia >= rango.inicio && dia <= rango.fin;
 }
 
 function inicioSemana(fecha: Date): Date {

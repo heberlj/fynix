@@ -7,6 +7,7 @@ import { EncabezadoPagina } from "@/components/layout/EncabezadoPagina";
 import { AyudaPagina } from "@/components/ayuda/AyudaPagina";
 import { ResumenCuentasTarjetas } from "@/components/home/ResumenCuentasTarjetas";
 import { GraficoFinanzasHome } from "@/components/home/GraficoFinanzasHome";
+import { BotonFlotanteNuevaTransaccion } from "@/components/transacciones/BotonFlotanteNuevaTransaccion";
 import { etiquetaOrigen } from "@/lib/transacciones";
 import type { SeleccionFuenteHome } from "@/lib/resumen-home";
 import { obtenerQuincenaActual } from "@/lib/quincenas";
@@ -62,6 +63,7 @@ export function HomeContent() {
           </div>
         </section>
       </PageContainer>
+      <BotonFlotanteNuevaTransaccion />
     </AyudaPagina>
   );
 }

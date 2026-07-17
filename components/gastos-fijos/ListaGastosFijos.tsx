@@ -12,8 +12,13 @@ import {
 } from "@/lib/prestamos";
 import {
   agruparGastosPorQuincena,
+  diasHastaFechaGasto,
+  esGastoRecurrente,
+  esGastoUnicoPendiente,
   etiquetaTipoPresupuesto,
+  etiquetaTipoRecurrencia,
   gastoFijoCubiertoEnPeriodo,
+  gastoVisibleEnPresupuesto,
 } from "@/lib/gastos-fijos";
 import {
   agruparPrestamosPorQuincena,
@@ -21,7 +26,7 @@ import {
   totalPrestamosPorQuincena,
 } from "@/lib/prestamos";
 import { formatearMoneda, obtenerQuincenasDelMes, periodoDeFecha } from "@/lib/quincenas";
-import { fechaHoy, mesActual } from "@/lib/fechas";
+import { fechaHoy, formatearFecha, mesActual } from "@/lib/fechas";
 import { confirmarAccion, confirmarEliminacion } from "@/lib/confirmar";
 import {
   montoPendienteAporteEnPeriodo,
@@ -43,17 +48,24 @@ function TarjetaGasto({
   editandoId,
   setEditandoId,
   pagadoEnQuincena,
+  pendiente,
   onRegistrarPago,
 }: {
   gasto: GastoFijo;
   editandoId: string | null;
   setEditandoId: (id: string | null) => void;
   pagadoEnQuincena: boolean;
+  pendiente: boolean;
   onRegistrarPago?: (gastoId: string) => void;
 }) {
   const { actualizarGastoFijo, eliminarGastoFijo } = useFinanzas();
   const estaEditando = editandoId === gasto.id;
-  const dias = diasHastaCuota(gasto.diaPago);
+  const esRecurrente = esGastoRecurrente(gasto);
+  const diasFecha = diasHastaFechaGasto(gasto);
+  const dias =
+    diasFecha != null
+      ? diasFecha
+      : diasHastaCuota(gasto.diaPago);
 
   return (
     <div
@@ -82,18 +94,34 @@ function TarjetaGasto({
             >
               {etiquetaTipoPresupuesto(gasto.tipoPresupuesto)}
             </span>
-            {!gasto.activo && (
+            <span className="rounded-full bg-background px-2 py-0.5 text-xs text-muted">
+              {etiquetaTipoRecurrencia(gasto.tipoRecurrencia ?? "recurrente")}
+            </span>
+            {pendiente && (
+              <span className="rounded-full bg-gasto/10 px-2 py-0.5 text-xs font-medium text-gasto">
+                Pendiente
+              </span>
+            )}
+            {!gasto.activo && esRecurrente && (
               <span className="rounded-full bg-muted/20 px-2 py-0.5 text-xs font-medium text-muted">
                 Inactivo
               </span>
             )}
           </div>
           {gasto.notas && <p className="mt-0.5 text-xs text-muted">{gasto.notas}</p>}
-          <p className="mt-1 text-xs text-muted">Día {gasto.diaPago} · {gasto.moneda}</p>
+          <p className="mt-1 text-xs text-muted">
+            {esRecurrente
+              ? `Día ${gasto.diaPago}`
+              : gasto.fechaVencimiento
+                ? formatearFecha(gasto.fechaVencimiento)
+                : `Día ${gasto.diaPago}`}
+            {" · "}
+            {gasto.moneda}
+          </p>
         </div>
 
         <div className="flex shrink-0 flex-wrap gap-2">
-          {gasto.activo && (
+          {(gasto.activo || !esRecurrente) && (
             <button
               type="button"
               onClick={() => {
@@ -115,13 +143,15 @@ function TarjetaGasto({
               {pagadoEnQuincena ? "Registrar otro pago" : "Registrar pago"}
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => actualizarGastoFijo(gasto.id, { activo: !gasto.activo })}
-            className="rounded-lg px-2 py-1 text-xs font-medium text-muted hover:text-foreground"
-          >
-            {gasto.activo ? "Pausar" : "Activar"}
-          </button>
+          {esRecurrente && (
+            <button
+              type="button"
+              onClick={() => actualizarGastoFijo(gasto.id, { activo: !gasto.activo })}
+              className="rounded-lg px-2 py-1 text-xs font-medium text-muted hover:text-foreground"
+            >
+              {gasto.activo ? "Pausar" : "Activar"}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setEditandoId(estaEditando ? null : gasto.id)}
@@ -132,7 +162,7 @@ function TarjetaGasto({
           <button
             type="button"
             onClick={() => {
-              if (!confirmarEliminacion(gasto.nombre, "el gasto fijo")) {
+              if (!confirmarEliminacion(gasto.nombre, "el gasto")) {
                 return;
               }
               if (editandoId === gasto.id) setEditandoId(null);
@@ -153,16 +183,36 @@ function TarjetaGasto({
             </p>
             {pagadoEnQuincena && (
               <p className="mt-0.5 text-xs font-medium text-ingreso">
-                Pagado en esta quincena
+                {esRecurrente ? "Pagado en esta quincena" : "Pagado"}
+              </p>
+            )}
+            {pendiente && !pagadoEnQuincena && (
+              <p className="mt-0.5 text-xs font-medium text-gasto">
+                Venció sin pagar
               </p>
             )}
           </div>
-          {gasto.activo && (
+          {(gasto.activo || !esRecurrente) && (
             <p className="text-xs text-muted">
-              Pago en{" "}
-              <span className="font-semibold text-foreground">
-                {dias === 0 ? "hoy" : `${dias} día${dias !== 1 ? "s" : ""}`}
-              </span>
+              {diasFecha != null ? (
+                diasFecha < 0 ? (
+                  <span className="font-semibold text-gasto">Vencido</span>
+                ) : (
+                  <>
+                    Pago en{" "}
+                    <span className="font-semibold text-foreground">
+                      {diasFecha === 0 ? "hoy" : `en ${diasFecha} día${diasFecha !== 1 ? "s" : ""}`}
+                    </span>
+                  </>
+                )
+              ) : (
+                <>
+                  Pago en{" "}
+                  <span className="font-semibold text-foreground">
+                    {dias === 0 ? "hoy" : `${dias} día${dias !== 1 ? "s" : ""}`}
+                  </span>
+                </>
+              )}
             </p>
           )}
         </div>
@@ -354,6 +404,7 @@ function ColumnaQuincena({
                 transacciones,
                 periodoQuincena
               )}
+              pendiente={esGastoUnicoPendiente(gasto, transacciones)}
               onRegistrarPago={onRegistrarPago}
             />
           ))}
@@ -403,7 +454,10 @@ export function ListaGastosFijos({
     return gastosFijos.filter((g) => g.categoria === categoriaFiltro);
   }, [gastosFijos, categoriaFiltro]);
 
-  const grupos = useMemo(() => agruparGastosPorQuincena(filtrados), [filtrados]);
+  const grupos = useMemo(
+    () => agruparGastosPorQuincena(filtrados, transacciones),
+    [filtrados, transacciones]
+  );
 
   const gruposPrestamos = useMemo(
     () => agruparPrestamosPorQuincena(prestamos),
@@ -420,7 +474,10 @@ export function ListaGastosFijos({
     const sumarGastos = (q: 1 | 2, monedaFiltro: string) =>
       filtrados
         .filter(
-          (g) => g.activo && g.quincena === q && g.moneda === monedaFiltro
+          (g) =>
+            g.quincena === q &&
+            g.moneda === monedaFiltro &&
+            gastoVisibleEnPresupuesto(g, transacciones)
         )
         .reduce((sum, g) => sum + g.monto, 0);
 
@@ -453,9 +510,9 @@ export function ListaGastosFijos({
   if (gastosFijos.length === 0 && !hayPrestamos) {
     return (
       <EstadoVacio
-        titulo="No tienes gastos fijos registrados"
-        descripcion="Agrega alquiler, servicios, suscripciones y otros pagos mensuales."
-        accionEtiqueta="+ Nuevo gasto fijo"
+        titulo="No tienes gastos registrados"
+        descripcion="Agrega gastos recurrentes o pagos únicos para presupuestar el mes."
+        accionEtiqueta="+ Nuevo gasto"
         onAccion={onAgregar}
       />
     );

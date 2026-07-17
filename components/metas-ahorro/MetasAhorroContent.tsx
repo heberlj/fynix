@@ -9,11 +9,13 @@ import { EncabezadoPagina } from "@/components/layout/EncabezadoPagina";
 import { AyudaPagina } from "@/components/ayuda/AyudaPagina";
 import { Modal } from "@/components/ui/Modal";
 import { FormularioMetaAhorro } from "@/components/metas-ahorro/FormularioMetaAhorro";
+import { FormularioTransaccion } from "@/components/transacciones/FormularioTransaccion";
 import { ListaMetasAhorro } from "@/components/metas-ahorro/ListaMetasAhorro";
 
 export function MetasAhorroContent() {
   const { metasAhorro, cargado } = useFinanzas();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [metaAporteId, setMetaAporteId] = useState<string | null>(null);
 
   const totalesPorMoneda = useMemo(
     () => Array.from(totalAhorradoPorMoneda(metasAhorro).entries()),
@@ -73,6 +75,7 @@ export function MetasAhorroContent() {
           <ListaMetasAhorro
             metas={metas}
             onAgregar={() => setMostrarFormulario(true)}
+            onRegistrarAporte={(metaId) => setMetaAporteId(metaId)}
           />
         </div>
 
@@ -86,6 +89,21 @@ export function MetasAhorroContent() {
           <FormularioMetaAhorro
             enModal
             onExito={() => setMostrarFormulario(false)}
+          />
+        </Modal>
+
+        <Modal
+          abierto={metaAporteId != null}
+          onCerrar={() => setMetaAporteId(null)}
+          titulo="Registrar aporte"
+          variant="centro"
+          tamano="amplio"
+        >
+          <FormularioTransaccion
+            enModal
+            metaAhorroInicialId={metaAporteId ?? undefined}
+            onExito={() => setMetaAporteId(null)}
+            onCancelar={() => setMetaAporteId(null)}
           />
         </Modal>
       </PageContainer>

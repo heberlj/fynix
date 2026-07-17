@@ -33,6 +33,7 @@ import {
   sincronizarGastoFijoFinanciamiento,
 } from "@/lib/financiamiento-cuotas";
 import { aplicarEfectoTransaccion, origenPorDefectoPago } from "@/lib/transacciones";
+import { esGastoUnico, marcarGastoUnicoPagado } from "@/lib/gastos-fijos";
 import { normalizarAporteIngreso } from "@/lib/aporte-ingreso";
 import { colorCategoria } from "@/lib/graficos";
 import { iconoDefectoParaCategoria } from "@/lib/iconos-categoria";
@@ -74,7 +75,6 @@ interface FinanzasContextValue extends EstadoFinanzas {
   eliminarPrestamo: (id: string) => void;
   agregarMetaAhorro: (datos: Omit<MetaAhorro, "id">) => void;
   actualizarMetaAhorro: (id: string, datos: Partial<MetaAhorro>) => void;
-  registrarAporteMeta: (metaId: string, monto: number) => void;
   eliminarMetaAhorro: (id: string) => void;
   agregarCuotaPopular: (datos: Omit<CuotaPopular, "id">) => void;
   actualizarCuotaPopular: (id: string, datos: Partial<CuotaPopular>) => void;
@@ -238,8 +238,17 @@ export function FinanzasProvider({
 
         const conSaldos = aplicarEfectoTransaccion(prev, transaccion, 1);
 
+        let gastosFijos = conSaldos.gastosFijos;
+        if (datos.gastoFijoId) {
+          const gasto = prev.gastosFijos.find((g) => g.id === datos.gastoFijoId);
+          if (gasto && esGastoUnico(gasto)) {
+            gastosFijos = marcarGastoUnicoPagado(gastosFijos, gasto.id, true);
+          }
+        }
+
         return {
           ...conSaldos,
+          gastosFijos,
           cuotasPopular,
           transacciones: [transaccion, ...prev.transacciones],
         };
@@ -280,8 +289,29 @@ export function FinanzasProvider({
         });
       }
 
+      let gastosFijos = sinEfecto.gastosFijos;
+      if (transaccion.gastoFijoId) {
+        const gasto = prev.gastosFijos.find((g) => g.id === transaccion.gastoFijoId);
+        if (gasto && esGastoUnico(gasto)) {
+          const quedanPagos = prev.transacciones.some(
+            (t) =>
+              t.id !== id &&
+              t.tipo === "gasto" &&
+              t.gastoFijoId === transaccion.gastoFijoId
+          );
+          if (!quedanPagos) {
+            gastosFijos = marcarGastoUnicoPagado(
+              gastosFijos,
+              transaccion.gastoFijoId,
+              false
+            );
+          }
+        }
+      }
+
       return {
         ...sinEfecto,
+        gastosFijos,
         cuotasPopular,
         prestamos,
         transacciones: prev.transacciones.filter((t) => t.id !== id),
@@ -503,21 +533,6 @@ export function FinanzasProvider({
     },
     []
   );
-
-  const registrarAporteMeta = useCallback((metaId: string, monto: number) => {
-    if (monto <= 0) return;
-    setEstado((prev) => ({
-      ...prev,
-      metasAhorro: prev.metasAhorro.map((m) =>
-        m.id === metaId
-          ? {
-              ...m,
-              montoActual: Math.round((m.montoActual + monto) * 100) / 100,
-            }
-          : m
-      ),
-    }));
-  }, []);
 
   const eliminarMetaAhorro = useCallback((id: string) => {
     setEstado((prev) => ({
@@ -1071,7 +1086,6 @@ export function FinanzasProvider({
       eliminarPrestamo,
       agregarMetaAhorro,
       actualizarMetaAhorro,
-      registrarAporteMeta,
       eliminarMetaAhorro,
       agregarCuotaPopular,
       actualizarCuotaPopular,
@@ -1118,7 +1132,6 @@ export function FinanzasProvider({
       eliminarPrestamo,
       agregarMetaAhorro,
       actualizarMetaAhorro,
-      registrarAporteMeta,
       eliminarMetaAhorro,
       agregarCuotaPopular,
       actualizarCuotaPopular,

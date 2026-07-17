@@ -153,6 +153,9 @@ export function calcularResumenQuincena(
       : 0;
   const gastosFijosTotal = gastosFijosRegulares + aportePendiente;
   const balanceNeto = ingresosTotales - gastosTotales;
+  // movimientosTotales: pagos ya transferidos a tarjetas en el periodo.
+  // pagosTarjetas: deuda actual aún pendiente con fecha de pago en el periodo.
+  // Ambos se restan: no duplican porque pagosTarjetas usa deudaActual (0 si ya pagaste).
   const disponibleProyectado =
     balanceNeto -
     movimientosTotales -

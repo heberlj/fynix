@@ -18,6 +18,7 @@ import { EstadoVacio } from "@/components/ui/EstadoVacio";
 interface ListaMetasAhorroProps {
   metas: MetaAhorro[];
   onAgregar?: () => void;
+  onRegistrarAporte?: (metaId: string) => void;
 }
 
 function BarraProgreso({ meta }: { meta: MetaAhorro }) {
@@ -43,12 +44,13 @@ function BarraProgreso({ meta }: { meta: MetaAhorro }) {
   );
 }
 
-export function ListaMetasAhorro({ metas, onAgregar }: ListaMetasAhorroProps) {
-  const { registrarAporteMeta, eliminarMetaAhorro } = useFinanzas();
+export function ListaMetasAhorro({
+  metas,
+  onAgregar,
+  onRegistrarAporte,
+}: ListaMetasAhorroProps) {
+  const { eliminarMetaAhorro } = useFinanzas();
   const [editandoId, setEditandoId] = useState<string | null>(null);
-  const [aportandoId, setAportandoId] = useState<string | null>(null);
-  const [montoAporte, setMontoAporte] = useState("");
-  const [errorAporte, setErrorAporte] = useState("");
 
   if (metas.length === 0) {
     return (
@@ -61,18 +63,6 @@ export function ListaMetasAhorro({ metas, onAgregar }: ListaMetasAhorroProps) {
     );
   }
 
-  function confirmarAporte(meta: MetaAhorro) {
-    setErrorAporte("");
-    const monto = parseFloat(montoAporte);
-    if (!montoAporte || isNaN(monto) || monto <= 0) {
-      setErrorAporte("Ingresa un monto válido");
-      return;
-    }
-    registrarAporteMeta(meta.id, monto);
-    setAportandoId(null);
-    setMontoAporte("");
-  }
-
   return (
     <div className="space-y-6">
       {metas.map((meta) => {
@@ -80,7 +70,6 @@ export function ListaMetasAhorro({ metas, onAgregar }: ListaMetasAhorroProps) {
         const faltante = faltanteMeta(meta);
         const dias = diasHastaLimite(meta.fechaLimite);
         const estaEditando = editandoId === meta.id;
-        const estaAportando = aportandoId === meta.id;
 
         return (
           <div
@@ -132,7 +121,6 @@ export function ListaMetasAhorro({ metas, onAgregar }: ListaMetasAhorroProps) {
                   onClick={() => {
                     if (!confirmarEliminacion(meta.nombre, "la meta")) return;
                     if (editandoId === meta.id) setEditandoId(null);
-                    if (aportandoId === meta.id) setAportandoId(null);
                     eliminarMetaAhorro(meta.id);
                   }}
                   className="rounded-lg px-2 py-1 text-xs font-medium text-gasto hover:bg-gasto/10"
@@ -160,61 +148,19 @@ export function ListaMetasAhorro({ metas, onAgregar }: ListaMetasAhorroProps) {
               />
             )}
 
-            {!estaEditando && (
+            {!estaEditando && onRegistrarAporte && (
               <div className="mt-4">
-                {estaAportando ? (
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-                    <label className="flex flex-1 flex-col gap-1">
-                      <span className="text-xs font-medium text-foreground">
-                        Monto del aporte
-                      </span>
-                      <input
-                        type="number"
-                        min="0.01"
-                        step="0.01"
-                        value={montoAporte}
-                        onChange={(e) => setMontoAporte(e.target.value)}
-                        placeholder="0.00"
-                        className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent"
-                      />
-                    </label>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => confirmarAporte(meta)}
-                        className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover"
-                      >
-                        Registrar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAportandoId(null);
-                          setMontoAporte("");
-                          setErrorAporte("");
-                        }}
-                        className="rounded-lg border border-border px-4 py-2 text-sm text-muted hover:bg-surface-hover"
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAportandoId(meta.id);
-                      setMontoAporte("");
-                      setErrorAporte("");
-                    }}
-                    className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface-hover"
-                  >
-                    + Registrar aporte
-                  </button>
-                )}
-                {errorAporte && estaAportando && (
-                  <p className="mt-2 text-sm text-gasto">{errorAporte}</p>
-                )}
+                <button
+                  type="button"
+                  onClick={() => onRegistrarAporte(meta.id)}
+                  className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface-hover"
+                >
+                  + Registrar aporte
+                </button>
+                <p className="mt-2 text-xs text-muted">
+                  El dinero saldrá de una cuenta o efectivo y quedará registrado como
+                  movimiento en Transacciones
+                </p>
               </div>
             )}
           </div>

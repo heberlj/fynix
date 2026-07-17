@@ -30,18 +30,18 @@ export function GastosFijosContent() {
   const [pagoAporteIngreso, setPagoAporteIngreso] = useState(false);
 
   const totalesPorMoneda = useMemo(
-    () => Array.from(totalMensualPorMoneda(gastosFijos).entries()),
-    [gastosFijos]
+    () => Array.from(totalMensualPorMoneda(gastosFijos, transacciones).entries()),
+    [gastosFijos, transacciones]
   );
 
   const totalQ1Gastos = useMemo(
-    () => totalPorQuincena(gastosFijos, 1).get(configuracion.moneda) ?? 0,
-    [gastosFijos, configuracion.moneda]
+    () => totalPorQuincena(gastosFijos, 1, transacciones).get(configuracion.moneda) ?? 0,
+    [gastosFijos, transacciones, configuracion.moneda]
   );
 
   const totalQ2Gastos = useMemo(
-    () => totalPorQuincena(gastosFijos, 2).get(configuracion.moneda) ?? 0,
-    [gastosFijos, configuracion.moneda]
+    () => totalPorQuincena(gastosFijos, 2, transacciones).get(configuracion.moneda) ?? 0,
+    [gastosFijos, transacciones, configuracion.moneda]
   );
 
   const totalQ1Aporte = useMemo(() => {
@@ -81,15 +81,20 @@ export function GastosFijosContent() {
   const totalQ1 = totalQ1Gastos + totalQ1Aporte + totalQ1Prestamos;
   const totalQ2 = totalQ2Gastos + totalQ2Aporte + totalQ2Prestamos;
 
-  const hayGastosFijosActivos = useMemo(
-    () => gastosFijos.some((g) => g.activo),
+  const hayGastosActivos = useMemo(
+    () =>
+      gastosFijos.some((g) =>
+        g.tipoRecurrencia === "unico"
+          ? !g.pagado && g.fechaVencimiento?.startsWith(mesActual())
+          : g.activo
+      ),
     [gastosFijos]
   );
 
   const porCategoria = useMemo(() => {
     const q = vistaCategoria === "todas" ? undefined : (Number(vistaCategoria) as 1 | 2);
-    return gastosPorCategoriaFija(gastosFijos, q);
-  }, [gastosFijos, vistaCategoria]);
+    return gastosPorCategoriaFija(gastosFijos, q, transacciones);
+  }, [gastosFijos, vistaCategoria, transacciones]);
 
   if (!cargado) {
     return (
@@ -103,8 +108,8 @@ export function GastosFijosContent() {
     <AyudaPagina pagina="gastos-fijos">
       <PageContainer>
         <EncabezadoPagina
-          titulo="Gastos fijos"
-          descripcion="Pagos mensuales por quincena. Los préstamos aparecen aquí solo como referencia para ver tu panorama; en el resto de la app siguen siendo préstamos."
+          titulo="Gastos"
+          descripcion="Presupuesta gastos recurrentes y pagos únicos del mes. Los préstamos aparecen como referencia."
           dataAyuda="acciones"
           acciones={
             <>
@@ -128,7 +133,7 @@ export function GastosFijosContent() {
                   }}
                   className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover sm:w-auto"
                 >
-                  + Nuevo gasto fijo
+                  + Nuevo gasto
                 </button>
               )}
             </>
@@ -193,7 +198,7 @@ export function GastosFijosContent() {
         </div>
       </div>
 
-      {hayGastosFijosActivos && (
+      {hayGastosActivos && (
         <div className="rounded-xl border border-border bg-surface p-4 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-sm font-semibold text-foreground">Por categoría</h2>
@@ -234,8 +239,8 @@ export function GastosFijosContent() {
           ) : (
             <p className="mt-3 rounded-lg border border-dashed border-border py-6 text-center text-sm text-muted">
               {vistaCategoria === "todas"
-                ? "No hay gastos fijos activos por categoría"
-                : `No hay gastos fijos en la quincena ${vistaCategoria}`}
+                ? "No hay gastos activos por categoría"
+                : `No hay gastos en la quincena ${vistaCategoria}`}
             </p>
           )}
         </div>
@@ -256,7 +261,7 @@ export function GastosFijosContent() {
       <Modal
         abierto={mostrarFormulario}
         onCerrar={() => setMostrarFormulario(false)}
-        titulo="Nuevo gasto fijo"
+          titulo="Nuevo gasto"
         variant="centro"
       >
         <FormularioGastoFijo

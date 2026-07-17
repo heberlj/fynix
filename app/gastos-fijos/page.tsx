@@ -1,5 +1,5 @@
-import { GastosFijosContent } from "@/components/gastos-fijos/GastosFijosContent";
+import { redirect } from "next/navigation";
 
-export default function GastosFijosPage() {
-  return <GastosFijosContent />;
+export default function GastosFijosRedirectPage() {
+  redirect("/gastos");
 }

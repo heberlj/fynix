@@ -27,7 +27,7 @@ export function ListaTransacciones({
   onEditar,
   onNueva,
 }: ListaTransaccionesProps) {
-  const { eliminarTransaccion, configuracion, cuentas, tarjetas, gastosFijos, efectivo } =
+  const { eliminarTransaccion, configuracion, cuentas, tarjetas, gastosFijos, metasAhorro, efectivo } =
     useFinanzas();
   const [mesFiltro, setMesFiltro] = useState(mesActual());
   const [quincenaFiltro, setQuincenaFiltro] = useState<"todas" | "1" | "2">(
@@ -236,6 +236,11 @@ export function ListaTransacciones({
                         Aporte
                       </span>
                     )}
+                    {t.metaAhorroId && (
+                      <span className="rounded-full bg-ingreso/10 px-2 py-0.5 text-xs font-medium text-ingreso">
+                        Meta de ahorro
+                      </span>
+                    )}
                     {t.moneda !== configuracion.moneda && (
                       <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
                         {t.moneda}
@@ -254,7 +259,7 @@ export function ListaTransacciones({
                     {t.tipo === "transferencia" && t.origen && t.destino ? (
                       <>
                         {" · "}
-                        {etiquetaTransferencia(t.origen, t.destino, cuentas, tarjetas)}
+                        {etiquetaTransferencia(t.origen, t.destino, cuentas, tarjetas, metasAhorro)}
                         {t.tasaCambio && t.monedaOrigen && t.montoOrigen && (
                           <>
                             {" · "}
@@ -267,7 +272,7 @@ export function ListaTransacciones({
                       t.origen && (
                         <>
                           {" · "}
-                          {etiquetaOrigen(t.origen, cuentas, tarjetas, t.modoPagoTarjeta)}
+                          {etiquetaOrigen(t.origen, cuentas, tarjetas, t.modoPagoTarjeta, metasAhorro)}
                           {t.tasaCambio && t.monedaOrigen && t.montoOrigen && (
                             <>
                               {" · "}

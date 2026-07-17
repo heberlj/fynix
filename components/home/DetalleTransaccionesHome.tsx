@@ -45,7 +45,7 @@ export function DetalleTransaccionesHome({
   const encabezado = titulo ?? ETIQUETAS_FILTRO[filtro];
 
   return (
-    <div className="mt-3 overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+    <div className="mt-3 rounded-xl border border-border bg-background shadow-sm">
       <div className="border-b border-border px-4 py-3">
         <h3 className="text-sm font-semibold text-foreground">
           {encabezado}

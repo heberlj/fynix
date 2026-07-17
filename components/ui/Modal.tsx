@@ -87,7 +87,7 @@ export function Modal({
           role="dialog"
           aria-modal="true"
           aria-labelledby="modal-titulo"
-          className={`relative z-10 flex max-h-[min(92dvh,720px)] w-full ${anchoModal} flex-col overflow-hidden rounded-t-2xl border border-border bg-surface shadow-xl sm:max-h-[min(90vh,720px)] sm:rounded-xl`}
+          className={`relative z-10 flex max-h-[min(92dvh,720px)] w-full ${anchoModal} flex-col overflow-hidden rounded-t-2xl border border-border bg-surface shadow-xl sm:max-h-[min(90vh,720px)] sm:rounded-xl pb-[env(safe-area-inset-bottom)]`}
         >
           {encabezado}
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6">

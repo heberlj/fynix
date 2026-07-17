@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CuentaBancaria, TarjetaCredito, Transaccion } from "@/types/finanzas";
 import type { DatoCategoria } from "@/lib/graficos";
 import { colorCategoriaGasto, iconoCategoriaGasto } from "@/lib/categorias-transacciones";
@@ -11,6 +11,7 @@ import { GraficoCircular } from "@/components/ui/GraficoCircular";
 import { DetalleTransaccionesHome } from "@/components/home/DetalleTransaccionesHome";
 import { ModalDetalleTransaccionesHome } from "@/components/home/ModalDetalleTransaccionesHome";
 import { EdicionCategoriasGastoHome } from "@/components/home/EdicionCategoriasGastoHome";
+import { useEsMovil } from "@/lib/use-media-query";
 
 interface GraficoCategoriasHomeProps {
   datos: DatoCategoria[];
@@ -66,6 +67,8 @@ export function GraficoCategoriasHome({
   );
   const [modalAbierto, setModalAbierto] = useState(false);
   const [modoEdicion, setModoEdicion] = useState(false);
+  const refDetalle = useRef<HTMLDivElement>(null);
+  const esMovil = useEsMovil();
 
   useEffect(() => {
     setCategoriaExpandida(null);
@@ -101,8 +104,23 @@ export function GraficoCategoriasHome({
 
   function manejarClicCategoria(id: string) {
     if (modoEdicion) return;
-    setCategoriaExpandida((actual) => (actual === id ? null : id));
+
+    if (categoriaExpandida === id) {
+      setCategoriaExpandida(null);
+      setModalAbierto(false);
+      return;
+    }
+
+    setCategoriaExpandida(id);
+    if (esMovil) {
+      setModalAbierto(true);
+    }
   }
+
+  useEffect(() => {
+    if (!categoriaExpandida || esMovil || !refDetalle.current) return;
+    refDetalle.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [categoriaExpandida, esMovil, transaccionesCategoria.length]);
 
   function alternarEdicion() {
     setModoEdicion((actual) => {
@@ -153,16 +171,35 @@ export function GraficoCategoriasHome({
           />
 
           {categoriaExpandida && (
-            <DetalleTransaccionesHome
-              transacciones={transaccionesCategoria}
-              filtro="gastos"
-              titulo={categoriaExpandida}
-              moneda={moneda}
-              fuente={fuente}
-              cuentas={cuentas}
-              tarjetas={tarjetas}
-              onVerMas={() => setModalAbierto(true)}
-            />
+            <div ref={refDetalle} className="scroll-mt-24">
+              {esMovil ? (
+                <div className="mt-3 rounded-xl border border-border bg-background px-4 py-3 text-center shadow-sm">
+                  <p className="text-sm font-medium text-foreground">
+                    {transaccionesCategoria.length} gasto
+                    {transaccionesCategoria.length !== 1 ? "s" : ""} en{" "}
+                    {categoriaExpandida}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setModalAbierto(true)}
+                    className="mt-2 w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-sm font-medium text-accent transition-colors hover:bg-accent/10"
+                  >
+                    Ver listado completo
+                  </button>
+                </div>
+              ) : (
+                <DetalleTransaccionesHome
+                  transacciones={transaccionesCategoria}
+                  filtro="gastos"
+                  titulo={categoriaExpandida}
+                  moneda={moneda}
+                  fuente={fuente}
+                  cuentas={cuentas}
+                  tarjetas={tarjetas}
+                  onVerMas={() => setModalAbierto(true)}
+                />
+              )}
+            </div>
           )}
         </>
       )}
