@@ -330,7 +330,7 @@ export const CATEGORIAS_GASTOS_FIJOS_DEFAULT = [
 export const CATEGORIAS_GASTO_DEFAULT = [
   "Transporte",
   "Combustible",
-  "Bares y Restaurantes",
+  "Comida",
   "Delivery",
   "Supermercado",
   "Suscripciones y Streaming",

@@ -7,6 +7,7 @@ import {
   puedeAgregarCuenta,
   puedeAgregarTarjeta,
   puedeExportarCsv,
+  puedeImportarBanco,
   puedeUsarFinanciamientoCuotas,
 } from "@/lib/plan-limites";
 import { tienePlanPro } from "@/lib/suscripcion";
@@ -26,5 +27,6 @@ export function usePlanLimites() {
       puedeAgregarTarjeta(esPro, cantidadActual),
     puedeFinanciamientoCuotas: puedeUsarFinanciamientoCuotas(esPro),
     puedeExportarCsv: puedeExportarCsv(esPro),
+    puedeImportarBanco: puedeImportarBanco(esPro),
   };
 }

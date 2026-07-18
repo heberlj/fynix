@@ -38,7 +38,6 @@ export function MetasAhorroContent() {
         <EncabezadoPagina
           titulo="Metas de ahorro"
           descripcion="Define objetivos y registra aportes para ver tu progreso hacia cada meta."
-          dataAyuda="acciones"
           acciones={
             !mostrarFormulario ? (
               <button

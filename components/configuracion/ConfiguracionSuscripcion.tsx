@@ -30,6 +30,7 @@ const BENEFICIOS_PRO = [
   "Cuentas y tarjetas ilimitadas",
   "Cuotas Popular, BHD y Credimás",
   "Exportación CSV y reportes mensuales",
+  "Importación de movimientos desde el banco (CSV)",
   "100 mensajes de IA por semana",
   "Soporte prioritario",
 ];

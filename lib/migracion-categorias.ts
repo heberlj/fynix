@@ -26,7 +26,8 @@ export const MAPEO_CATEGORIA_GASTO_LEGACY: Record<string, string> = {
   Servicios: "Servicios Básicos",
   Suscripciones: "Suscripciones y Streaming",
   Seguros: "Salud",
-  Comida: "Bares y Restaurantes",
+  Comida: "Comida",
+  "Bares y Restaurantes": "Comida",
   Entretenimiento: "Suscripciones y Streaming",
   Compras: "Compras Online",
   Educacion: "Educación",
@@ -118,6 +119,17 @@ export function sincronizarCategoriasGastoEnEstado(
 
   const colores = { ...(estado.configuracion.coloresCategoriaGasto ?? {}) };
   const iconos = { ...(estado.configuracion.iconosCategoriaGasto ?? {}) };
+
+  categoriasGasto = categoriasGasto.map((c) => {
+    const nueva = resolverCategoriaGasto(c);
+    if (nueva !== c) {
+      moverMetadatosCategoria(c, nueva, colores, iconos);
+    }
+    return nueva;
+  });
+  categoriasGasto = categoriasGasto.filter(
+    (c, i, arr) => arr.indexOf(c) === i
+  );
 
   const transacciones = estado.transacciones.map((transaccion) => {
     if (transaccion.tipo !== "gasto") return transaccion;

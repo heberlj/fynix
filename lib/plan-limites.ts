@@ -29,6 +29,10 @@ export function puedeExportarCsv(esPro: boolean): boolean {
   return esPro;
 }
 
+export function puedeImportarBanco(esPro: boolean): boolean {
+  return esPro;
+}
+
 export function productoFinanciamientoRequierePro(
   producto: ProductoFinanciamientoCuotas
 ): boolean {
@@ -44,3 +48,6 @@ export const MENSAJE_FINANCIAMIENTO_CUOTAS =
 
 export const MENSAJE_EXPORTAR_CSV =
   "La exportación CSV y los reportes están disponibles en Fynix Pro.";
+
+export const MENSAJE_IMPORTAR_BANCO =
+  "La importación de movimientos desde el banco está disponible en Fynix Pro.";

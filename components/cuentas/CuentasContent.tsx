@@ -62,7 +62,6 @@ export function CuentasContent() {
         <EncabezadoPagina
           titulo="Cuentas y efectivo"
           descripcion="Registra tus cuentas bancarias y el dinero en efectivo que tienes disponible"
-          dataAyuda="acciones"
           acciones={
             !mostrarFormulario ? (
               <button

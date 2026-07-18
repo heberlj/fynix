@@ -44,7 +44,6 @@ export function PrestamosContent() {
         <EncabezadoPagina
           titulo="Préstamos"
           descripcion="Registra tus préstamos y paga cuotas con transacciones. En Gastos fijos aparecen solo como referencia para ver tu panorama mensual."
-          dataAyuda="acciones"
           acciones={
             !mostrarFormulario ? (
               <button

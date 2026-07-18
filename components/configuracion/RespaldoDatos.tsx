@@ -119,7 +119,7 @@ export function RespaldoDatos() {
           Exportación avanzada
         </h3>
         <p className="mt-1 text-xs text-muted">
-          CSV de transacciones y reporte mensual por ingresos y gastos.
+          CSV de transacciones, reporte mensual e importación desde tu banco.
         </p>
 
         {puedeExportarCsv ? (

@@ -26,7 +26,7 @@ export interface IconoCategoriaOpcion {
 export const ICONOS_CATEGORIA_DISPONIBLES: IconoCategoriaOpcion[] = [
   { id: "transporte", etiqueta: "Transporte" },
   { id: "combustible", etiqueta: "Combustible" },
-  { id: "bares-restaurantes", etiqueta: "Restaurantes" },
+  { id: "bares-restaurantes", etiqueta: "Comida" },
   { id: "delivery", etiqueta: "Delivery" },
   { id: "supermercado", etiqueta: "Supermercado" },
   { id: "suscripciones", etiqueta: "Streaming" },
@@ -47,6 +47,7 @@ export const ICONOS_CATEGORIA_DISPONIBLES: IconoCategoriaOpcion[] = [
 const MAPEO_NOMBRE_ICONO: Record<string, IconoCategoriaId> = {
   Transporte: "transporte",
   Combustible: "combustible",
+  Comida: "bares-restaurantes",
   "Bares y Restaurantes": "bares-restaurantes",
   Delivery: "delivery",
   Supermercado: "supermercado",
@@ -67,7 +68,6 @@ const MAPEO_NOMBRE_ICONO: Record<string, IconoCategoriaId> = {
   Gimnasio: "gimnasio",
   "Servicios del Hogar": "servicios-hogar",
   Vivienda: "servicios-hogar",
-  Comida: "bares-restaurantes",
   Entretenimiento: "suscripciones",
   Seguros: "salud",
   Donaciones: "otros",

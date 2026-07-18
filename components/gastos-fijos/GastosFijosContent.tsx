@@ -110,7 +110,6 @@ export function GastosFijosContent() {
         <EncabezadoPagina
           titulo="Gastos"
           descripcion="Presupuesta gastos recurrentes y pagos únicos del mes. Los préstamos aparecen como referencia."
-          dataAyuda="acciones"
           acciones={
             <>
               <button

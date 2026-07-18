@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useFinanzas } from "@/context/FinanzasContext";
 import { SelectorTema } from "@/components/ui/SelectorTema";
 import { Logo } from "@/components/ui/Logo";
@@ -13,15 +13,12 @@ import {
   type NavItem,
 } from "@/components/layout/navegacion";
 import { notificarEntradaPagina } from "@/components/layout/useEntradaPagina";
-import { useAuth } from "@/context/AuthContext";
-import { EtiquetaPlan } from "@/components/suscripcion/EtiquetaPlan";
 import { aplicarTema } from "@/lib/tema";
 import type { TemaApp } from "@/types/finanzas";
 
 interface SidebarProps {
   abierto: boolean;
   onCerrar: () => void;
-  nombreUsuario?: string;
 }
 
 function enlaceActivo(pathname: string, href: string): boolean {
@@ -60,11 +57,9 @@ function NavLink({
   );
 }
 
-export function Sidebar({ abierto, onCerrar, nombreUsuario }: SidebarProps) {
+export function Sidebar({ abierto, onCerrar }: SidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const { configuracion, actualizarConfiguracion } = useFinanzas();
-  const { cerrarSesion } = useAuth();
 
   function cambiarTema(tema: TemaApp) {
     aplicarTema(tema);
@@ -147,19 +142,6 @@ export function Sidebar({ abierto, onCerrar, nombreUsuario }: SidebarProps) {
             onCerrar={onCerrar}
           />
 
-          {nombreUsuario && (
-            <div className="rounded-lg bg-background px-3 py-2">
-              <p className="text-[10px] uppercase tracking-wider text-muted">
-                Sesión
-              </p>
-              <div className="mt-0.5 flex items-center gap-2">
-                <p className="min-w-0 truncate text-sm font-medium text-foreground">
-                  {nombreUsuario}
-                </p>
-                <EtiquetaPlan />
-              </div>
-            </div>
-          )}
           <SelectorTema
             value={configuracion.tema ?? "claro"}
             onChange={cambiarTema}
@@ -168,17 +150,6 @@ export function Sidebar({ abierto, onCerrar, nombreUsuario }: SidebarProps) {
           <p className="text-[10px] text-muted/80">
             © 2026 Fynix. Todos los derechos reservados.
           </p>
-          <button
-            type="button"
-            onClick={() => {
-              cerrarSesion();
-              onCerrar();
-              router.replace("/login");
-            }}
-            className="w-full rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-hover hover:text-foreground"
-          >
-            Cerrar sesión
-          </button>
         </div>
       </aside>
     </>

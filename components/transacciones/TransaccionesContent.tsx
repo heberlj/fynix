@@ -10,6 +10,7 @@ import { AyudaPagina } from "@/components/ayuda/AyudaPagina";
 import { Modal } from "@/components/ui/Modal";
 import { FormularioTransaccion } from "@/components/transacciones/FormularioTransaccion";
 import { GestionCategoriasTransacciones } from "@/components/transacciones/GestionCategoriasTransacciones";
+import { ImportarMovimientosBanco } from "@/components/transacciones/ImportarMovimientosBanco";
 import { ListaTransacciones } from "@/components/transacciones/ListaTransacciones";
 
 export function TransaccionesContent() {
@@ -32,6 +33,8 @@ function TransaccionesContentInner() {
   const { transacciones, cargado } = useFinanzas();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [gestionarCategorias, setGestionarCategorias] = useState(false);
+  const [mostrarImportar, setMostrarImportar] = useState(false);
+  const [mensajeImportacion, setMensajeImportacion] = useState("");
   const [transaccionEditando, setTransaccionEditando] = useState<Transaccion | null>(
     null
   );
@@ -69,7 +72,6 @@ function TransaccionesContentInner() {
         <EncabezadoPagina
           titulo="Transacciones"
           descripcion="Historial de gastos, ingresos y movimientos entre cuentas"
-          dataAyuda="acciones"
           acciones={
             <>
               <button
@@ -81,6 +83,17 @@ function TransaccionesContentInner() {
                 className="w-full rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-surface-hover sm:w-auto"
               >
                 Gestionar categorías
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMostrarImportar(true);
+                  cerrarFormulario();
+                  setGestionarCategorias(false);
+                }}
+                className="w-full rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-surface-hover sm:w-auto"
+              >
+                Importar del banco
               </button>
               {!formularioAbierto && (
                 <button
@@ -98,6 +111,12 @@ function TransaccionesContentInner() {
             </>
           }
         />
+
+        {mensajeImportacion && (
+          <p className="rounded-lg border border-ingreso/30 bg-ingreso/10 px-4 py-3 text-sm text-ingreso">
+            {mensajeImportacion}
+          </p>
+        )}
 
         <ListaTransacciones
           transacciones={transacciones}
@@ -138,6 +157,23 @@ function TransaccionesContentInner() {
         >
           <GestionCategoriasTransacciones
             onCerrar={() => setGestionarCategorias(false)}
+          />
+        </Modal>
+        <Modal
+          abierto={mostrarImportar}
+          onCerrar={() => setMostrarImportar(false)}
+          titulo="Importar movimientos del banco"
+          variant="centro"
+          tamano="amplio"
+        >
+          <ImportarMovimientosBanco
+            onCerrar={() => setMostrarImportar(false)}
+            onImportado={(n) => {
+              setMensajeImportacion(
+                `Se importaron ${n} movimiento${n !== 1 ? "s" : ""} correctamente.`
+              );
+              setTimeout(() => setMensajeImportacion(""), 5000);
+            }}
           />
         </Modal>
       </PageContainer>

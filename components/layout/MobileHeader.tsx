@@ -1,13 +1,19 @@
 "use client";
 
 import { Logo } from "@/components/ui/Logo";
+import { BarraAccionesUsuario } from "@/components/layout/BarraAccionesUsuario";
 
 interface MobileHeaderProps {
   onAbrirMenu: () => void;
   tituloPagina: string;
+  nombreUsuario: string;
 }
 
-export function MobileHeader({ onAbrirMenu, tituloPagina }: MobileHeaderProps) {
+export function MobileHeader({
+  onAbrirMenu,
+  tituloPagina,
+  nombreUsuario,
+}: MobileHeaderProps) {
   return (
     <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-surface/95 px-4 py-3 backdrop-blur-sm lg:hidden">
       <button
@@ -38,6 +44,8 @@ export function MobileHeader({ onAbrirMenu, tituloPagina }: MobileHeaderProps) {
           <p className="truncate text-[11px] text-muted">Fynix</p>
         </div>
       </div>
+
+      <BarraAccionesUsuario nombreUsuario={nombreUsuario} />
     </header>
   );
 }

@@ -57,7 +57,6 @@ export function TarjetasContent() {
         <EncabezadoPagina
           titulo="Tarjetas de crédito"
           descripcion="Registra tus tarjetas y visualiza un simulacro con detección automática Visa / Mastercard"
-          dataAyuda="acciones"
           acciones={
             !mostrarFormulario ? (
               <button
