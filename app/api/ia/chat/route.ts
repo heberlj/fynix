@@ -6,10 +6,14 @@ import {
   formatoRenovacionCreditos,
   obtenerCreditosIaUsuario,
 } from "@/lib/ia-fynix-uso";
+import {
+  CREDITOS_IA_GRATIS,
+  CREDITOS_IA_PRO,
+} from "@/lib/ia-fynix-constantes";
 import { openaiConfigurado } from "@/lib/openai";
 import type { ContextoIaFynix } from "@/lib/ia-fynix-contexto";
 import { respuestaLocalComoChat } from "@/lib/ia-fynix-sugerencias";
-import { mensajeErrorOpenAI } from "@/lib/openai-errores";
+import { mensajeErrorOpenAI, esErrorOpenAIRecuperable } from "@/lib/openai-errores";
 import type { ChatIaRequest, MensajeChatIa } from "@/types/ia-fynix";
 
 function contextoValido(ctx: unknown): ctx is ContextoIaFynix {
@@ -42,9 +46,9 @@ function mensajeSinCreditos(
 ): string {
   const cuando = ` Se renuevan ${formatoRenovacionCreditos(renuevaEn)}.`;
   if (plan === "pro") {
-    return `Usaste tus 50 créditos de este período.${cuando}`;
+    return `Usaste tus ${CREDITOS_IA_PRO} créditos de esta semana.${cuando}`;
   }
-  return `Usaste tus 10 créditos de este período. Con Fynix Pro tienes 50 cada 24 h.${cuando}`;
+  return `Usaste tus ${CREDITOS_IA_GRATIS} créditos de esta semana. Con Fynix Pro tienes ${CREDITOS_IA_PRO} cada semana.${cuando}`;
 }
 
 export async function POST(request: Request) {
@@ -126,6 +130,16 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Error en POST /api/ia/chat:", error);
+
+    if (esErrorOpenAIRecuperable(error)) {
+      const creditosActuales = await obtenerCreditosIaUsuario(supabase, user.id);
+      return NextResponse.json({
+        respuesta: respuestaLocalComoChat(body.contexto, mensaje),
+        creditos: creditosActuales,
+        origen: "local",
+      });
+    }
+
     return NextResponse.json(
       { error: mensajeErrorOpenAI(error) },
       { status: 500 }

@@ -10,6 +10,8 @@ import {
   quincenaDeVencimientoFinanciamiento,
 } from "@/lib/financiamiento-cuotas";
 import { InputNumeroTarjetaSeguro } from "@/components/tarjetas/InputNumeroTarjetaSeguro";
+import { AvisoLimitePro } from "@/components/suscripcion/AvisoLimitePro";
+import { MENSAJE_FINANCIAMIENTO_CUOTAS } from "@/lib/plan-limites";
 
 const inputClass =
   "w-full min-w-0 rounded-lg border border-border bg-background px-3 py-2.5 text-base text-foreground outline-none focus:border-accent sm:py-2 sm:text-sm";
@@ -24,6 +26,8 @@ export interface FormularioFinanciamientoCuotasProps {
   digitosCuotasPopular?: string;
   onDigitosCuotasPopularChange?: (digitos: string) => void;
   numeroCuotasPopularGuardado?: string;
+  /** Si false, solo se permite "Ninguna" (salvo producto ya activo). */
+  permitirFinanciamiento?: boolean;
 }
 
 export function FormularioFinanciamientoCuotas({
@@ -35,16 +39,30 @@ export function FormularioFinanciamientoCuotas({
   digitosCuotasPopular = "",
   onDigitosCuotasPopularChange,
   numeroCuotasPopularGuardado,
+  permitirFinanciamiento = true,
 }: FormularioFinanciamientoCuotasProps) {
   const activo = productoFinanciamientoActivo(value.producto);
   const diaPagoNum = Number(value.diaPago) || financiamientoPorDefecto().diaPago;
   const quincena = quincenaDeVencimientoFinanciamiento(diaPagoNum);
+
+  const opcionesProducto = permitirFinanciamiento
+    ? PRODUCTOS_FINANCIAMIENTO
+    : PRODUCTOS_FINANCIAMIENTO.filter(
+        (p) => p.valor === "ninguna" || p.valor === value.producto
+      );
 
   function actualizar(parcial: Partial<FinanciamientoCuotas>) {
     onChange({ ...value, ...parcial });
   }
 
   function cambiarProducto(producto: ProductoFinanciamientoCuotas) {
+    if (
+      !permitirFinanciamiento &&
+      productoFinanciamientoActivo(producto)
+    ) {
+      return;
+    }
+
     if (producto === "ninguna") {
       onChange(financiamientoPorDefecto(diaCorteTarjeta, diaPagoTarjeta));
       return;
@@ -71,16 +89,21 @@ export function FormularioFinanciamientoCuotas({
           }
           className={inputClass}
         >
-          {PRODUCTOS_FINANCIAMIENTO.map((p) => (
+          {opcionesProducto.map((p) => (
             <option key={p.valor} value={p.valor}>
               {p.etiqueta}
             </option>
           ))}
         </select>
+        {!permitirFinanciamiento && (
+          <AvisoLimitePro mensaje={MENSAJE_FINANCIAMIENTO_CUOTAS} />
+        )}
+        {permitirFinanciamiento && (
         <span className="text-xs text-muted">
           Al guardar con Cuotas Popular, Cuotas BHD o Credimás, se crea
           automáticamente un gasto fijo en la quincena correspondiente.
         </span>
+        )}
       </label>
 
       {activo && (

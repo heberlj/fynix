@@ -10,9 +10,9 @@ export interface CreditosIaFynix {
   usado: number;
   limite: number;
   restante: number;
-  /** Inicio del período actual de 24 h (ISO). */
+  /** Inicio del período semanal actual (lunes 00:00 UTC, ISO). */
   periodoInicio: string;
-  /** Cuándo se renuevan los créditos (ISO). */
+  /** Próximo lunes en que se renuevan los créditos (ISO). */
   renuevaEn: string;
   plan: PlanSuscripcion;
 }

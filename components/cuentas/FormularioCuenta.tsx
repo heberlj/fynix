@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useFinanzas } from "@/context/FinanzasContext";
+import { usePlanLimites } from "@/hooks/usePlanLimites";
+import { MENSAJE_LIMITE_CUENTAS } from "@/lib/plan-limites";
 import type { ColorHome, IconoHomeCuenta, TipoCuentaBancaria } from "@/types/finanzas";
 import { SelectorMoneda } from "@/components/ui/SelectorMoneda";
 import { SelectorBanco } from "@/components/ui/SelectorBanco";
@@ -20,6 +22,7 @@ export function FormularioCuenta({
   enModal = false,
 }: { onExito?: () => void; enModal?: boolean } = {}) {
   const { agregarCuenta, configuracion, cuentas } = useFinanzas();
+  const { puedeAgregarCuenta } = usePlanLimites();
 
   const [banco, setBanco] = useState("");
   const [nombre, setNombre] = useState("");
@@ -51,6 +54,11 @@ export function FormularioCuenta({
     }
     if (saldoNum < 0) {
       setError("El saldo no puede ser negativo");
+      return;
+    }
+
+    if (!puedeAgregarCuenta(cuentas.length)) {
+      setError(MENSAJE_LIMITE_CUENTAS);
       return;
     }
 

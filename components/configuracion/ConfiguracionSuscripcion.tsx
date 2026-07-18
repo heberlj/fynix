@@ -19,17 +19,19 @@ import {
 } from "@/lib/paypal-client";
 
 const BENEFICIOS_GRATIS = [
-  "Cuentas, tarjetas y transacciones ilimitadas",
-  "Gastos fijos y metas de ahorro",
+  "Hasta 2 cuentas y 1 tarjeta",
+  "Transacciones, gastos fijos y metas de ahorro",
+  "Quincenas y sincronización en la nube",
   "Respaldo manual en JSON",
-  "Sincronización en la nube con tu cuenta",
+  "20 mensajes de IA por semana",
 ];
 
 const BENEFICIOS_PRO = [
-  "Todo lo del plan Gratis",
-  "Exportación avanzada y reportes",
+  "Cuentas y tarjetas ilimitadas",
+  "Cuotas Popular, BHD y Credimás",
+  "Exportación CSV y reportes mensuales",
+  "100 mensajes de IA por semana",
   "Soporte prioritario",
-  "Funciones nuevas antes que nadie",
 ];
 
 const PENDING_SUBSCRIPTION_KEY = "fynix_paypal_subscription_id";

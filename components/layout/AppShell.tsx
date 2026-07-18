@@ -7,6 +7,7 @@ import { MobileHeader } from "@/components/layout/MobileHeader";
 import { tituloDeRuta } from "@/components/layout/navegacion";
 import { ThemeSync } from "@/components/layout/ThemeSync";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { ControlSesionInactividad } from "@/components/auth/ControlSesionInactividad";
 import { FinanzasProvider } from "@/context/FinanzasContext";
 import { AvisoCargaFinanzas } from "@/components/layout/AvisoCargaFinanzas";
 
@@ -17,7 +18,12 @@ const RUTAS_AUTH = [
   "/restablecer-contrasena",
 ];
 
-const RUTAS_PUBLICAS = new Set(["/", ...RUTAS_AUTH]);
+const RUTAS_LEGALES = [
+  "/politica-privacidad",
+  "/terminos-y-condiciones",
+];
+
+const RUTAS_PUBLICAS = new Set(["/", ...RUTAS_AUTH, ...RUTAS_LEGALES]);
 
 function AppRoutes({ children }: { children: React.ReactNode }) {
   const { sesion, cargado } = useAuth();
@@ -25,6 +31,7 @@ function AppRoutes({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [menuAbierto, setMenuAbierto] = useState(false);
   const esRutaAuth = RUTAS_AUTH.includes(pathname);
+  const esRutaLegal = RUTAS_LEGALES.includes(pathname);
   const esRutaPublica = RUTAS_PUBLICAS.has(pathname);
   const esLanding = pathname === "/" && !sesion;
   const esRestablecerContrasena = pathname === "/restablecer-contrasena";
@@ -61,7 +68,7 @@ function AppRoutes({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (esRutaAuth || esLanding) {
+  if (esRutaAuth || esRutaLegal || esLanding) {
     if (sesion && esRutaAuth && !esRestablecerContrasena) return null;
     return <>{children}</>;
   }
@@ -93,6 +100,7 @@ function AppRoutes({ children }: { children: React.ReactNode }) {
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
+      <ControlSesionInactividad />
       <AppRoutes>{children}</AppRoutes>
     </AuthProvider>
   );

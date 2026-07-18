@@ -1,3 +1,16 @@
+export function esErrorOpenAIRecuperable(error: unknown): boolean {
+  const texto =
+    error instanceof Error ? error.message : String(error);
+
+  return (
+    texto.includes("OPENAI_ERROR_") ||
+    texto.includes("OPENAI_NO_CONFIGURADO") ||
+    texto.includes("OPENAI_RESPUESTA_VACIA") ||
+    texto.includes("Incorrect API key") ||
+    texto.includes("exceeded your current quota")
+  );
+}
+
 export function mensajeErrorOpenAI(error: unknown): string {
   const texto =
     error instanceof Error ? error.message : String(error);

@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useFinanzas } from "@/context/FinanzasContext";
+import { usePlanLimites } from "@/hooks/usePlanLimites";
+import { MENSAJE_FINANCIAMIENTO_CUOTAS } from "@/lib/plan-limites";
 import type { CuotaPopular, TarjetaCredito } from "@/types/finanzas";
 import { formatearFecha } from "@/lib/fechas";
 import {
@@ -27,6 +29,7 @@ import {
 import { EditarCuotaPopularForm } from "@/components/tarjetas/EditarCuotaPopularForm";
 import { FormularioCuotaPopular } from "@/components/tarjetas/FormularioCuotaPopular";
 import { SelectorOrigenFondo } from "@/components/ui/SelectorOrigenFondo";
+import { AvisoLimitePro } from "@/components/suscripcion/AvisoLimitePro";
 
 interface PlanesCuotasPopularProps {
   tarjetaId: string;
@@ -69,6 +72,7 @@ export function PlanesCuotasPopular({
     eliminarCuotaPopular,
     registrarCuotaPopularPagada,
   } = useFinanzas();
+  const { puedeFinanciamientoCuotas } = usePlanLimites();
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
 
@@ -99,7 +103,7 @@ export function PlanesCuotasPopular({
             </span>
           </p>
         </div>
-        {!mostrarFormulario && (
+        {!mostrarFormulario && puedeFinanciamientoCuotas && (
           <button
             type="button"
             onClick={() => setMostrarFormulario(true)}
@@ -110,7 +114,11 @@ export function PlanesCuotasPopular({
         )}
       </div>
 
-      {mostrarFormulario && (
+      {!puedeFinanciamientoCuotas && planes.length === 0 && (
+        <AvisoLimitePro mensaje={MENSAJE_FINANCIAMIENTO_CUOTAS} />
+      )}
+
+      {mostrarFormulario && puedeFinanciamientoCuotas && (
         <FormularioCuotaPopular
           tarjeta={tarjeta}
           onExito={() => setMostrarFormulario(false)}

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useFinanzas } from "@/context/FinanzasContext";
+import { usePlanLimites } from "@/hooks/usePlanLimites";
 import type { Transaccion } from "@/types/finanzas";
 import {
   CATEGORIA_APORTE_META_AHORRO,
@@ -36,6 +37,8 @@ import {
   CamposCuotasPopular,
   type ValoresCuotasPopular,
 } from "@/components/transacciones/CamposCuotasPopular";
+import { AvisoLimitePro } from "@/components/suscripcion/AvisoLimitePro";
+import { MENSAJE_FINANCIAMIENTO_CUOTAS } from "@/lib/plan-limites";
 
 const inputClass =
   "w-full min-w-0 rounded-lg border border-border bg-background px-3 py-2.5 text-base text-foreground outline-none focus:border-accent sm:py-2 sm:text-sm";
@@ -79,6 +82,7 @@ export function FormularioTransaccion({
     metasAhorro,
     transacciones,
   } = useFinanzas();
+  const { puedeFinanciamientoCuotas } = usePlanLimites();
   const [tipo, setTipo] = useState<"gasto" | "ingreso" | "transferencia">("gasto");
   const [descripcion, setDescripcion] = useState("");
   const [monto, setMonto] = useState("");
@@ -128,10 +132,13 @@ export function FormularioTransaccion({
       ? tarjetas.find((t) => t.id === origen.id)
       : undefined;
 
-  const puedeCuotasPopular =
+  const tarjetaConCuotasPopular =
     tipo === "gasto" &&
     tarjetaSeleccionada &&
     tarjetaTieneCuotasPopular(tarjetaSeleccionada);
+
+  const puedeCuotasPopular =
+    tarjetaConCuotasPopular && puedeFinanciamientoCuotas;
 
   const tarjetaDestino =
     tipo === "transferencia" && destino?.tipo === "tarjeta"
@@ -905,6 +912,14 @@ export function FormularioTransaccion({
             entre ellas. También puedes pagar una tarjeta si tienes una registrada.
           </p>
         )}
+
+        {tarjetaConCuotasPopular &&
+          !puedeFinanciamientoCuotas &&
+          !modoEdicion && (
+            <div className="sm:col-span-2">
+              <AvisoLimitePro mensaje={MENSAJE_FINANCIAMIENTO_CUOTAS} />
+            </div>
+          )}
 
         {puedeCuotasPopular && !modoEdicion && (
           <div className="sm:col-span-2">

@@ -28,6 +28,10 @@ import { TarjetaVisual } from "@/components/tarjetas/TarjetaVisual";
 import { SelectorMoneda } from "@/components/ui/SelectorMoneda";
 import { SelectorBanco } from "@/components/ui/SelectorBanco";
 import { bancoPermitido } from "@/lib/bancos";
+import { usePlanLimites } from "@/hooks/usePlanLimites";
+import {
+  MENSAJE_FINANCIAMIENTO_CUOTAS,
+} from "@/lib/plan-limites";
 import { PersonalizacionTarjetaHome } from "@/components/ui/PersonalizacionTarjetaHome";
 import { colorHomeTarjeta } from "@/lib/personalizacion-home";
 
@@ -42,6 +46,7 @@ interface EditarTarjetaFormProps {
 export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProps) {
   const { actualizarTarjeta } = useFinanzas();
   const { sesion } = useAuth();
+  const { puedeFinanciamientoCuotas } = usePlanLimites();
 
   const [banco, setBanco] = useState(tarjeta.banco);
   const [nombreTarjeta, setNombreTarjeta] = useState(tarjeta.nombreTarjeta);
@@ -139,6 +144,21 @@ export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProp
     }
 
     if (productoFinanciamientoActivo(financiamiento.producto)) {
+      const financiamientoPrevio = obtenerFinanciamientoTarjeta(tarjeta);
+      const teniaFinanciamiento = productoFinanciamientoActivo(
+        financiamientoPrevio.producto
+      );
+      const cambioProducto =
+        financiamiento.producto !== financiamientoPrevio.producto;
+
+      if (
+        !puedeFinanciamientoCuotas &&
+        (!teniaFinanciamiento || cambioProducto)
+      ) {
+        setError(MENSAJE_FINANCIAMIENTO_CUOTAS);
+        return;
+      }
+
       const errorFin = validarFinanciamientoCuotas(financiamiento);
       if (errorFin) {
         setError(errorFin);
@@ -379,6 +399,7 @@ export function EditarTarjetaForm({ tarjeta, onCancelar }: EditarTarjetaFormProp
               numeroCuotasPopularGuardado={
                 tarjeta.extensionCuotasPopular?.numeroEnmascarado
               }
+              permitirFinanciamiento={puedeFinanciamientoCuotas}
             />
           </div>
 

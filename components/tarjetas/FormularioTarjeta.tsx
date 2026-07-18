@@ -3,6 +3,11 @@
 import { useMemo, useState } from "react";
 import { useFinanzas } from "@/context/FinanzasContext";
 import { useAuth } from "@/context/AuthContext";
+import { usePlanLimites } from "@/hooks/usePlanLimites";
+import {
+  MENSAJE_FINANCIAMIENTO_CUOTAS,
+  MENSAJE_LIMITE_TARJETAS,
+} from "@/lib/plan-limites";
 import {
   almacenarNumeroTarjeta,
   detectarMarca,
@@ -39,6 +44,7 @@ export function FormularioTarjeta({
 }: { onExito?: () => void; enModal?: boolean } = {}) {
   const { agregarTarjeta, configuracion, tarjetas } = useFinanzas();
   const { sesion } = useAuth();
+  const { puedeAgregarTarjeta, puedeFinanciamientoCuotas } = usePlanLimites();
 
   const [banco, setBanco] = useState("");
   const [nombreTarjeta, setNombreTarjeta] = useState("");
@@ -126,8 +132,16 @@ export function FormularioTarjeta({
       return;
     }
 
-    const limiteCuotasNum = financiamiento.limiteAprobado;
+    if (!puedeAgregarTarjeta(tarjetas.length)) {
+      setError(MENSAJE_LIMITE_TARJETAS);
+      return;
+    }
+
     if (productoFinanciamientoActivo(financiamiento.producto)) {
+      if (!puedeFinanciamientoCuotas) {
+        setError(MENSAJE_FINANCIAMIENTO_CUOTAS);
+        return;
+      }
       const errorFin = validarFinanciamientoCuotas(financiamiento);
       if (errorFin) {
         setError(errorFin);
@@ -369,6 +383,7 @@ export function FormularioTarjeta({
             diaPagoTarjeta={Number(diaPago) || 30}
             digitosCuotasPopular={digitosCuotasPopular}
             onDigitosCuotasPopularChange={setDigitosCuotasPopular}
+            permitirFinanciamiento={puedeFinanciamientoCuotas}
           />
         </div>
 

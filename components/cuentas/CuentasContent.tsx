@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useFinanzas } from "@/context/FinanzasContext";
+import { usePlanLimites } from "@/hooks/usePlanLimites";
+import { MENSAJE_LIMITE_CUENTAS } from "@/lib/plan-limites";
 import { totalCuentasPorMoneda } from "@/lib/cuentas";
 import { formatearMoneda } from "@/lib/quincenas";
 import { PageContainer } from "@/components/layout/PageContainer";
@@ -11,10 +13,24 @@ import { Modal } from "@/components/ui/Modal";
 import { FormularioCuenta } from "@/components/cuentas/FormularioCuenta";
 import { ListaCuentas } from "@/components/cuentas/ListaCuentas";
 import { TarjetaEfectivo } from "@/components/cuentas/TarjetaEfectivo";
+import { AvisoLimitePro } from "@/components/suscripcion/AvisoLimitePro";
 
 export function CuentasContent() {
   const { cuentas, efectivo, configuracion, cargado } = useFinanzas();
+  const { puedeAgregarCuenta } = usePlanLimites();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [mostrarLimite, setMostrarLimite] = useState(false);
+
+  const puedeAgregar = puedeAgregarCuenta(cuentas.length);
+
+  function abrirFormulario() {
+    if (!puedeAgregar) {
+      setMostrarLimite(true);
+      return;
+    }
+    setMostrarLimite(false);
+    setMostrarFormulario(true);
+  }
 
   const totalesPorMoneda = useMemo(() => {
     const mapa = totalCuentasPorMoneda(cuentas);
@@ -51,7 +67,7 @@ export function CuentasContent() {
             !mostrarFormulario ? (
               <button
                 type="button"
-                onClick={() => setMostrarFormulario(true)}
+                onClick={abrirFormulario}
                 className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover sm:w-auto"
               >
                 + Nueva cuenta
@@ -59,6 +75,10 @@ export function CuentasContent() {
             ) : undefined
           }
         />
+
+        {mostrarLimite && (
+          <AvisoLimitePro mensaje={MENSAJE_LIMITE_CUENTAS} />
+        )}
 
         {totalesPorMoneda.length > 0 && (
           <div className="flex flex-wrap gap-4 text-sm">
@@ -86,7 +106,7 @@ export function CuentasContent() {
         <div data-ayuda="lista">
           <ListaCuentas
             cuentas={cuentas}
-            onAgregar={() => setMostrarFormulario(true)}
+            onAgregar={abrirFormulario}
           />
         </div>
 

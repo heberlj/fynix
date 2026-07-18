@@ -28,6 +28,16 @@ export const RUTAS_PUBLICAS_SITEMAP = [
     prioridad: 0.3,
     frecuencia: "yearly" as const,
   },
+  {
+    ruta: "/politica-privacidad",
+    prioridad: 0.4,
+    frecuencia: "yearly" as const,
+  },
+  {
+    ruta: "/terminos-y-condiciones",
+    prioridad: 0.4,
+    frecuencia: "yearly" as const,
+  },
 ];
 
 export function urlBaseSeo(): string {
@@ -40,7 +50,7 @@ export function metadataRaiz(): Metadata {
   return {
     metadataBase: new URL(base),
     title: {
-      default: `${NOMBRE_APP} — Gestor de finanzas personales`,
+      default: NOMBRE_APP,
       template: `%s | ${NOMBRE_APP}`,
     },
     description: DESCRIPCION_APP,
@@ -55,7 +65,7 @@ export function metadataRaiz(): Metadata {
       locale: "es_ES",
       url: base,
       siteName: NOMBRE_APP,
-      title: `${NOMBRE_APP} — Gestor de finanzas personales`,
+      title: NOMBRE_APP,
       description: DESCRIPCION_APP,
       images: [
         {
@@ -68,7 +78,7 @@ export function metadataRaiz(): Metadata {
     },
     twitter: {
       card: "summary",
-      title: `${NOMBRE_APP} — Gestor de finanzas personales`,
+      title: NOMBRE_APP,
       description: DESCRIPCION_APP,
       images: ["/logo-fynix.png"],
     },
@@ -84,10 +94,6 @@ export function metadataRaiz(): Metadata {
     },
     alternates: {
       canonical: "/",
-    },
-    icons: {
-      icon: "/logo-fynix.png",
-      apple: "/logo-fynix.png",
     },
   };
 }

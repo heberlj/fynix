@@ -1,6 +1,6 @@
 -- Ejecuta esto en Supabase → SQL Editor
--- Créditos IA de Fynix: período rodante de 24 h por usuario
--- Gratis: 10 créditos · Pro: 50 créditos (límite en app según plan)
+-- Créditos IA de Fynix: período semanal (lunes 00:00 UTC) por usuario
+-- Gratis: 20 créditos · Pro: 100 créditos (límite en app según plan)
 
 -- Si ya tenías la tabla antigua (por fecha UTC), la recreamos:
 drop table if exists public.ia_uso_diario;

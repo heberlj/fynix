@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AuthLayout } from "@/components/auth/AuthLayout";
+import { EnlacesLegalesAuth } from "@/components/auth/EnlacesLegalesAuth";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { metadataPagina } from "@/lib/seo";
 
@@ -14,6 +15,7 @@ export default function LoginPage() {
     <AuthLayout
       titulo="Iniciar sesión"
       subtitulo="Accede a tu gestor de finanzas"
+      pie={<EnlacesLegalesAuth />}
     >
       <LoginForm />
     </AuthLayout>

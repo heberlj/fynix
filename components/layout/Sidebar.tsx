@@ -14,6 +14,7 @@ import {
 } from "@/components/layout/navegacion";
 import { notificarEntradaPagina } from "@/components/layout/useEntradaPagina";
 import { useAuth } from "@/context/AuthContext";
+import { EtiquetaPlan } from "@/components/suscripcion/EtiquetaPlan";
 import { aplicarTema } from "@/lib/tema";
 import type { TemaApp } from "@/types/finanzas";
 
@@ -151,9 +152,12 @@ export function Sidebar({ abierto, onCerrar, nombreUsuario }: SidebarProps) {
               <p className="text-[10px] uppercase tracking-wider text-muted">
                 Sesión
               </p>
-              <p className="truncate text-sm font-medium text-foreground">
-                {nombreUsuario}
-              </p>
+              <div className="mt-0.5 flex items-center gap-2">
+                <p className="min-w-0 truncate text-sm font-medium text-foreground">
+                  {nombreUsuario}
+                </p>
+                <EtiquetaPlan />
+              </div>
             </div>
           )}
           <SelectorTema

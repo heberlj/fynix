@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { PERIODO_CREDITOS_MS } from "@/lib/ia-fynix-constantes";
+import { MS_POR_SEMANA } from "@/lib/ia-fynix-constantes";
 import {
   SUSCRIPCION_GRATIS,
   filaASuscripcion,
@@ -8,23 +8,48 @@ import {
 import type { CreditosIaFynix } from "@/types/ia-fynix";
 import type { SuscripcionFila } from "@/types/suscripcion";
 
+function inicioSemanaUtc(fecha: Date): Date {
+  const inicio = new Date(
+    Date.UTC(fecha.getUTCFullYear(), fecha.getUTCMonth(), fecha.getUTCDate())
+  );
+  const dia = inicio.getUTCDay();
+  const diasDesdeLunes = (dia + 6) % 7;
+  inicio.setUTCDate(inicio.getUTCDate() - diasDesdeLunes);
+  return inicio;
+}
+
+/** Lunes 00:00 UTC de la semana actual (inicio del período de créditos). */
+export function inicioPeriodoSemanalActual(): string {
+  return inicioSemanaUtc(new Date()).toISOString();
+}
+
 function periodoExpirado(periodoInicio: string): boolean {
-  return Date.now() - new Date(periodoInicio).getTime() >= PERIODO_CREDITOS_MS;
+  const actual = inicioSemanaUtc(new Date()).getTime();
+  const inicio = inicioSemanaUtc(new Date(periodoInicio)).getTime();
+  return actual > inicio;
 }
 
 export function calcularRenuevaEn(periodoInicio: string): string {
-  return new Date(
-    new Date(periodoInicio).getTime() + PERIODO_CREDITOS_MS
-  ).toISOString();
+  const semanaInicio = inicioSemanaUtc(new Date(periodoInicio));
+  return new Date(semanaInicio.getTime() + MS_POR_SEMANA).toISOString();
 }
 
 export function formatoRenovacionCreditos(renuevaEn: string): string {
-  const diff = new Date(renuevaEn).getTime() - Date.now();
+  const fecha = new Date(renuevaEn);
+  const diff = fecha.getTime() - Date.now();
   if (diff <= 0) return "muy pronto";
-  const minutos = Math.ceil(diff / 60_000);
-  if (minutos < 60) return `en ${minutos} min`;
-  const horas = Math.ceil(diff / 3_600_000);
-  return `en ${horas} h`;
+
+  const dias = Math.ceil(diff / 86_400_000);
+  if (dias === 1) return "mañana";
+
+  const diaSemana = fecha.toLocaleDateString("es", { weekday: "long" });
+  if (dias <= 6) return `el ${diaSemana}`;
+
+  return fecha.toLocaleDateString("es", {
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+  });
 }
 
 export function creditosDesdeUso(
@@ -74,10 +99,11 @@ async function leerRegistroUso(
     throw new Error(error.message);
   }
 
+  const periodoActual = inicioPeriodoSemanalActual();
   const ahora = new Date().toISOString();
 
   if (!data) {
-    return { consultas: 0, periodoInicio: ahora };
+    return { consultas: 0, periodoInicio: periodoActual };
   }
 
   const periodoInicio = String(data.periodo_inicio);
@@ -86,7 +112,7 @@ async function leerRegistroUso(
     const { error: resetError } = await supabase.from("ia_uso_diario").upsert({
       usuario_id: usuarioId,
       consultas: 0,
-      periodo_inicio: ahora,
+      periodo_inicio: periodoActual,
       actualizado_en: ahora,
     });
 
@@ -94,7 +120,7 @@ async function leerRegistroUso(
       throw new Error(resetError.message);
     }
 
-    return { consultas: 0, periodoInicio: ahora };
+    return { consultas: 0, periodoInicio: periodoActual };
   }
 
   return {

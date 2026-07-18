@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -11,6 +11,8 @@ const inputClass =
 export function LoginForm() {
   const { iniciarSesion } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const sesionExpirada = searchParams.get("motivo") === "inactividad";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -34,6 +36,16 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {sesionExpirada && (
+        <p
+          role="status"
+          className="rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-muted"
+        >
+          Tu sesión se cerró por inactividad. Inicia sesión de nuevo para
+          continuar.
+        </p>
+      )}
+
       <label className="flex flex-col gap-1.5">
         <span className="text-sm font-medium text-foreground">Correo</span>
         <input

@@ -7,10 +7,12 @@ export function AuthLayout({
   titulo,
   subtitulo,
   children,
+  pie,
 }: {
   titulo: string;
   subtitulo: string;
   children: React.ReactNode;
+  pie?: React.ReactNode;
 }) {
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-background p-4">
@@ -29,6 +31,8 @@ export function AuthLayout({
           <h2 className="text-lg font-semibold text-foreground">{titulo}</h2>
           <div className="mt-6">{children}</div>
         </div>
+
+        {pie}
 
         <p className="mt-6 text-center text-[10px] text-muted">
           © 2026 Fynix. Todos los derechos reservados.

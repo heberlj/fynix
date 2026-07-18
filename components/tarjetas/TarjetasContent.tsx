@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useFinanzas } from "@/context/FinanzasContext";
+import { usePlanLimites } from "@/hooks/usePlanLimites";
+import { MENSAJE_LIMITE_TARJETAS } from "@/lib/plan-limites";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { EncabezadoPagina } from "@/components/layout/EncabezadoPagina";
 import { AyudaPagina } from "@/components/ayuda/AyudaPagina";
@@ -9,10 +11,24 @@ import { Modal } from "@/components/ui/Modal";
 import { FormularioTarjeta } from "@/components/tarjetas/FormularioTarjeta";
 import { ListaTarjetas } from "@/components/tarjetas/ListaTarjetas";
 import { formatearMoneda } from "@/lib/quincenas";
+import { AvisoLimitePro } from "@/components/suscripcion/AvisoLimitePro";
 
 export function TarjetasContent() {
   const { tarjetas, cargado } = useFinanzas();
+  const { puedeAgregarTarjeta } = usePlanLimites();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [mostrarLimite, setMostrarLimite] = useState(false);
+
+  const puedeAgregar = puedeAgregarTarjeta(tarjetas.length);
+
+  function abrirFormulario() {
+    if (!puedeAgregar) {
+      setMostrarLimite(true);
+      return;
+    }
+    setMostrarLimite(false);
+    setMostrarFormulario(true);
+  }
 
   const totalesPorMoneda = useMemo(() => {
     const mapa = new Map<string, { deuda: number; disponible: number }>();
@@ -46,7 +62,7 @@ export function TarjetasContent() {
             !mostrarFormulario ? (
               <button
                 type="button"
-                onClick={() => setMostrarFormulario(true)}
+                onClick={abrirFormulario}
                 className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover sm:w-auto"
               >
                 + Nueva tarjeta
@@ -54,6 +70,10 @@ export function TarjetasContent() {
             ) : undefined
           }
         />
+
+        {mostrarLimite && (
+          <AvisoLimitePro mensaje={MENSAJE_LIMITE_TARJETAS} />
+        )}
 
         {totalesPorMoneda.length > 0 && (
           <div className="flex flex-wrap gap-4 text-sm">
@@ -83,7 +103,7 @@ export function TarjetasContent() {
         <div data-ayuda="lista">
           <ListaTarjetas
             tarjetas={tarjetas}
-            onAgregar={() => setMostrarFormulario(true)}
+            onAgregar={abrirFormulario}
           />
         </div>
 

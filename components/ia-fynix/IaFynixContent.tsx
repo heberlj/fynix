@@ -5,8 +5,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useFinanzas } from "@/context/FinanzasContext";
 import { construirContextoIaFynix } from "@/lib/ia-fynix-contexto";
-import { CREDITOS_IA_GRATIS } from "@/lib/ia-fynix-constantes";
-import { formatoRenovacionCreditos } from "@/lib/ia-fynix-uso";
+import {
+  CREDITOS_IA_GRATIS,
+  CREDITOS_IA_PRO,
+} from "@/lib/ia-fynix-constantes";
+import {
+  calcularRenuevaEn,
+  formatoRenovacionCreditos,
+  inicioPeriodoSemanalActual,
+} from "@/lib/ia-fynix-uso";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { useEntradaPagina } from "@/components/layout/useEntradaPagina";
 import { AyudaPagina } from "@/components/ayuda/AyudaPagina";
@@ -20,8 +27,8 @@ const CONSULTAS_RAPIDAS = [
 ];
 
 function creditosPorDefecto(): CreditosIaFynix {
-  const periodoInicio = new Date().toISOString();
-  const renuevaEn = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const periodoInicio = inicioPeriodoSemanalActual();
+  const renuevaEn = calcularRenuevaEn(periodoInicio);
   return {
     usado: 0,
     limite: CREDITOS_IA_GRATIS,
@@ -314,8 +321,8 @@ export function IaFynixContent() {
               {sinCreditos && (
                 <p className="mb-2 text-center text-sm text-muted">
                   {creditos.plan === "pro"
-                    ? `Usaste tus 50 créditos. Se renuevan ${formatoRenovacionCreditos(creditos.renuevaEn)}.`
-                    : `Usaste tus 10 créditos. Se renuevan ${formatoRenovacionCreditos(creditos.renuevaEn)}. Con Fynix Pro tienes 50 cada 24 h.`}
+                    ? `Usaste tus ${CREDITOS_IA_PRO} créditos. Se renuevan ${formatoRenovacionCreditos(creditos.renuevaEn)}.`
+                    : `Usaste tus ${CREDITOS_IA_GRATIS} créditos. Se renuevan ${formatoRenovacionCreditos(creditos.renuevaEn)}. Con Fynix Pro tienes ${CREDITOS_IA_PRO} cada semana.`}
                 </p>
               )}
 
