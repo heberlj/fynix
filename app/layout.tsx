@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppShell } from "@/components/layout/AppShell";
+import { metadataRaiz } from "@/lib/seo";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,14 +14,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Fynix",
-  description: "Tu dinero, tu futuro. Gestor de finanzas personales.",
-  icons: {
-    icon: "/logo-fynix.png",
-    apple: "/logo-fynix.png",
-  },
-};
+export const metadata: Metadata = metadataRaiz();
 
 export const viewport: Viewport = {
   width: "device-width",

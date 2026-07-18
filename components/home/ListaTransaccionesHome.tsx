@@ -13,7 +13,10 @@ import {
   type SeleccionFuenteHome,
 } from "@/lib/resumen-home";
 import { etiquetaOrigen, etiquetaTransferencia } from "@/lib/transacciones";
-import { iconoCategoriaGasto } from "@/lib/categorias-transacciones";
+import {
+  colorCategoriaGasto,
+  iconoCategoriaGasto,
+} from "@/lib/categorias-transacciones";
 import { useFinanzas } from "@/context/FinanzasContext";
 import { IconoCategoria } from "@/components/ui/IconoCategoria";
 import { InsigniaCategoriaGasto } from "@/components/ui/SelectorCategoriaConIconos";
@@ -71,6 +74,10 @@ export function ListaTransaccionesHome({
           fuente
         );
 
+        const colorGasto = esGasto
+          ? colorCategoriaGasto(configuracion, t.categoria)
+          : null;
+
         return (
           <li
             key={t.id}
@@ -82,9 +89,17 @@ export function ListaTransaccionesHome({
                   esIngreso
                     ? "bg-ingreso/10 text-ingreso"
                     : esGasto
-                      ? "bg-gasto/10 text-gasto"
+                      ? ""
                       : "bg-accent/10 text-accent"
                 }`}
+                style={
+                  colorGasto
+                    ? {
+                        backgroundColor: `${colorGasto}22`,
+                        color: colorGasto,
+                      }
+                    : undefined
+                }
               >
                 {esGasto ? (
                   <IconoCategoria

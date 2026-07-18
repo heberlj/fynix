@@ -2,7 +2,10 @@
 
 import { useMemo, useState } from "react";
 import type { ConfiguracionUsuario } from "@/types/finanzas";
-import { iconoCategoriaGasto } from "@/lib/categorias-transacciones";
+import {
+  colorCategoriaGasto,
+  iconoCategoriaGasto,
+} from "@/lib/categorias-transacciones";
 import type { IconoCategoriaId } from "@/lib/iconos-categoria";
 import { IconoCategoria } from "@/components/ui/IconoCategoria";
 
@@ -105,10 +108,12 @@ export function InsigniaCategoriaGasto({
   className?: string;
 }) {
   const icono: IconoCategoriaId = iconoCategoriaGasto(configuracion, categoria);
+  const color = colorCategoriaGasto(configuracion, categoria);
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full bg-background px-2 py-0.5 text-xs text-muted ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs ${className}`}
+      style={{ backgroundColor: `${color}22`, color }}
     >
       <IconoCategoria icono={icono} className="h-3.5 w-3.5" />
       {categoria}

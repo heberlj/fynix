@@ -50,11 +50,10 @@ export function NavIcon({ name, className = "h-[18px] w-[18px]" }: NavIconProps)
     case "gastos-fijos":
       return (
         <svg {...props}>
-          <rect x="3" y="5" width="18" height="16" rx="2" />
-          <path d="M3 10h18" />
-          <path d="M8 3v4M16 3v4" />
-          <path d="M12 14v3" />
-          <path d="M10.5 15.5 12 17l3-3" />
+          <path d="M7 3h10l1.5 2.5H19a1 1 0 0 1 1 1v11.5c0 .3-.2.5-.5.5H17l-1 1.5-1-1.5h-1l-1 1.5-1-1.5H9l-1 1.5-1-1.5H6.5a.5.5 0 0 1-.5-.5V6.5A1.5 1.5 0 0 1 7.5 5H7V3z" />
+          <path d="M9 8.5h6M9 11.5h6M9 14.5h4" />
+          <path d="M18 5.5a2.2 2.2 0 1 0-1.5 4" />
+          <path d="M17.2 7.2 18 5.5l1.6.9" />
         </svg>
       );
     case "quincenas":
@@ -70,11 +69,11 @@ export function NavIcon({ name, className = "h-[18px] w-[18px]" }: NavIconProps)
     case "cuentas":
       return (
         <svg {...props}>
-          <path d="M6 10c0-3.3 2.7-6 6-6s6 2.7 6 6" />
-          <ellipse cx="12" cy="10.5" rx="7.5" ry="3.2" />
-          <path d="M5.5 10.5v2.2c0 2 2.9 3.6 6.5 3.6s6.5-1.6 6.5-3.6v-2.2" />
-          <circle cx="15" cy="8.5" r="0.9" fill="currentColor" stroke="none" />
-          <path d="M9.5 16.2v2.1c0 .8.7 1.4 1.5 1.4h1.5" />
+          <path d="M3 10 12 4l9 6" />
+          <path d="M5.5 10v8M9.5 10v8M14.5 10v8M18.5 10v8" />
+          <path d="M3 18h18" />
+          <path d="M10.5 15.5v2.5h3v-2.5" />
+          <circle cx="12" cy="8" r="1.1" fill="currentColor" stroke="none" />
         </svg>
       );
     case "tarjetas":
@@ -89,10 +88,19 @@ export function NavIcon({ name, className = "h-[18px] w-[18px]" }: NavIconProps)
     case "prestamos":
       return (
         <svg {...props}>
-          <path d="M9 6.5c0-2 1.6-3.5 3.5-3.5S16 4.5 16 6.5c0 2.3-3.5 4.5-3.5 7.5" />
-          <path d="M12.5 14v1.8" />
-          <path d="M8.5 19.5h7c1.4 0 2.5-1.1 2.5-2.5v-1.2H6v1.2c0 1.4 1.1 2.5 2.5 2.5z" />
-          <path d="M10 11.5h4.5" />
+          <path d="M9.2 11 14.8 8.8 15.3 12.2 9.7 14.4 9.2 11z" />
+          <circle cx="12.25" cy="11.6" r="1" />
+          <path d="M12.25 10.8v1.6" />
+          <path d="M3 8.8c2-1.5 4.5-1.5 6.5 0" />
+          <path d="M4.2 7.2c.9-.8 2-.7 2.7.2" />
+          <path d="M6 6.3c1-.5 2-.2 2.6.6" />
+          <path d="M8 5.8c.9-.4 1.8 0 2.1.8" />
+          <path d="M10.2 5.8c.7-.2 1.3.4 1.3 1.2" />
+          <path d="M21 15.2c-2-1.5-4.5-1.5-6.5 0" />
+          <path d="M19.8 13.6c-.9-.8-2-.7-2.7.2" />
+          <path d="M18 12.7c-1-.5-2-.2-2.6.6" />
+          <path d="M16 12.2c-.9-.4-1.8 0-2.1.8" />
+          <path d="M13.8 12.2c-.7-.2-1.3.4-1.3 1.2" />
         </svg>
       );
     case "metas-ahorro":

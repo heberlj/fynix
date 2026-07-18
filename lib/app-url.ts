@@ -1,4 +1,4 @@
-const URL_PRODUCCION = "https://fynixmoney.netlify.app";
+const URL_PRODUCCION = "https://fynixmoney.com";
 
 /** URL pública de la app (emails de auth, PayPal, etc.). */
 export function urlBaseApp(): string {

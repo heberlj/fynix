@@ -77,11 +77,11 @@ export function GraficoCategoriasHome({
 
   const segmentos = useMemo(
     () =>
-      datos.map((dato, i) => ({
+      datos.map((dato) => ({
         id: dato.categoria,
         etiqueta: dato.categoria,
         valor: dato.monto,
-        color: colorCategoriaGasto(configuracion, dato.categoria, i),
+        color: colorCategoriaGasto(configuracion, dato.categoria),
         iconoId: iconoCategoriaGasto(configuracion, dato.categoria),
         descripcion: `${dato.porcentaje.toFixed(1)}% del total de gastos del periodo.`,
       })),

@@ -31,7 +31,13 @@ export function colorCategoriaGasto(
 ): string {
   const guardado = configuracion.coloresCategoriaGasto?.[categoria];
   if (guardado) return guardado;
-  return colorCategoria(indiceFallback);
+
+  const categorias = obtenerCategoriasGasto(configuracion);
+  const indiceEnLista = categorias.findIndex(
+    (nombre) => nombre.toLowerCase() === categoria.toLowerCase()
+  );
+  const indice = indiceEnLista >= 0 ? indiceEnLista : indiceFallback;
+  return colorCategoria(indice);
 }
 
 export function iconoCategoriaGasto(
