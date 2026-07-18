@@ -75,13 +75,12 @@ function TransaccionesContentInner() {
               <button
                 type="button"
                 onClick={() => {
-                  const abrir = !gestionarCategorias;
-                  setGestionarCategorias(abrir);
-                  if (abrir) cerrarFormulario();
+                  setGestionarCategorias(true);
+                  cerrarFormulario();
                 }}
                 className="w-full rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-surface-hover sm:w-auto"
               >
-                {gestionarCategorias ? "Cerrar categorías" : "Gestionar categorías"}
+                Gestionar categorías
               </button>
               {!formularioAbierto && (
                 <button
@@ -99,12 +98,6 @@ function TransaccionesContentInner() {
             </>
           }
         />
-
-        {gestionarCategorias && (
-          <GestionCategoriasTransacciones
-            onCerrar={() => setGestionarCategorias(false)}
-          />
-        )}
 
         <ListaTransacciones
           transacciones={transacciones}
@@ -133,6 +126,18 @@ function TransaccionesContentInner() {
             transaccion={transaccionEditando ?? undefined}
             onExito={cerrarFormulario}
             onCancelar={cerrarFormulario}
+          />
+        </Modal>
+
+        <Modal
+          abierto={gestionarCategorias}
+          onCerrar={() => setGestionarCategorias(false)}
+          titulo="Gestionar categorías"
+          variant="centro"
+          tamano="amplio"
+        >
+          <GestionCategoriasTransacciones
+            onCerrar={() => setGestionarCategorias(false)}
           />
         </Modal>
       </PageContainer>

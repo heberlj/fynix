@@ -12,6 +12,7 @@ import {
 import type { IconoCategoriaId } from "@/lib/iconos-categoria";
 import { IconoCategoria } from "@/components/ui/IconoCategoria";
 import { SelectorIconoCategoria } from "@/components/ui/SelectorIconoCategoria";
+import { SelectorPaletaColor } from "@/components/ui/SelectorPaletaColor";
 
 const inputClass =
   "rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent";
@@ -32,6 +33,7 @@ export function GestionCategoriasTransacciones({
     agregarCategoriaIngreso,
     renombrarCategoriaIngreso,
     eliminarCategoriaIngreso,
+    actualizarColorCategoriaGasto,
     actualizarIconoCategoriaGasto,
   } = useFinanzas();
 
@@ -40,12 +42,17 @@ export function GestionCategoriasTransacciones({
   const [editando, setEditando] = useState<string | null>(null);
   const [nombreEditado, setNombreEditado] = useState("");
   const [iconoEditado, setIconoEditado] = useState<IconoCategoriaId>("otros");
+  const [colorEditado, setColorEditado] = useState("#2563eb");
   const [error, setError] = useState("");
 
   const categorias =
     tipo === "gasto"
       ? obtenerCategoriasGasto(configuracion)
       : obtenerCategoriasIngreso(configuracion);
+
+  const categoriasVisibles = editando
+    ? categorias.filter((c) => c === editando)
+    : categorias;
 
   function contarUso(nombre: string) {
     return transacciones.filter(
@@ -73,6 +80,30 @@ export function GestionCategoriasTransacciones({
     setNueva("");
   }
 
+  function iniciarEdicion(categoria: string, indice: number) {
+    setEditando(categoria);
+    setNombreEditado(categoria);
+    setIconoEditado(
+      tipo === "gasto"
+        ? iconoCategoriaGasto(configuracion, categoria)
+        : "otros"
+    );
+    setColorEditado(
+      tipo === "gasto"
+        ? colorCategoriaGasto(configuracion, categoria, indice)
+        : "#16a34a"
+    );
+    setError("");
+  }
+
+  function cancelarEdicion() {
+    setEditando(null);
+    setNombreEditado("");
+    setIconoEditado("otros");
+    setColorEditado("#2563eb");
+    setError("");
+  }
+
   function guardarEdicion(anterior: string) {
     setError("");
     const limpio = nombreEditado.trim();
@@ -92,12 +123,11 @@ export function GestionCategoriasTransacciones({
         renombrarCategoriaGasto(anterior, limpio);
       }
       actualizarIconoCategoriaGasto(limpio, iconoEditado);
+      actualizarColorCategoriaGasto(limpio, colorEditado);
     } else {
       renombrarCategoriaIngreso(anterior, limpio);
     }
-    setEditando(null);
-    setNombreEditado("");
-    setIconoEditado("otros");
+    cancelarEdicion();
   }
 
   function eliminar(nombre: string) {
@@ -117,46 +147,24 @@ export function GestionCategoriasTransacciones({
     } else {
       eliminarCategoriaIngreso(nombre);
     }
-    if (editando === nombre) setEditando(null);
+    if (editando === nombre) cancelarEdicion();
   }
 
   function cambiarTipo(nuevoTipo: "gasto" | "ingreso") {
     setTipo(nuevoTipo);
-    setEditando(null);
-    setNombreEditado("");
-    setIconoEditado("otros");
+    cancelarEdicion();
     setNueva("");
     setError("");
-  }
-
-  function cerrar() {
-    setEditando(null);
-    setNombreEditado("");
-    setIconoEditado("otros");
-    setNueva("");
-    setError("");
-    onCerrar();
   }
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-4 sm:p-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-foreground">Categorías</h2>
-          <p className="mt-1 text-xs text-muted">
-            Personaliza las categorías para clasificar tus gastos e ingresos
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={cerrar}
-          className="shrink-0 text-sm text-muted transition-colors hover:text-foreground"
-        >
-          Cerrar
-        </button>
-      </div>
+    <div className="space-y-4">
+      <p className="text-xs text-muted">
+        Personaliza las categorías para clasificar tus gastos e ingresos. En gastos
+        puedes elegir icono y color.
+      </p>
 
-      <div className="mt-4 flex rounded-lg border border-border p-1">
+      <div className="flex rounded-lg border border-border p-1">
         <button
           type="button"
           onClick={() => cambiarTipo("gasto")}
@@ -181,47 +189,54 @@ export function GestionCategoriasTransacciones({
         </button>
       </div>
 
-      <form onSubmit={handleAgregar} className="mt-4 flex flex-col gap-2 sm:flex-row">
-        <input
-          type="text"
-          value={nueva}
-          onChange={(e) => setNueva(e.target.value)}
-          placeholder="Nueva categoría..."
-          className={`${inputClass} flex-1`}
-        />
-        <button
-          type="submit"
-          className="shrink-0 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover"
-        >
-          Añadir
-        </button>
-      </form>
+      {editando ? (
+        <div className="space-y-4">
+          <button
+            type="button"
+            onClick={cancelarEdicion}
+            className="text-sm font-medium text-accent hover:underline"
+          >
+            ← Volver a todas las categorías
+          </button>
 
-      {error && <p className="mt-2 text-sm text-gasto">{error}</p>}
+          {categoriasVisibles.map((cat) => {
+            const uso = contarUso(cat);
+            return (
+              <div
+                key={cat}
+                className="rounded-xl border border-border bg-background p-4 sm:p-5"
+              >
+                <div className="flex items-center gap-3 border-b border-border pb-4">
+                  {tipo === "gasto" ? (
+                    <span
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border"
+                      style={{
+                        backgroundColor: `${colorEditado}22`,
+                        color: colorEditado,
+                      }}
+                    >
+                      <IconoCategoria icono={iconoEditado} className="h-5 w-5" />
+                    </span>
+                  ) : (
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-ingreso/10 text-lg font-bold text-ingreso">
+                      +
+                    </span>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">
+                      Editando categoría
+                    </p>
+                    {uso > 0 && (
+                      <p className="text-xs text-muted">
+                        {uso} transacción{uso !== 1 ? "es" : ""} usan esta categoría
+                      </p>
+                    )}
+                  </div>
+                </div>
 
-      <ul className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
-        {categorias.map((cat, indice) => {
-          const enEdicion = editando === cat;
-          const uso = contarUso(cat);
-          const icono =
-            tipo === "gasto"
-              ? iconoCategoriaGasto(configuracion, cat)
-              : null;
-          const color =
-            tipo === "gasto"
-              ? colorCategoriaGasto(configuracion, cat, indice)
-              : null;
-
-          return (
-            <li
-              key={cat}
-              className={`rounded-lg border border-border bg-background ${
-                enEdicion ? "col-span-full p-3" : "p-2.5"
-              }`}
-            >
-              {enEdicion ? (
-                <div className="flex flex-col gap-3">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="mt-4 space-y-4">
+                  <label className="flex flex-col gap-1.5">
+                    <span className="text-xs font-medium text-muted">Nombre</span>
                     <input
                       type="text"
                       value={nombreEditado}
@@ -229,90 +244,149 @@ export function GestionCategoriasTransacciones({
                       className={inputClass}
                       autoFocus
                     />
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => guardarEdicion(cat)}
-                        className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-hover"
-                      >
-                        Guardar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditando(null);
-                          setNombreEditado("");
-                          setIconoEditado("otros");
-                          setError("");
-                        }}
-                        className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted hover:bg-surface-hover"
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-                  </div>
+                  </label>
+
                   {tipo === "gasto" && (
-                    <SelectorIconoCategoria
-                      valor={iconoEditado}
-                      onChange={setIconoEditado}
-                    />
+                    <>
+                      <div>
+                        <p className="mb-2 text-xs font-medium text-muted">Icono</p>
+                        <SelectorIconoCategoria
+                          valor={iconoEditado}
+                          onChange={setIconoEditado}
+                        />
+                      </div>
+
+                      <SelectorPaletaColor
+                        valor={colorEditado}
+                        onChange={setColorEditado}
+                      />
+                    </>
                   )}
-                </div>
-              ) : (
-                <div className="flex items-start gap-2">
-                  {tipo === "gasto" && icono && color ? (
-                    <span
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border"
-                      style={{ backgroundColor: `${color}22`, color }}
+
+                  {error && <p className="text-sm text-gasto">{error}</p>}
+
+                  <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => guardarEdicion(cat)}
+                      className="rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white hover:bg-accent-hover"
                     >
-                      <IconoCategoria icono={icono} className="h-3.5 w-3.5" />
-                    </span>
-                  ) : (
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-ingreso/10 text-ingreso">
-                      <span className="text-xs font-semibold">+</span>
-                    </span>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-medium text-foreground">
-                      {cat}
-                    </p>
-                    {uso > 0 && (
-                      <p className="text-[10px] text-muted">
-                        {uso} mov.
-                      </p>
-                    )}
-                    <div className="mt-1.5 flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditando(cat);
-                          setNombreEditado(cat);
-                          setIconoEditado(
-                            tipo === "gasto"
-                              ? iconoCategoriaGasto(configuracion, cat)
-                              : "otros"
-                          );
-                          setError("");
-                        }}
-                        className="text-[11px] font-medium text-accent hover:underline"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => eliminar(cat)}
-                        className="text-[11px] text-muted hover:text-gasto hover:underline"
-                      >
-                        Eliminar
-                      </button>
-                    </div>
+                      Guardar cambios
+                    </button>
+                    <button
+                      type="button"
+                      onClick={cancelarEdicion}
+                      className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-muted hover:bg-surface-hover"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => eliminar(cat)}
+                      className="rounded-lg border border-gasto/30 px-4 py-2.5 text-sm font-medium text-gasto hover:bg-gasto/10 sm:ml-auto"
+                    >
+                      Eliminar categoría
+                    </button>
                   </div>
                 </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <>
+          <form
+            onSubmit={handleAgregar}
+            className="flex flex-col gap-2 sm:flex-row"
+          >
+            <input
+              type="text"
+              value={nueva}
+              onChange={(e) => setNueva(e.target.value)}
+              placeholder="Nueva categoría..."
+              className={`${inputClass} flex-1`}
+            />
+            <button
+              type="submit"
+              className="shrink-0 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover"
+            >
+              Añadir
+            </button>
+          </form>
+
+          {error && <p className="text-sm text-gasto">{error}</p>}
+
+          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {categoriasVisibles.map((cat, indice) => {
+              const uso = contarUso(cat);
+              const icono =
+                tipo === "gasto"
+                  ? iconoCategoriaGasto(configuracion, cat)
+                  : null;
+              const color =
+                tipo === "gasto"
+                  ? colorCategoriaGasto(configuracion, cat, indice)
+                  : null;
+
+              return (
+                <li
+                  key={cat}
+                  className="rounded-lg border border-border bg-background p-3"
+                >
+                  <div className="flex items-start gap-3">
+                    {tipo === "gasto" && icono && color ? (
+                      <span
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border"
+                        style={{ backgroundColor: `${color}22`, color }}
+                      >
+                        <IconoCategoria icono={icono} className="h-4 w-4" />
+                      </span>
+                    ) : (
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ingreso/10 text-ingreso">
+                        <span className="text-sm font-semibold">+</span>
+                      </span>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground">{cat}</p>
+                      {uso > 0 && (
+                        <p className="text-xs text-muted">
+                          {uso} transacción{uso !== 1 ? "es" : ""}
+                        </p>
+                      )}
+                      <div className="mt-2 flex gap-3">
+                        <button
+                          type="button"
+                          onClick={() => iniciarEdicion(cat, indice)}
+                          className="text-xs font-medium text-accent hover:underline"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => eliminar(cat)}
+                          className="text-xs text-muted hover:text-gasto hover:underline"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="flex justify-end border-t border-border pt-4">
+            <button
+              type="button"
+              onClick={onCerrar}
+              className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-surface-hover"
+            >
+              Cerrar
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

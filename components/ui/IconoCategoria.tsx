@@ -31,9 +31,10 @@ export function IconoCategoria({
     case "transporte":
       return (
         <svg {...props}>
-          <path d="M7 17h10M5 11h14l-1.5-5H6.5L5 11Z" />
-          <circle cx="7.5" cy="17" r="1.5" />
-          <circle cx="16.5" cy="17" r="1.5" />
+          <path d="M4 6h16a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z" />
+          <path d="M4 11h16M9 6v2M15 6v2" />
+          <circle cx="7.5" cy="17" r="1" />
+          <circle cx="16.5" cy="17" r="1" />
         </svg>
       );
     case "combustible":
@@ -77,27 +78,26 @@ export function IconoCategoria({
     case "cuidado-personal":
       return (
         <svg {...props}>
-          <path d="M12 3c2 2 4 4 4 7a4 4 0 0 1-8 0c0-3 2-5 4-7Z" />
-          <path d="M8 21h8" />
+          <circle cx="12" cy="8" r="3.5" />
+          <path d="M5.5 20c.6-3 2.9-5.5 6.5-5.5s5.9 2.5 6.5 5.5" />
         </svg>
       );
     case "viajes":
       return (
         <svg {...props}>
-          <path d="M3 12h18M12 3l4 9-4 9-4-9z" />
+          <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3-1 3 1v-1.5L13 19v-5.5l8 2.5z" />
         </svg>
       );
     case "salud":
       return (
         <svg {...props}>
-          <path d="M12 21s-6-3.5-6-9a4 4 0 0 1 8 0 4 4 0 0 1 8 0c0 5.5-6 9-6 9Z" />
+          <path d="M12 5v14M5 12h14" />
         </svg>
       );
     case "ropa":
       return (
         <svg {...props}>
-          <path d="M8 4l-3 4v12h14V8l-3-4" />
-          <path d="M8 4h8" />
+          <path d="M20.4 3.5 16 2a4 4 0 0 0-8 0L3.6 3.5A2 2 0 0 0 2 5.4V8.5a2 2 0 0 0 1.2 1.8L6 11.5V21h12v-9.5l2.8-1.2a2 2 0 0 0 1.2-1.8V5.4a2 2 0 0 0-1.6-1.9Z" />
         </svg>
       );
     case "compras-online":
@@ -137,7 +137,10 @@ export function IconoCategoria({
     case "gimnasio":
       return (
         <svg {...props}>
-          <path d="M6 9v6M18 9v6M9 12h6M4 10h2v4H4zM18 10h2v4h-2z" />
+          <path d="M6.5 11 4.5 13M17.5 11l2 2" />
+          <path d="M6.5 13l-2-2M17.5 13l2-2" />
+          <path d="M9 12h6" />
+          <path d="M4 10v4M5 9v6M20 10v4M19 9v6" />
         </svg>
       );
     case "servicios-hogar":

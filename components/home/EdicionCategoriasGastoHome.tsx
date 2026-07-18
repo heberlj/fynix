@@ -9,9 +9,9 @@ import {
   obtenerCategoriasGasto,
 } from "@/lib/categorias-transacciones";
 import type { IconoCategoriaId } from "@/lib/iconos-categoria";
-import { PALETA_COLORES_CATEGORIA } from "@/lib/graficos";
 import { IconoCategoria } from "@/components/ui/IconoCategoria";
 import { SelectorIconoCategoria } from "@/components/ui/SelectorIconoCategoria";
+import { SelectorPaletaColor } from "@/components/ui/SelectorPaletaColor";
 
 const inputClass =
   "rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent";
@@ -32,6 +32,7 @@ export function EdicionCategoriasGastoHome() {
   const [editando, setEditando] = useState<string | null>(null);
   const [nombreEditado, setNombreEditado] = useState("");
   const [iconoEditado, setIconoEditado] = useState<IconoCategoriaId>("otros");
+  const [colorEditado, setColorEditado] = useState("#2563eb");
   const [error, setError] = useState("");
 
   function contarUso(nombre: string) {
@@ -56,10 +57,11 @@ export function EdicionCategoriasGastoHome() {
     setNueva("");
   }
 
-  function iniciarEdicion(categoria: string) {
+  function iniciarEdicion(categoria: string, indice: number) {
     setEditando(categoria);
     setNombreEditado(categoria);
     setIconoEditado(iconoCategoriaGasto(configuracion, categoria));
+    setColorEditado(colorCategoriaGasto(configuracion, categoria, indice));
     setError("");
   }
 
@@ -67,6 +69,7 @@ export function EdicionCategoriasGastoHome() {
     setEditando(null);
     setNombreEditado("");
     setIconoEditado("otros");
+    setColorEditado("#2563eb");
     setError("");
   }
 
@@ -88,6 +91,7 @@ export function EdicionCategoriasGastoHome() {
       renombrarCategoriaGasto(anterior, limpio);
     }
     actualizarIconoCategoriaGasto(limpio, iconoEditado);
+    actualizarColorCategoriaGasto(limpio, colorEditado);
     cancelarEdicion();
   }
 
@@ -181,42 +185,10 @@ export function EdicionCategoriasGastoHome() {
                     />
                   </div>
 
-                  <div>
-                    <p className="mb-2 text-xs font-medium text-muted">Color</p>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <label className="relative shrink-0 cursor-pointer">
-                        <span
-                          className="block h-9 w-9 rounded-full border-2 border-border shadow-sm"
-                          style={{ backgroundColor: color }}
-                        />
-                        <input
-                          type="color"
-                          value={color}
-                          onChange={(e) =>
-                            actualizarColorCategoriaGasto(cat, e.target.value)
-                          }
-                          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                          aria-label={`Color de ${cat}`}
-                        />
-                      </label>
-                      {PALETA_COLORES_CATEGORIA.map((tono) => (
-                        <button
-                          key={tono}
-                          type="button"
-                          onClick={() =>
-                            actualizarColorCategoriaGasto(cat, tono)
-                          }
-                          className={`h-6 w-6 rounded-full border-2 transition-transform hover:scale-110 ${
-                            color === tono
-                              ? "border-foreground"
-                              : "border-transparent"
-                          }`}
-                          style={{ backgroundColor: tono }}
-                          aria-label={`Usar color ${tono}`}
-                        />
-                      ))}
-                    </div>
-                  </div>
+                  <SelectorPaletaColor
+                    valor={colorEditado}
+                    onChange={setColorEditado}
+                  />
                 </div>
               ) : (
                 <div className="flex items-start gap-2">
@@ -236,7 +208,7 @@ export function EdicionCategoriasGastoHome() {
                     <div className="mt-1.5 flex gap-2">
                       <button
                         type="button"
-                        onClick={() => iniciarEdicion(cat)}
+                        onClick={() => iniciarEdicion(cat, indice)}
                         className="text-[11px] font-medium text-accent hover:underline"
                       >
                         Editar
