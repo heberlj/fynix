@@ -8,6 +8,7 @@ import {
   obtenerCuotasPopularDetalle,
   obtenerTransaccionesEnPeriodo,
 } from "@/lib/calculos";
+import { obtenerCuotasPrestamosDetalle } from "@/lib/prestamos";
 import { formatearFecha } from "@/lib/fechas";
 import { formatearMoneda } from "@/lib/quincenas";
 import { esPagoATarjeta, etiquetaTransferencia } from "@/lib/transacciones";
@@ -19,6 +20,7 @@ interface TarjetaQuincenaProps {
   esActual: boolean;
   transacciones: ReturnType<typeof obtenerTransaccionesEnPeriodo>;
   cuotasPopular: ReturnType<typeof obtenerCuotasPopularDetalle>;
+  prestamos: ReturnType<typeof obtenerCuotasPrestamosDetalle>;
   gastosFijos: ReturnType<typeof obtenerGastosFijosDetalle>;
 }
 
@@ -58,6 +60,7 @@ function LeyendaBarraDistribucion({
   moneda: string;
 }) {
   const compromisosTotal =
+    resumen.cuotasPrestamos +
     resumen.cuotasPopular +
     resumen.gastosFijos;
 
@@ -112,7 +115,7 @@ function LeyendaBarraDistribucion({
       color: "bg-yellow-500",
       label: "Compromisos",
       monto: compromisosTotal,
-      desc: "cuotas popular y gastos del periodo",
+      desc: "préstamos, cuotas popular y gastos del periodo",
     },
     {
       color: "bg-ingreso",
@@ -168,6 +171,7 @@ function BarraDistribucionIngresos({ resumen }: { resumen: ResumenQuincena }) {
   if (ingresos <= 0) return null;
 
   const compromisosTotal =
+    resumen.cuotasPrestamos +
     resumen.cuotasPopular +
     resumen.gastosFijos;
 
@@ -204,6 +208,7 @@ export function TarjetaQuincena({
   esActual,
   transacciones,
   cuotasPopular,
+  prestamos,
   gastosFijos,
 }: TarjetaQuincenaProps) {
   const [expandida, setExpandida] = useState(esActual);
@@ -267,7 +272,7 @@ export function TarjetaQuincena({
       </button>
 
       <div className="border-t border-border px-6 py-4">
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           <div className="min-w-0">
             <p className="text-xs text-muted">Ingresos</p>
             <p className="text-sm font-semibold text-ingreso break-words">
@@ -287,12 +292,18 @@ export function TarjetaQuincena({
             </p>
           </div>
           <div className="min-w-0">
+            <p className="text-xs text-muted">Préstamos</p>
+            <p className="text-sm font-semibold text-foreground break-words">
+              {formatearMoneda(resumen.cuotasPrestamos, moneda)}
+            </p>
+          </div>
+          <div className="min-w-0">
             <p className="text-xs text-muted">Cuotas Popular</p>
             <p className="text-sm font-semibold text-foreground break-words">
               {formatearMoneda(resumen.cuotasPopular, moneda)}
             </p>
           </div>
-          <div className="min-w-0 col-span-2 sm:col-span-1">
+          <div className="min-w-0">
             <p className="text-xs text-muted">Compromisos</p>
             <p className="text-sm font-semibold text-foreground break-words">
               {formatearMoneda(resumen.gastosFijos, moneda)}
@@ -432,12 +443,21 @@ export function TarjetaQuincena({
             </div>
           )}
 
-          {(cuotasPopular.length > 0 || gastosFijos.length > 0) && (
+          {(prestamos.length > 0 || cuotasPopular.length > 0 || gastosFijos.length > 0) && (
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
                 Compromisos del periodo
               </p>
               <div className="rounded-lg border border-border bg-background px-3 py-2">
+                {prestamos.map((p) => (
+                  <FilaDetalle
+                    key={`pr-${p.nombre}-${p.dia}`}
+                    etiqueta={`${p.nombre} · Préstamo (día ${p.dia})`}
+                    monto={p.monto}
+                    moneda={p.moneda}
+                    variante="gasto"
+                  />
+                ))}
                 {cuotasPopular.map((p) => (
                   <FilaDetalle
                     key={`cp-${p.nombre}`}
@@ -473,6 +493,7 @@ export function TarjetaQuincena({
           )}
 
           {transacciones.length === 0 &&
+            prestamos.length === 0 &&
             cuotasPopular.length === 0 &&
             gastosFijos.length === 0 && (
               <p className="py-4 text-center text-sm text-muted">
@@ -505,6 +526,14 @@ export function TarjetaQuincena({
               <FilaDetalle
                 etiqueta="Menos pagos pendientes de tarjetas"
                 monto={-resumen.pagosTarjetas}
+                moneda={moneda}
+                variante="gasto"
+              />
+            )}
+            {resumen.cuotasPrestamos > 0 && (
+              <FilaDetalle
+                etiqueta="Menos cuotas de préstamos"
+                monto={-resumen.cuotasPrestamos}
                 moneda={moneda}
                 variante="gasto"
               />
