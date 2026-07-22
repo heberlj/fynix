@@ -18,6 +18,12 @@ export const AYUDA_POR_PAGINA: Record<string, PuntoAyuda[]> = {
       descripcion:
         "Ingresos, gastos y movimientos por día, semana, mes o año. Debajo verás en qué categorías gastaste más.",
     },
+    {
+      id: "proximos-pagos",
+      titulo: "Próximos pagos",
+      descripcion:
+        "Compromisos ordenados por vencimiento: tarjetas, préstamos, cuotas Popular, gastos fijos y aportes. Los urgentes se resaltan según tus recordatorios.",
+    },
   ],
   dashboard: [
     {

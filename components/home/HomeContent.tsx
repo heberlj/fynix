@@ -6,6 +6,7 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { EncabezadoPagina } from "@/components/layout/EncabezadoPagina";
 import { AyudaPagina } from "@/components/ayuda/AyudaPagina";
 import { ResumenCuentasTarjetas } from "@/components/home/ResumenCuentasTarjetas";
+import { ProximosPagosHome } from "@/components/home/ProximosPagosHome";
 import { GraficoFinanzasHome } from "@/components/home/GraficoFinanzasHome";
 import { BotonFlotanteNuevaTransaccion } from "@/components/transacciones/BotonFlotanteNuevaTransaccion";
 import { etiquetaOrigen } from "@/lib/transacciones";
@@ -61,6 +62,8 @@ export function HomeContent() {
               etiquetaFuente={etiquetaFuente}
             />
           </div>
+
+          <ProximosPagosHome />
         </section>
       </PageContainer>
       <BotonFlotanteNuevaTransaccion />

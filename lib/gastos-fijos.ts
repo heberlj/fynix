@@ -351,3 +351,49 @@ export function diasHastaFechaGasto(
   }
   return null;
 }
+
+export function gastoFijoPagable(gasto: GastoFijo): boolean {
+  return gasto.activo || esGastoUnico(gasto);
+}
+
+export interface GastoFijoPendienteEnPeriodo {
+  gasto: GastoFijo;
+  montoPendiente: number;
+}
+
+export function obtenerGastosFijosPendientesEnPeriodo(
+  gastos: GastoFijo[],
+  transacciones: Transaccion[],
+  periodo: PeriodoQuincena
+): GastoFijoPendienteEnPeriodo[] {
+  const pendientes: GastoFijoPendienteEnPeriodo[] = [];
+  for (const gasto of gastos) {
+    if (!gastoFijoPagable(gasto)) continue;
+    if (!gastoAplicaEnPeriodo(gasto, periodo, transacciones)) continue;
+    const montoPendiente = montoPendienteGastoFijoEnPeriodo(
+      gasto,
+      transacciones,
+      periodo
+    );
+    if (montoPendiente > 0) {
+      pendientes.push({ gasto, montoPendiente });
+    }
+  }
+  return pendientes;
+}
+
+export function resumenMontosPendientesGastosFijos(
+  pendientes: GastoFijoPendienteEnPeriodo[]
+): { moneda: string; total: number }[] {
+  const porMoneda = new Map<string, number>();
+  for (const { gasto, montoPendiente } of pendientes) {
+    porMoneda.set(
+      gasto.moneda,
+      redondear((porMoneda.get(gasto.moneda) ?? 0) + montoPendiente)
+    );
+  }
+  return Array.from(porMoneda.entries()).map(([moneda, total]) => ({
+    moneda,
+    total,
+  }));
+}

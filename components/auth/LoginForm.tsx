@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { BotonGoogleAuth, SeparadorAuth } from "@/components/auth/BotonGoogleAuth";
 import { useAuth } from "@/context/AuthContext";
+import { CampoContrasena } from "@/components/ui/CampoContrasena";
 
 const inputClass =
   "rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-accent";
@@ -13,6 +15,7 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sesionExpirada = searchParams.get("motivo") === "inactividad";
+  const errorAuth = searchParams.get("error") === "auth";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -35,7 +38,11 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="space-y-4">
+      <BotonGoogleAuth destino="/" />
+      <SeparadorAuth />
+
+      <form onSubmit={handleSubmit} className="space-y-4">
       {sesionExpirada && (
         <p
           role="status"
@@ -43,6 +50,16 @@ export function LoginForm() {
         >
           Tu sesión se cerró por inactividad. Inicia sesión de nuevo para
           continuar.
+        </p>
+      )}
+
+      {errorAuth && (
+        <p
+          role="alert"
+          className="rounded-lg border border-gasto/30 bg-gasto/5 px-3 py-2.5 text-sm text-gasto"
+        >
+          No se pudo iniciar sesión con Google. Inténtalo de nuevo o usa tu
+          correo y contraseña.
         </p>
       )}
 
@@ -69,13 +86,11 @@ export function LoginForm() {
             ¿Has olvidado tu contraseña?
           </Link>
         </div>
-        <input
-          type="password"
+        <CampoContrasena
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
           placeholder="••••••••"
-          className={inputClass}
           required
         />
       </label>
@@ -97,5 +112,6 @@ export function LoginForm() {
         </Link>
       </p>
     </form>
+    </div>
   );
 }

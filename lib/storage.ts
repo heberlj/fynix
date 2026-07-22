@@ -1,6 +1,7 @@
 import type { ColorHome, CuentaBancaria, CuotaPopular, EstadoFinanzas, GastoFijo, IconoHomeCuenta, MetaAhorro, Prestamo, TarjetaCredito, Transaccion } from "@/types/finanzas";
 import { CONFIGURACION_DEFAULT } from "@/types/finanzas";
 import { normalizarAporteIngreso } from "@/lib/aporte-ingreso";
+import { normalizarRecordatoriosPagos } from "@/lib/recordatorios-pagos";
 import { sincronizarCategoriasGastoEnEstado } from "@/lib/migracion-categorias";
 import { obtenerFinanciamientoTarjeta, productoFinanciamientoActivo, sincronizarGastoFijoFinanciamiento } from "@/lib/financiamiento-cuotas";
 import { quincenaNumeroDeDia, tipoPresupuestoPorDefecto } from "@/lib/gastos-fijos";
@@ -250,6 +251,9 @@ export function normalizarEstado(parsed: Partial<EstadoFinanzas>): EstadoFinanza
       parsed.configuracion?.aporteIngreso,
       configuracion
     ),
+    recordatoriosPagos: normalizarRecordatoriosPagos(
+      parsed.configuracion?.recordatoriosPagos
+    ),
   };
 
   let estado: EstadoFinanzas = {
@@ -270,6 +274,16 @@ export function normalizarEstado(parsed: Partial<EstadoFinanzas>): EstadoFinanza
   };
 
   estado = sincronizarCategoriasGastoEnEstado(estado);
+
+  if (estadoTieneDatos(estado)) {
+    estado = {
+      ...estado,
+      configuracion: {
+        ...estado.configuracion,
+        onboardingCompletado: true,
+      },
+    };
+  }
 
   for (const tarjeta of estado.tarjetas) {
     const fin = tarjeta.financiamientoCuotas ?? obtenerFinanciamientoTarjeta(tarjeta);

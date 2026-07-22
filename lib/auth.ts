@@ -1,20 +1,28 @@
 import type { SesionActiva } from "@/types/auth";
-import type { Session } from "@supabase/supabase-js";
+import type { Session, User } from "@supabase/supabase-js";
 import { urlAuthCallback } from "@/lib/app-url";
 import { crearClienteSupabase } from "@/lib/supabase/client";
 import { validarContraseña } from "@/lib/validar-contraseña";
 
+function nombreDesdeUsuario(user: User): string {
+  const meta = user.user_metadata ?? {};
+  const candidatos = [meta.nombre, meta.full_name, meta.name, meta.given_name];
+
+  for (const valor of candidatos) {
+    if (typeof valor === "string" && valor.trim()) {
+      return valor.trim();
+    }
+  }
+
+  return user.email?.split("@")[0] || "Usuario";
+}
+
 function mapearSesion(session: Session | null): SesionActiva | null {
   if (!session?.user) return null;
 
-  const nombre =
-    (session.user.user_metadata?.nombre as string | undefined)?.trim() ||
-    session.user.email?.split("@")[0] ||
-    "Usuario";
-
   return {
     usuarioId: session.user.id,
-    nombre,
+    nombre: nombreDesdeUsuario(session.user),
     email: session.user.email ?? "",
   };
 }
@@ -33,6 +41,12 @@ function mensajeErrorAuth(mensaje: string): string {
   }
   if (texto.includes("password")) {
     return "La contraseña no cumple los requisitos de seguridad";
+  }
+  if (
+    texto.includes("provider is not enabled") ||
+    texto.includes("unsupported provider")
+  ) {
+    return "El inicio con Google aún no está activado en el servidor. Usa correo y contraseña o contacta al administrador.";
   }
 
   return mensaje || "No se pudo completar la operación";
@@ -111,6 +125,24 @@ export async function iniciarSesion(datos: {
   }
 
   return { ok: true, sesion };
+}
+
+export async function iniciarSesionConGoogle(
+  destino = "/"
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = crearClienteSupabase();
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: urlAuthCallback(destino),
+    },
+  });
+
+  if (error) {
+    return { ok: false, error: mensajeErrorAuth(error.message) };
+  }
+
+  return { ok: true };
 }
 
 export async function actualizarNombrePerfil(

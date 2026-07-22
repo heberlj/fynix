@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { BotonGoogleAuth, SeparadorAuth } from "@/components/auth/BotonGoogleAuth";
 import { useAuth } from "@/context/AuthContext";
+import { CampoContrasena } from "@/components/ui/CampoContrasena";
 import {
   estadoRequisitosContraseña,
   validarContraseña,
@@ -63,7 +65,11 @@ export function RegistroForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="space-y-4">
+      <BotonGoogleAuth destino="/" />
+      <SeparadorAuth />
+
+      <form onSubmit={handleSubmit} className="space-y-4">
       <label className="flex flex-col gap-1.5">
         <span className="text-sm font-medium text-foreground">Nombre</span>
         <input
@@ -93,13 +99,11 @@ export function RegistroForm() {
       <div className="space-y-2">
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium text-foreground">Contraseña</span>
-          <input
-            type="password"
+          <CampoContrasena
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="new-password"
             placeholder="Crea una contraseña segura"
-            className={inputClass}
             minLength={8}
             required
           />
@@ -125,13 +129,11 @@ export function RegistroForm() {
         <span className="text-sm font-medium text-foreground">
           Confirmar contraseña
         </span>
-        <input
-          type="password"
+        <CampoContrasena
           value={confirmar}
           onChange={(e) => setConfirmar(e.target.value)}
           autoComplete="new-password"
           placeholder="Repite tu contraseña"
-          className={inputClass}
           minLength={8}
           required
         />
@@ -154,5 +156,6 @@ export function RegistroForm() {
         </Link>
       </p>
     </form>
+    </div>
   );
 }

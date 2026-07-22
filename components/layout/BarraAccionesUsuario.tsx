@@ -191,6 +191,14 @@ function MenuUsuario({
         >
           Configuración
         </Link>
+        <Link
+          href="/configuracion?seccion=suscripcion"
+          role="menuitem"
+          onClick={onCerrar}
+          className="block rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface-hover"
+        >
+          Suscripción
+        </Link>
         <button
           type="button"
           role="menuitem"

@@ -9,8 +9,11 @@ import {
 } from "@/lib/categorias-transacciones";
 import {
   PLANTILLAS_IMPORTACION,
+  enriquecerMovimientosImportacion,
   parsearMovimientosBanco,
+  registrarAprendizajesImportacion,
 } from "@/lib/importacion-banco";
+import { obtenerReglasCategoriaImportacion } from "@/lib/importacion-banco/aprendizaje";
 import { MENSAJE_IMPORTAR_BANCO } from "@/lib/plan-limites";
 import { codificarOrigen, decodificarOrigen } from "@/lib/transacciones";
 import { formatearMoneda } from "@/lib/quincenas";
@@ -18,8 +21,11 @@ import { formatearFecha } from "@/lib/fechas";
 import type {
   MovimientoBancoPendiente,
   PlantillaImportacionBanco,
+  ResumenEnriquecimientoImportacion,
+  TipoMovimientoImportacion,
 } from "@/types/importacion-banco";
 import type { OrigenFondo } from "@/types/finanzas";
+import { CATEGORIA_TRANSFERENCIA_CUENTAS } from "@/types/finanzas";
 import { AvisoLimitePro } from "@/components/suscripcion/AvisoLimitePro";
 
 const inputClass =
@@ -32,6 +38,12 @@ interface ImportarMovimientosBancoProps {
   onImportado?: (cantidad: number) => void;
 }
 
+function etiquetaTipo(tipo: TipoMovimientoImportacion): string {
+  if (tipo === "transferencia") return "Transferencia";
+  if (tipo === "ingreso") return "Ingreso";
+  return "Gasto";
+}
+
 export function ImportarMovimientosBanco({
   onCerrar,
   onImportado,
@@ -40,8 +52,11 @@ export function ImportarMovimientosBanco({
     transacciones,
     cuentas,
     tarjetas,
+    gastosFijos,
     configuracion,
     agregarTransaccion,
+    eliminarTransaccion,
+    actualizarConfiguracion,
   } = useFinanzas();
   const { puedeImportarBanco } = usePlanLimites();
 
@@ -54,6 +69,8 @@ export function ImportarMovimientosBanco({
   const [movimientos, setMovimientos] = useState<MovimientoBancoPendiente[]>(
     []
   );
+  const [resumen, setResumen] =
+    useState<ResumenEnriquecimientoImportacion | null>(null);
   const [errores, setErrores] = useState<string[]>([]);
   const [advertencias, setAdvertencias] = useState<string[]>([]);
   const [importados, setImportados] = useState(0);
@@ -66,6 +83,10 @@ export function ImportarMovimientosBanco({
   );
   const categoriasIngreso = useMemo(
     () => obtenerCategoriasIngreso(configuracion),
+    [configuracion]
+  );
+  const reglasAprendidas = useMemo(
+    () => obtenerReglasCategoriaImportacion(configuracion),
     [configuracion]
   );
 
@@ -97,7 +118,16 @@ export function ImportarMovimientosBanco({
     return lista;
   }, [cuentas, tarjetas, metaPlantilla, plantilla]);
 
-  const seleccionados = movimientos.filter((m) => m.seleccionado && !m.duplicado);
+  const opcionesDestino = useMemo(() => {
+    return opcionesOrigen.filter((o) => o.valor !== origenValor);
+  }, [opcionesOrigen, origenValor]);
+
+  const seleccionados = movimientos.filter(
+    (m) =>
+      m.seleccionado &&
+      !m.duplicado &&
+      (m.tipo !== "transferencia" || !!m.destinoValor)
+  );
 
   function cambiarPlantilla(id: PlantillaImportacionBanco) {
     setPlantilla(id);
@@ -117,6 +147,14 @@ export function ImportarMovimientosBanco({
     setProcesando(true);
     setErrores([]);
     setAdvertencias([]);
+    setResumen(null);
+
+    const origen = decodificarOrigen(origenValor);
+    if (!origen) {
+      setErrores(["Selecciona la cuenta o tarjeta destino antes de importar."]);
+      setProcesando(false);
+      return;
+    }
 
     try {
       const texto = await archivo.text();
@@ -126,7 +164,8 @@ export function ImportarMovimientosBanco({
         moneda,
         transacciones,
         categoriasGasto,
-        categoriasIngreso
+        categoriasIngreso,
+        reglasAprendidas
       );
 
       if (resultado.errores.length > 0) {
@@ -135,7 +174,18 @@ export function ImportarMovimientosBanco({
         return;
       }
 
-      setMovimientos(resultado.movimientos);
+      const { movimientos: enriquecidos, resumen: resumenAuto } =
+        enriquecerMovimientosImportacion(resultado.movimientos, {
+          origen,
+          cuentas,
+          tarjetas,
+          transacciones,
+          gastosFijos,
+          configuracion,
+        });
+
+      setMovimientos(enriquecidos);
+      setResumen(resumenAuto);
       setAdvertencias(resultado.advertencias);
       setPaso("revision");
     } catch {
@@ -150,7 +200,19 @@ export function ImportarMovimientosBanco({
     cambios: Partial<MovimientoBancoPendiente>
   ) {
     setMovimientos((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, ...cambios } : m))
+      prev.map((m) => {
+        if (m.id !== id) return m;
+        const actualizado = { ...m, ...cambios };
+        if (cambios.tipo === "transferencia") {
+          actualizado.categoria = CATEGORIA_TRANSFERENCIA_CUENTAS;
+          actualizado.gastoFijoId = undefined;
+        }
+        if (cambios.tipo && cambios.tipo !== "transferencia") {
+          actualizado.destinoValor = undefined;
+          actualizado.parejaExistenteId = undefined;
+        }
+        return actualizado;
+      })
     );
   }
 
@@ -158,16 +220,51 @@ export function ImportarMovimientosBanco({
     const origen = decodificarOrigen(origenValor);
     if (!origen) return;
 
+    const reglasNuevas = registrarAprendizajesImportacion(
+      configuracion,
+      movimientos
+    );
+    const reglasCambiaron =
+      reglasNuevas.length !== reglasAprendidas.length ||
+      movimientos.some(
+        (m) =>
+          m.seleccionado &&
+          !m.duplicado &&
+          m.categoria !== m.categoriaInicial &&
+          m.tipo !== "transferencia"
+      );
+    if (reglasCambiaron) {
+      actualizarConfiguracion({ reglasCategoriaImportacion: reglasNuevas });
+    }
+
     let count = 0;
     for (const mov of seleccionados) {
+      if (
+        mov.tipo === "transferencia" &&
+        mov.parejaExistenteId &&
+        mov.reemplazarPareja !== false
+      ) {
+        eliminarTransaccion(mov.parejaExistenteId);
+      }
+
+      const destino =
+        mov.tipo === "transferencia" && mov.destinoValor
+          ? (decodificarOrigen(mov.destinoValor) as OrigenFondo)
+          : undefined;
+
       agregarTransaccion({
         descripcion: mov.descripcion,
         monto: mov.monto,
-        tipo: mov.tipo,
-        categoria: mov.categoria,
+        tipo: mov.tipo === "transferencia" ? "transferencia" : mov.tipo,
+        categoria:
+          mov.tipo === "transferencia"
+            ? CATEGORIA_TRANSFERENCIA_CUENTAS
+            : mov.categoria,
         fecha: mov.fecha,
         moneda: mov.moneda,
         origen: origen as OrigenFondo,
+        destino,
+        gastoFijoId: mov.gastoFijoId,
       });
       count++;
     }
@@ -215,9 +312,39 @@ export function ImportarMovimientosBanco({
     return (
       <div className="space-y-4">
         <p className="text-sm text-muted">
-          Revisa los movimientos antes de importarlos. Los duplicados aparecen
-          desmarcados.
+          Revisa los movimientos antes de importarlos. Fynix detecta
+          transferencias, gastos fijos y categorías que ya corregiste antes.
         </p>
+
+        {resumen &&
+          (resumen.transferencias > 0 ||
+            resumen.gastosFijos > 0 ||
+            resumen.categoriasAprendidas > 0) && (
+            <div className="rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-xs text-foreground">
+              {resumen.transferencias > 0 && (
+                <p>
+                  {resumen.transferencias} transferencia
+                  {resumen.transferencias !== 1 ? "s" : ""} detectada
+                  {resumen.transferencias !== 1 ? "s" : ""}
+                  {resumen.parejasExistentes > 0 &&
+                    ` (${resumen.parejasExistentes} con movimiento existente)`}
+                </p>
+              )}
+              {resumen.gastosFijos > 0 && (
+                <p>
+                  {resumen.gastosFijos} coincidencia
+                  {resumen.gastosFijos !== 1 ? "s" : ""} con gastos fijos
+                </p>
+              )}
+              {resumen.categoriasAprendidas > 0 && (
+                <p>
+                  {resumen.categoriasAprendidas} categoría
+                  {resumen.categoriasAprendidas !== 1 ? "s" : ""} por tus
+                  reglas aprendidas
+                </p>
+              )}
+            </div>
+          )}
 
         {advertencias.length > 0 && (
           <div className="max-h-24 overflow-y-auto rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted">
@@ -233,7 +360,9 @@ export function ImportarMovimientosBanco({
             onClick={() =>
               setMovimientos((prev) =>
                 prev.map((m) =>
-                  m.duplicado ? m : { ...m, seleccionado: true }
+                  m.duplicado || (m.tipo === "transferencia" && !m.destinoValor)
+                    ? m
+                    : { ...m, seleccionado: true }
                 )
               )
             }
@@ -264,6 +393,7 @@ export function ImportarMovimientosBanco({
                 <th className="p-2 w-8" />
                 <th className="p-2">Fecha</th>
                 <th className="p-2">Descripción</th>
+                <th className="p-2">Tipo</th>
                 <th className="p-2">Monto</th>
                 <th className="p-2">Categoría</th>
               </tr>
@@ -271,17 +401,23 @@ export function ImportarMovimientosBanco({
             <tbody>
               {movimientos.map((mov) => {
                 const categorias =
-                  mov.tipo === "gasto" ? categoriasGasto : categoriasIngreso;
+                  mov.tipo === "ingreso"
+                    ? categoriasIngreso
+                    : mov.tipo === "transferencia"
+                      ? [CATEGORIA_TRANSFERENCIA_CUENTAS]
+                      : categoriasGasto;
+                const sinDestino =
+                  mov.tipo === "transferencia" && !mov.destinoValor;
                 return (
                   <tr
                     key={mov.id}
-                    className={`border-b border-border/60 ${mov.duplicado ? "opacity-50" : ""}`}
+                    className={`border-b border-border/60 ${mov.duplicado || sinDestino ? "opacity-50" : ""}`}
                   >
-                    <td className="p-2">
+                    <td className="p-2 align-top">
                       <input
                         type="checkbox"
                         checked={mov.seleccionado}
-                        disabled={mov.duplicado}
+                        disabled={mov.duplicado || sinDestino}
                         onChange={(e) =>
                           actualizarMovimiento(mov.id, {
                             seleccionado: e.target.checked,
@@ -289,39 +425,117 @@ export function ImportarMovimientosBanco({
                         }
                       />
                     </td>
-                    <td className="p-2 whitespace-nowrap">
+                    <td className="p-2 whitespace-nowrap align-top">
                       {formatearFecha(mov.fecha)}
                     </td>
-                    <td className="p-2 max-w-[140px] truncate" title={mov.descripcion}>
-                      {mov.descripcion}
+                    <td className="p-2 max-w-[140px] align-top">
+                      <span className="line-clamp-2" title={mov.descripcion}>
+                        {mov.descripcion}
+                      </span>
                       {mov.duplicado && (
-                        <span className="ml-1 text-[10px] text-gasto">
-                          (duplicado)
+                        <span className="mt-0.5 block text-[10px] text-gasto">
+                          Duplicado
                         </span>
+                      )}
+                      {mov.sugerencia && (
+                        <span className="mt-0.5 block text-[10px] font-medium text-accent">
+                          {mov.sugerencia}
+                        </span>
+                      )}
+                      {mov.parejaExistenteId && (
+                        <label className="mt-1 flex items-center gap-1 text-[10px] text-muted">
+                          <input
+                            type="checkbox"
+                            checked={mov.reemplazarPareja !== false}
+                            onChange={(e) =>
+                              actualizarMovimiento(mov.id, {
+                                reemplazarPareja: e.target.checked,
+                              })
+                            }
+                          />
+                          Reemplazar movimiento existente
+                        </label>
+                      )}
+                    </td>
+                    <td className="p-2 align-top">
+                      <select
+                        value={mov.tipo}
+                        onChange={(e) =>
+                          actualizarMovimiento(mov.id, {
+                            tipo: e.target.value as TipoMovimientoImportacion,
+                          })
+                        }
+                        className="mb-1 max-w-[100px] rounded border border-border bg-background px-1 py-0.5 text-xs"
+                      >
+                        <option value="gasto">Gasto</option>
+                        <option value="ingreso">Ingreso</option>
+                        <option value="transferencia">Transfer.</option>
+                      </select>
+                      {mov.tipo === "transferencia" && (
+                        <select
+                          value={mov.destinoValor ?? ""}
+                          onChange={(e) =>
+                            actualizarMovimiento(mov.id, {
+                              destinoValor: e.target.value || undefined,
+                              seleccionado: !!e.target.value,
+                            })
+                          }
+                          className="max-w-[100px] rounded border border-border bg-background px-1 py-0.5 text-xs"
+                        >
+                          <option value="">Destino…</option>
+                          {opcionesDestino.map((o) => (
+                            <option key={o.valor} value={o.valor}>
+                              {o.etiqueta}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      {mov.gastoFijoSugeridoId && (
+                        <label className="mt-1 flex items-center gap-1 text-[10px] text-muted">
+                          <input
+                            type="checkbox"
+                            checked={!!mov.gastoFijoId}
+                            onChange={(e) =>
+                              actualizarMovimiento(mov.id, {
+                                gastoFijoId: e.target.checked
+                                  ? mov.gastoFijoSugeridoId
+                                  : undefined,
+                              })
+                            }
+                          />
+                          Vincular gasto fijo
+                        </label>
                       )}
                     </td>
                     <td
-                      className={`p-2 whitespace-nowrap font-medium ${mov.tipo === "ingreso" ? "text-ingreso" : "text-gasto"}`}
+                      className={`p-2 whitespace-nowrap align-top font-medium ${mov.tipo === "ingreso" ? "text-ingreso" : mov.tipo === "transferencia" ? "text-foreground" : "text-gasto"}`}
                     >
-                      {mov.tipo === "gasto" ? "−" : "+"}
+                      {mov.tipo === "ingreso" ? "+" : mov.tipo === "gasto" ? "−" : "↔"}
                       {formatearMoneda(mov.monto, mov.moneda)}
                     </td>
-                    <td className="p-2">
-                      <select
-                        value={mov.categoria}
-                        onChange={(e) =>
-                          actualizarMovimiento(mov.id, {
-                            categoria: e.target.value,
-                          })
-                        }
-                        className="max-w-[120px] rounded border border-border bg-background px-1 py-0.5 text-xs"
-                      >
-                        {categorias.map((c) => (
-                          <option key={c} value={c}>
-                            {c}
-                          </option>
-                        ))}
-                      </select>
+                    <td className="p-2 align-top">
+                      {mov.tipo === "transferencia" ? (
+                        <span className="text-muted">
+                          {etiquetaTipo(mov.tipo)}
+                        </span>
+                      ) : (
+                        <select
+                          value={mov.categoria}
+                          onChange={(e) =>
+                            actualizarMovimiento(mov.id, {
+                              categoria: e.target.value,
+                            })
+                          }
+                          className="max-w-[120px] rounded border border-border bg-background px-1 py-0.5 text-xs"
+                        >
+                          {categorias.map((c) => (
+                            <option key={c} value={c}>
+                              {c}
+                              {mov.aprendida && c === mov.categoria ? " ★" : ""}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </td>
                   </tr>
                 );
@@ -355,8 +569,9 @@ export function ImportarMovimientosBanco({
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted">
-        Descarga el CSV desde la app o web de tu banco y súbelo aquí. Los
-        movimientos quedarán pendientes de tu confirmación.
+        Descarga el CSV desde la app o web de tu banco y súbelo aquí. Fynix
+        sugerirá categorías, transferencias entre tus cuentas y gastos fijos
+        conocidos.
       </p>
 
       <label className="flex flex-col gap-1.5">

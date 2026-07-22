@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppShell } from "@/components/layout/AppShell";
-import { metadataRaiz } from "@/lib/seo";
+import { COLOR_TEMA_PWA, metadataRaiz } from "@/lib/seo";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -19,6 +19,7 @@ export const metadata: Metadata = metadataRaiz();
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  themeColor: COLOR_TEMA_PWA,
 };
 
 const scriptTema = `

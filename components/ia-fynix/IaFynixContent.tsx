@@ -17,13 +17,14 @@ import {
 import { PageContainer } from "@/components/layout/PageContainer";
 import { useEntradaPagina } from "@/components/layout/useEntradaPagina";
 import { AyudaPagina } from "@/components/ayuda/AyudaPagina";
+import { MensajeChatMarkdown } from "@/components/ia-fynix/MensajeChatMarkdown";
 import type { CreditosIaFynix, MensajeChatIa } from "@/types/ia-fynix";
 
 const CONSULTAS_RAPIDAS = [
+  "¿Qué pago primero?",
   "¿En qué he gastado mucho?",
   "¿Qué tarjeta me conviene pagar?",
   "¿Cómo puedo ahorrar más?",
-  "Tengo dinero de más en una cuenta",
 ];
 
 function creditosPorDefecto(): CreditosIaFynix {
@@ -73,7 +74,7 @@ export function IaFynixContent() {
   const [error, setError] = useState("");
   const [creditos, setCreditos] = useState<CreditosIaFynix>(creditosPorDefecto);
   const [agenteDisponible, setAgenteDisponible] = useState(false);
-  const finChatRef = useRef<HTMLDivElement>(null);
+  const areaMensajesRef = useRef<HTMLDivElement>(null);
 
   const nombre = primerNombre(sesion?.nombre);
   const enInicio = mensajes.length === 0 && !cargando;
@@ -127,7 +128,9 @@ export function IaFynixContent() {
 
   useEffect(() => {
     if (enInicio) return;
-    finChatRef.current?.scrollIntoView({ behavior: "smooth" });
+    const area = areaMensajesRef.current;
+    if (!area) return;
+    area.scrollTo({ top: area.scrollHeight, behavior: "smooth" });
   }, [mensajes, cargando, enInicio]);
 
   async function enviar(texto?: string) {
@@ -216,14 +219,14 @@ export function IaFynixContent() {
     <AyudaPagina pagina="ia-fynix">
       <PageContainer
         animar={false}
-        className="flex min-h-[calc(100dvh-4rem)] flex-col pb-4"
+        className="flex h-[calc(100dvh-4rem)] max-h-[calc(100dvh-4rem)] flex-col overflow-hidden !gap-4 !pb-4 lg:h-[calc(100dvh-3rem)] lg:max-h-[calc(100dvh-3rem)]"
       >
         <div
-          className={`flex min-h-0 flex-1 flex-col ${
+          className={`flex min-h-0 flex-1 flex-col overflow-hidden ${
             entradaActiva ? "ia-entrada-activa" : "ia-entrada-pending"
           }`}
         >
-        <div className="ia-anim-subir-1 mb-4 flex items-center justify-between gap-3">
+        <div className="ia-anim-subir-1 flex shrink-0 items-center justify-between gap-3">
           <div>
             <h1 className="text-lg font-semibold text-foreground">IA de Fynix</h1>
             <p className="text-xs text-muted">
@@ -244,7 +247,10 @@ export function IaFynixContent() {
         >
           <div className="ia-anim-resplandor pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_30%,color-mix(in_srgb,var(--accent)_12%,transparent),transparent)]" />
 
-          <div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-6 sm:px-8">
+          <div
+            ref={areaMensajesRef}
+            className="relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-6 sm:px-8"
+          >
             {enInicio ? (
               <div className="flex flex-1 flex-col items-center justify-center px-2 text-center">
                 <div className="mb-5">
@@ -254,8 +260,8 @@ export function IaFynixContent() {
                   Hola, {nombre}, empecemos
                 </h2>
                 <p className="ia-anim-subir-3 mt-3 max-w-md text-sm text-muted">
-                  Pregúntame sobre ahorro, tarjetas, dinero en cuentas o en qué
-                  gastas más en {contexto.periodoEtiqueta}.
+                  Pregúntame qué pagar primero, sobre préstamos, gastos fijos de{" "}
+                  {contexto.quincenaActual.etiqueta}, tarjetas o en qué gastas más.
                 </p>
               </div>
             ) : (
@@ -273,13 +279,17 @@ export function IaFynixContent() {
                       </div>
                     )}
                     <div
-                      className={`max-w-[min(100%,32rem)] rounded-3xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                      className={`max-w-[min(100%,32rem)] rounded-3xl px-4 py-3 text-sm leading-relaxed ${
                         msg.rol === "usuario"
-                          ? "bg-accent/90 text-white"
+                          ? "bg-accent/90 text-white whitespace-pre-wrap"
                           : "bg-background/80 text-foreground shadow-sm ring-1 ring-border/60"
                       }`}
                     >
-                      {msg.contenido}
+                      {msg.rol === "asistente" ? (
+                        <MensajeChatMarkdown contenido={msg.contenido} />
+                      ) : (
+                        msg.contenido
+                      )}
                     </div>
                   </div>
                 ))}
@@ -294,7 +304,6 @@ export function IaFynixContent() {
                     </div>
                   </div>
                 )}
-                <div ref={finChatRef} />
               </div>
             )}
           </div>

@@ -6,13 +6,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { restablecerContrasena } from "@/lib/auth";
 import { crearClienteSupabase } from "@/lib/supabase/client";
+import { CampoContrasena } from "@/components/ui/CampoContrasena";
 import {
   estadoRequisitosContraseña,
   validarContraseña,
 } from "@/lib/validar-contraseña";
-
-const inputClass =
-  "rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-accent";
 
 const ETIQUETAS_REQUISITOS = [
   { clave: "longitud" as const, texto: "Mínimo 8 caracteres" },
@@ -120,13 +118,11 @@ export function RestablecerContrasenaForm() {
           <span className="text-sm font-medium text-foreground">
             Nueva contraseña
           </span>
-          <input
-            type="password"
+          <CampoContrasena
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="new-password"
             placeholder="Crea una contraseña segura"
-            className={inputClass}
             minLength={8}
             required
           />
@@ -150,13 +146,11 @@ export function RestablecerContrasenaForm() {
         <span className="text-sm font-medium text-foreground">
           Confirmar contraseña
         </span>
-        <input
-          type="password"
+        <CampoContrasena
           value={confirmar}
           onChange={(e) => setConfirmar(e.target.value)}
           autoComplete="new-password"
           placeholder="Repite tu contraseña"
-          className={inputClass}
           minLength={8}
           required
         />

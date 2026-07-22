@@ -19,13 +19,15 @@ import {
   etiquetaTipoRecurrencia,
   gastoFijoCubiertoEnPeriodo,
   gastoVisibleEnPresupuesto,
+  obtenerGastosFijosPendientesEnPeriodo,
+  resumenMontosPendientesGastosFijos,
 } from "@/lib/gastos-fijos";
 import {
   agruparPrestamosPorQuincena,
   prestamosParaVistaGastosFijos,
   totalPrestamosPorQuincena,
 } from "@/lib/prestamos";
-import { formatearMoneda, obtenerQuincenasDelMes, periodoDeFecha } from "@/lib/quincenas";
+import { formatearMoneda, obtenerQuincenaActual, obtenerQuincenasDelMes, periodoDeFecha } from "@/lib/quincenas";
 import { fechaHoy, formatearFecha, mesActual } from "@/lib/fechas";
 import { confirmarAccion, confirmarEliminacion } from "@/lib/confirmar";
 import {
@@ -312,6 +314,9 @@ function ColumnaQuincena({
   configuracion,
   onRegistrarPago,
   onRegistrarAporte,
+  onMarcarPagadosEnLote,
+  esQuincenaActual,
+  pendientesEnQuincena,
 }: {
   quincena: 1 | 2;
   gastos: GastoFijo[];
@@ -324,6 +329,9 @@ function ColumnaQuincena({
   configuracion: ReturnType<typeof useFinanzas>["configuracion"];
   onRegistrarPago?: (gastoId: string) => void;
   onRegistrarAporte?: () => void;
+  onMarcarPagadosEnLote?: () => void;
+  esQuincenaActual: boolean;
+  pendientesEnQuincena: number;
 }) {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const activos = gastos.filter((g) => g.activo);
@@ -378,6 +386,16 @@ function ColumnaQuincena({
           ` · ${prestamos.length} préstamo${prestamos.length !== 1 ? "s" : ""} (referencia)`}
         {aporte && aporte.quincenas.includes(quincena) && " · 1 aporte según ingresos"}
       </p>
+
+      {esQuincenaActual && pendientesEnQuincena > 0 && onMarcarPagadosEnLote && (
+        <button
+          type="button"
+          onClick={onMarcarPagadosEnLote}
+          className="mt-3 w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent/90 sm:w-auto"
+        >
+          Marcar pagados de esta quincena ({pendientesEnQuincena})
+        </button>
+      )}
 
       {gastos.length === 0 && prestamos.length === 0 && !(aporte && aporte.quincenas.includes(quincena)) ? (
         <p className="mt-6 rounded-lg border border-dashed border-border py-8 text-center text-sm text-muted">
@@ -441,8 +459,63 @@ export function ListaGastosFijos({
   onRegistrarPago,
   onRegistrarAporte,
 }: ListaGastosFijosProps) {
-  const { configuracion, transacciones, prestamos } = useFinanzas();
+  const { configuracion, transacciones, prestamos, registrarPagosGastosFijosEnLote } =
+    useFinanzas();
   const [categoriaFiltro, setCategoriaFiltro] = useState("todas");
+  const [mensajeLote, setMensajeLote] = useState("");
+
+  const quincenaActual = useMemo(
+    () => obtenerQuincenaActual(configuracion).quincena,
+    [configuracion]
+  );
+
+  const periodosMes = useMemo(
+    () => obtenerQuincenasDelMes(mesActual(), configuracion.diasPago),
+    [configuracion.diasPago]
+  );
+
+  function marcarPagadosEnLote(quincena: 1 | 2) {
+    setMensajeLote("");
+    const periodo =
+      periodosMes.find((p) => p.quincena === quincena) ?? periodoDeFecha(fechaHoy());
+    const pendientes = obtenerGastosFijosPendientesEnPeriodo(
+      gastosFijos,
+      transacciones,
+      periodo
+    );
+    if (pendientes.length === 0) return;
+
+    const totales = resumenMontosPendientesGastosFijos(pendientes)
+      .map(({ moneda, total }) => formatearMoneda(total, moneda))
+      .join(" + ");
+    const lineas = pendientes
+      .slice(0, 8)
+      .map(
+        ({ gasto, montoPendiente }) =>
+          `• ${gasto.nombre}: ${formatearMoneda(montoPendiente, gasto.moneda)}`
+      );
+    const mas =
+      pendientes.length > 8
+        ? `\n… y ${pendientes.length - 8} más`
+        : "";
+    const ok = confirmarAccion(
+      `¿Registrar ${pendientes.length} pago${pendientes.length !== 1 ? "s" : ""} por ${totales}?\n\n${lineas.join("\n")}${mas}\n\nSe usará la cuenta o tarjeta por defecto de cada moneda.`
+    );
+    if (!ok) return;
+
+    const resultado = registrarPagosGastosFijosEnLote(quincena);
+    if (resultado.registrados > 0) {
+      setMensajeLote(
+        resultado.omitidos.length > 0
+          ? `${resultado.registrados} pago${resultado.registrados !== 1 ? "s" : ""} registrado${resultado.registrados !== 1 ? "s" : ""}. ${resultado.omitidos.length} omitido${resultado.omitidos.length !== 1 ? "s" : ""} (sin origen de pago).`
+          : `${resultado.registrados} pago${resultado.registrados !== 1 ? "s" : ""} registrado${resultado.registrados !== 1 ? "s" : ""} en esta quincena.`
+      );
+    } else if (resultado.omitidos.length > 0) {
+      setMensajeLote(
+        `No se registró ningún pago. ${resultado.omitidos.map((o) => o.nombre).join(", ")}: sin cuenta ni tarjeta en su moneda.`
+      );
+    }
+  }
 
   const categorias = useMemo(() => {
     const cats = new Set(gastosFijos.map((g) => g.categoria));
@@ -507,6 +580,19 @@ export function ListaGastosFijos({
 
   const hayPrestamos = prestamosParaVistaGastosFijos(prestamos).length > 0;
 
+  const pendientesPorQuincena = useMemo(() => {
+    const q1 =
+      periodosMes.find((p) => p.quincena === 1) ?? periodoDeFecha(fechaHoy());
+    const q2 =
+      periodosMes.find((p) => p.quincena === 2) ?? periodoDeFecha(fechaHoy());
+    return {
+      1: obtenerGastosFijosPendientesEnPeriodo(gastosFijos, transacciones, q1)
+        .length,
+      2: obtenerGastosFijosPendientesEnPeriodo(gastosFijos, transacciones, q2)
+        .length,
+    };
+  }, [gastosFijos, transacciones, periodosMes]);
+
   if (gastosFijos.length === 0 && !hayPrestamos) {
     return (
       <EstadoVacio
@@ -520,6 +606,11 @@ export function ListaGastosFijos({
 
   return (
     <div className="space-y-4">
+      {mensajeLote && (
+        <p className="rounded-lg border border-border bg-surface px-4 py-3 text-sm text-foreground">
+          {mensajeLote}
+        </p>
+      )}
       {categorias.length > 1 && (
         <div className="flex flex-wrap gap-2">
           <button
@@ -570,6 +661,13 @@ export function ListaGastosFijos({
               configuracion={configuracion}
               onRegistrarPago={onRegistrarPago}
               onRegistrarAporte={onRegistrarAporte}
+              esQuincenaActual={quincena === quincenaActual}
+              pendientesEnQuincena={pendientesPorQuincena[quincena]}
+              onMarcarPagadosEnLote={
+                quincena === quincenaActual
+                  ? () => marcarPagadosEnLote(quincena)
+                  : undefined
+              }
             />
           );
         })}

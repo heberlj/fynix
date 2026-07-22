@@ -11,6 +11,9 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { ControlSesionInactividad } from "@/components/auth/ControlSesionInactividad";
 import { FinanzasProvider } from "@/context/FinanzasContext";
 import { AvisoCargaFinanzas } from "@/components/layout/AvisoCargaFinanzas";
+import { ControlRecordatoriosPagos } from "@/components/layout/ControlRecordatoriosPagos";
+import { ControlOnboarding } from "@/components/onboarding/ControlOnboarding";
+import { RegistroServiceWorker } from "@/components/layout/RegistroServiceWorker";
 
 const RUTAS_AUTH = [
   "/login",
@@ -36,6 +39,7 @@ function AppRoutes({ children }: { children: React.ReactNode }) {
   const esRutaPublica = RUTAS_PUBLICAS.has(pathname);
   const esLanding = pathname === "/" && !sesion;
   const esRestablecerContrasena = pathname === "/restablecer-contrasena";
+  const esChatIa = pathname === "/ia-fynix";
 
   useEffect(() => {
     setMenuAbierto(false);
@@ -79,12 +83,14 @@ function AppRoutes({ children }: { children: React.ReactNode }) {
   return (
     <FinanzasProvider key={sesion.usuarioId} usuarioId={sesion.usuarioId}>
       <ThemeSync />
+      <ControlRecordatoriosPagos />
+      <ControlOnboarding />
       <div className="flex min-h-screen bg-background">
         <Sidebar
           abierto={menuAbierto}
           onCerrar={() => setMenuAbierto(false)}
         />
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <BarraSuperior nombreUsuario={sesion.nombre} />
           <MobileHeader
             onAbrirMenu={() => setMenuAbierto(true)}
@@ -92,7 +98,13 @@ function AppRoutes({ children }: { children: React.ReactNode }) {
             nombreUsuario={sesion.nombre}
           />
           <AvisoCargaFinanzas />
-          <main className="flex flex-1 flex-col overflow-auto">{children}</main>
+          <main
+            className={`flex min-h-0 flex-1 flex-col ${
+              esChatIa ? "overflow-hidden" : "overflow-auto"
+            }`}
+          >
+            {children}
+          </main>
         </div>
       </div>
     </FinanzasProvider>
@@ -102,6 +114,7 @@ function AppRoutes({ children }: { children: React.ReactNode }) {
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
+      <RegistroServiceWorker />
       <ControlSesionInactividad />
       <AppRoutes>{children}</AppRoutes>
     </AuthProvider>

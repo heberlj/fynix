@@ -3,6 +3,7 @@ import type {
   PlantillaImportacionBanco,
   ResultadoParseoBanco,
 } from "@/types/importacion-banco";
+import type { ReglaCategoriaImportacion } from "@/types/finanzas";
 import type { Transaccion } from "@/types/finanzas";
 import { generarId } from "@/lib/storage";
 import { indiceColumna, parsearCsv } from "@/lib/importacion-banco/csv";
@@ -10,6 +11,10 @@ import {
   marcarDuplicadosImportacion,
   sugerirCategoriaImportacion,
 } from "@/lib/importacion-banco/categorias";
+
+export { enriquecerMovimientosImportacion } from "@/lib/importacion-banco/enriquecer";
+export type { ContextoEnriquecimientoImportacion } from "@/lib/importacion-banco/enriquecer";
+export { registrarAprendizajesImportacion } from "@/lib/importacion-banco/aprendizaje";
 
 export const PLANTILLAS_IMPORTACION: {
   id: PlantillaImportacionBanco;
@@ -142,7 +147,8 @@ export function parsearMovimientosBanco(
   monedaDefecto: string,
   transacciones: Transaccion[],
   categoriasGasto: string[],
-  categoriasIngreso: string[]
+  categoriasIngreso: string[],
+  reglasAprendidas: ReglaCategoriaImportacion[] = []
 ): ResultadoParseoBanco {
   const errores: string[] = [];
   const advertencias: string[] = [];
@@ -217,6 +223,13 @@ export function parsearMovimientosBanco(
     const categorias =
       tipo === "gasto" ? categoriasGasto : categoriasIngreso;
 
+    const { categoria, aprendida } = sugerirCategoriaImportacion(
+      descripcion,
+      tipo,
+      categorias,
+      reglasAprendidas
+    );
+
     movimientos.push({
       id: generarId(),
       fecha,
@@ -224,10 +237,12 @@ export function parsearMovimientosBanco(
       monto,
       tipo,
       moneda: monedaDefecto,
-      categoria: sugerirCategoriaImportacion(descripcion, tipo, categorias),
+      categoria,
+      categoriaInicial: categoria,
       seleccionado: true,
       duplicado: false,
       filaCsv: i + 1,
+      aprendida,
     });
   }
 

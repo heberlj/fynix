@@ -1,12 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import { PanelConfiguracion } from "@/components/configuracion/PanelConfiguracion";
 import { RespaldoDatos } from "@/components/configuracion/RespaldoDatos";
 import { Logo } from "@/components/ui/Logo";
+import { TutorialGuia } from "@/components/tutorial/TutorialGuia";
 
 const VERSION = "0.1.0";
 
 export function ConfiguracionAcercaDe() {
+  const [mostrarGuia, setMostrarGuia] = useState(false);
+
   return (
     <div className="space-y-6">
       <PanelConfiguracion
@@ -41,6 +45,14 @@ export function ConfiguracionAcercaDe() {
           </p>
         </div>
 
+        <button
+          type="button"
+          onClick={() => setMostrarGuia(true)}
+          className="mt-5 w-full rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-surface-hover sm:w-auto"
+        >
+          Ver guía de inicio
+        </button>
+
         <p className="mt-5 text-center text-xs text-muted sm:text-left">
           © 2026 Fynix. Todos los derechos reservados.
         </p>
@@ -49,6 +61,8 @@ export function ConfiguracionAcercaDe() {
       <div data-ayuda="respaldo">
         <RespaldoDatos />
       </div>
+
+      <TutorialGuia abierto={mostrarGuia} onCerrar={() => setMostrarGuia(false)} />
     </div>
   );
 }

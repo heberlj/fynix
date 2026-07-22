@@ -1,5 +1,9 @@
 import type { Transaccion } from "@/types/finanzas";
 import { CATEGORIAS_GASTO_DEFAULT } from "@/types/finanzas";
+import type { ReglaCategoriaImportacion } from "@/types/finanzas";
+import {
+  sugerirCategoriaAprendida,
+} from "@/lib/importacion-banco/aprendizaje";
 
 const REGLAS_GASTO: { patrones: RegExp[]; categoria: string }[] = [
   {
@@ -57,8 +61,19 @@ const REGLAS_INGRESO: { patrones: RegExp[]; categoria: string }[] = [
 export function sugerirCategoriaImportacion(
   descripcion: string,
   tipo: "ingreso" | "gasto",
-  categoriasDisponibles: string[]
-): string {
+  categoriasDisponibles: string[],
+  reglasAprendidas: ReglaCategoriaImportacion[] = []
+): { categoria: string; aprendida: boolean } {
+  const aprendida = sugerirCategoriaAprendida(
+    descripcion,
+    tipo,
+    reglasAprendidas,
+    categoriasDisponibles
+  );
+  if (aprendida) {
+    return { categoria: aprendida.categoria, aprendida: true };
+  }
+
   const reglas = tipo === "gasto" ? REGLAS_GASTO : REGLAS_INGRESO;
   const defectoGasto =
     categoriasDisponibles.find((c) => c.toLowerCase() === "otros") ??
@@ -70,12 +85,17 @@ export function sugerirCategoriaImportacion(
       const coincide = categoriasDisponibles.find(
         (c) => c.toLowerCase() === regla.categoria.toLowerCase()
       );
-      if (coincide) return coincide;
-      if (categoriasDisponibles.includes(regla.categoria)) return regla.categoria;
+      if (coincide) return { categoria: coincide, aprendida: false };
+      if (categoriasDisponibles.includes(regla.categoria)) {
+        return { categoria: regla.categoria, aprendida: false };
+      }
     }
   }
 
-  return categoriasDisponibles[0] ?? defecto;
+  return {
+    categoria: categoriasDisponibles[0] ?? defecto,
+    aprendida: false,
+  };
 }
 
 export function claveDuplicadoTransaccion(

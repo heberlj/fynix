@@ -3,6 +3,7 @@ import { urlBaseApp } from "@/lib/app-url";
 
 export const NOMBRE_APP = "Fynix";
 export const ESLOGAN = "Tu dinero, tu futuro.";
+export const COLOR_TEMA_PWA = "#0b1120";
 export const DESCRIPCION_APP =
   "Fynix es tu gestor de finanzas personales: controla ingresos, gastos fijos, tarjetas, préstamos y metas de ahorro en un solo lugar.";
 
@@ -55,6 +56,19 @@ export function metadataRaiz(): Metadata {
     },
     description: DESCRIPCION_APP,
     applicationName: NOMBRE_APP,
+    appleWebApp: {
+      capable: true,
+      title: NOMBRE_APP,
+      statusBarStyle: "black-translucent",
+    },
+    icons: {
+      icon: [
+        { url: "/icon.png", sizes: "32x32", type: "image/png" },
+        { url: "/pwa/icon-192.png", sizes: "192x192", type: "image/png" },
+        { url: "/pwa/icon-512.png", sizes: "512x512", type: "image/png" },
+      ],
+      apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+    },
     keywords: PALABRAS_CLAVE,
     authors: [{ name: NOMBRE_APP }],
     creator: NOMBRE_APP,
@@ -69,7 +83,7 @@ export function metadataRaiz(): Metadata {
       description: DESCRIPCION_APP,
       images: [
         {
-          url: "/logo-fynix.png",
+          url: "/pwa/icon-512.png",
           width: 512,
           height: 512,
           alt: NOMBRE_APP,
@@ -80,7 +94,7 @@ export function metadataRaiz(): Metadata {
       card: "summary",
       title: NOMBRE_APP,
       description: DESCRIPCION_APP,
-      images: ["/logo-fynix.png"],
+      images: ["/pwa/icon-512.png"],
     },
     robots: {
       index: true,
@@ -132,7 +146,7 @@ export function jsonLdOrganizacion() {
         "@id": `${base}/#organization`,
         name: NOMBRE_APP,
         url: base,
-        logo: `${base}/logo-fynix.png`,
+        logo: `${base}/pwa/icon-512.png`,
         description: DESCRIPCION_APP,
       },
       {

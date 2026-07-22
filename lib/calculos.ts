@@ -10,8 +10,6 @@ import type {
 } from "@/types/finanzas";
 import {
   calcularCuotasPopularEnPeriodo,
-  diaPagoCuota,
-  nombreCuotaPopular,
   obtenerCuotasPopularDetalle,
 } from "@/lib/cuotas-popular";
 import { calcularGastosFijosEnPeriodo, obtenerGastosFijosDetalle } from "@/lib/gastos-fijos";
@@ -20,6 +18,8 @@ import { calcularCuotasPrestamosEnPeriodo } from "@/lib/prestamos";
 import { montoGastoIngresoEnMoneda, montoSalidaMovimiento } from "@/lib/cambio";
 import { esPagoATarjeta } from "@/lib/transacciones";
 import { fechaEnPeriodo } from "@/lib/quincenas";
+
+export { obtenerProximosPagos } from "@/lib/proximos-pagos";
 
 export { obtenerCuotasPopularDetalle, obtenerGastosFijosDetalle };
 
@@ -177,77 +177,6 @@ export function calcularResumenQuincena(
     disponible,
     disponibleProyectado,
   };
-}
-
-export function obtenerProximosPagos(
-  tarjetas: TarjetaCredito[],
-  prestamos: Prestamo[],
-  cuotasPopular: CuotaPopular[],
-  gastosFijos: GastoFijo[],
-  desde: Date = new Date()
-): {
-  tipo: "tarjeta" | "prestamo" | "cuota-popular" | "gasto-fijo";
-  nombre: string;
-  monto: number;
-  dia: number;
-}[] {
-  const pagos: {
-    tipo: "tarjeta" | "prestamo" | "cuota-popular" | "gasto-fijo";
-    nombre: string;
-    monto: number;
-    dia: number;
-  }[] = [];
-
-  tarjetas.forEach((t) => {
-    if (t.deudaActual > 0) {
-      pagos.push({
-        tipo: "tarjeta",
-        nombre: `${t.banco} · ${t.nombreTarjeta}`,
-        monto: t.deudaActual,
-        dia: t.diaPago,
-      });
-    }
-  });
-
-  prestamos.forEach((p) => {
-    if (p.cuotasPagadas < p.cuotasTotales) {
-      pagos.push({
-        tipo: "prestamo",
-        nombre: p.entidad,
-        monto: p.montoCuota,
-        dia: p.diaPago,
-      });
-    }
-  });
-
-  cuotasPopular.forEach((c) => {
-    if (c.cuotasPagadas < c.cuotasTotales) {
-      pagos.push({
-        tipo: "cuota-popular",
-        nombre: nombreCuotaPopular(c, tarjetas),
-        monto: c.montoCuota,
-        dia: diaPagoCuota(c, tarjetas),
-      });
-    }
-  });
-
-  gastosFijos.forEach((g) => {
-    if (g.activo) {
-      pagos.push({
-        tipo: "gasto-fijo",
-        nombre: g.nombre,
-        monto: g.monto,
-        dia: g.diaPago,
-      });
-    }
-  });
-
-  const diaHoy = desde.getDate();
-  return pagos.sort((a, b) => {
-    const distA = a.dia >= diaHoy ? a.dia - diaHoy : a.dia + 30 - diaHoy;
-    const distB = b.dia >= diaHoy ? b.dia - diaHoy : b.dia + 30 - diaHoy;
-    return distA - distB;
-  });
 }
 
 export function pagoCaeEnPeriodo(diaPago: number, periodo: PeriodoQuincena): boolean {

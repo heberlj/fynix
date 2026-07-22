@@ -11,6 +11,94 @@ function fmt(monto: number, moneda: string) {
   return formatearMoneda(monto, moneda);
 }
 
+function sugerenciaQuePagarPrimero(ctx: ContextoIaFynix): SugerenciaIaFynix {
+  const pendientes = ctx.proximosPagos.filter((p) => p.monto > 0);
+
+  if (pendientes.length === 0) {
+    const sinCompromisos =
+      ctx.prestamosActivos.length === 0 &&
+      ctx.cuotasPopularActivas.length === 0 &&
+      ctx.gastosFijosQuincenaActual.every((g) => g.pagado) &&
+      ctx.tarjetas.length === 0;
+
+    if (sinCompromisos) {
+      return {
+        id: "que-pagar-primero",
+        titulo: "Qué pagar primero",
+        contenido: `En ${ctx.quincenaActual.etiqueta} no tienes compromisos pendientes registrados. Si tienes pagos fuera de la app, agrégalos en Gastos fijos, Préstamos o Tarjetas.`,
+      };
+    }
+
+    return {
+      id: "que-pagar-primero",
+      titulo: "Qué pagar primero",
+      contenido: `En ${ctx.quincenaActual.etiqueta} ya cubriste los compromisos que Fynix conoce. Revisa Tarjetas por si hay deuda sin actualizar.`,
+    };
+  }
+
+  const ordenados = [...pendientes].sort(
+    (a, b) => a.diasHastaVencimiento - b.diasHastaVencimiento
+  );
+  const prioridad = ordenados[0];
+
+  const lista = ordenados
+    .slice(0, 6)
+    .map((p, i) => {
+      const cuando =
+        p.esHoy
+          ? "hoy"
+          : p.diasHastaVencimiento === 1
+            ? "mañana"
+            : `en ${p.diasHastaVencimiento} días`;
+      const urg = p.urgente ? " ⚠" : "";
+      return `${i + 1}. **${p.nombre}** (${p.tipo}): ${fmt(p.monto, p.moneda)} · ${cuando}${urg}`;
+    })
+    .join("\n");
+
+  const totalQuincena = ordenados
+    .filter((p) => p.moneda === ctx.monedaReferencia)
+    .reduce((s, p) => s + p.monto, 0);
+
+  let consejo = `Prioriza **${prioridad.nombre}** (${fmt(prioridad.monto, prioridad.moneda)}`;
+  if (prioridad.esHoy) {
+    consejo += ", vence hoy";
+  } else if (prioridad.diasHastaVencimiento <= 3) {
+    consejo += `, vence en ${prioridad.diasHastaVencimiento} día${prioridad.diasHastaVencimiento !== 1 ? "s" : ""}`;
+  } else if (prioridad.urgente) {
+    consejo += ", marcado como urgente";
+  }
+  consejo += ").";
+
+  if (totalQuincena > 0) {
+    consejo += `\n\nCompromisos próximos en ${ctx.monedaReferencia}: ~${fmt(totalQuincena, ctx.monedaReferencia)}.`;
+    if (ctx.liquidezDisponible > 0) {
+      if (ctx.liquidezDisponible >= totalQuincena) {
+        consejo += ` Tu liquidez (${fmt(ctx.liquidezDisponible, ctx.monedaReferencia)}) alcanza para cubrirlos.`;
+      } else {
+        const faltante = totalQuincena - ctx.liquidezDisponible;
+        consejo += ` Te faltarían ~${fmt(faltante, ctx.monedaReferencia)} de liquidez si pagas todo.`;
+      }
+    }
+  }
+
+  const gastosPendientes = ctx.gastosFijosQuincenaActual.filter(
+    (g) => g.montoPendiente > 0
+  );
+  if (gastosPendientes.length > 0) {
+    const nombres = gastosPendientes
+      .slice(0, 3)
+      .map((g) => g.nombre)
+      .join(", ");
+    consejo += `\n\nGastos fijos pendientes en la quincena: ${nombres}${gastosPendientes.length > 3 ? "…" : ""}.`;
+  }
+
+  return {
+    id: "que-pagar-primero",
+    titulo: "Qué pagar primero",
+    contenido: `${consejo}\n\nOrden sugerido:\n${lista}`,
+  };
+}
+
 function sugerenciaGastosAltos(ctx: ContextoIaFynix): SugerenciaIaFynix | null {
   const top = ctx.gastosPorCategoria.slice(0, 3);
   if (top.length === 0) {
@@ -195,6 +283,7 @@ export function generarSugerenciasIaFynix(
   ctx: ContextoIaFynix
 ): SugerenciaIaFynix[] {
   const sugerencias = [
+    sugerenciaQuePagarPrimero(ctx),
     sugerenciaAhorro(ctx),
     sugerenciaTarjetaPagar(ctx),
     sugerenciaDineroSobrante(ctx),
@@ -226,6 +315,23 @@ export function responderConsultaIaFynix(
   const q = limpia.toLowerCase();
   const ids: string[] = [];
 
+  if (
+    coincideConsulta(q, [
+      "primero",
+      "prioridad",
+      "prestamo",
+      "préstamo",
+      "cuota",
+      "popular",
+      "fijo",
+      "quincena",
+      "venc",
+      "compromiso",
+      "pendiente",
+    ])
+  ) {
+    ids.push("que-pagar-primero");
+  }
   if (
     coincideConsulta(q, [
       "ahorr",

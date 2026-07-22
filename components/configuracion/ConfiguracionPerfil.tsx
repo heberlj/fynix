@@ -7,6 +7,12 @@ import { useFinanzas } from "@/context/FinanzasContext";
 import { PanelConfiguracion } from "@/components/configuracion/PanelConfiguracion";
 import { SelectorMoneda } from "@/components/ui/SelectorMoneda";
 import { validarDiasPago } from "@/lib/validar-configuracion";
+import {
+  notificacionesNavegadorDisponibles,
+  obtenerRecordatoriosPagos,
+  OPCIONES_DIAS_RECORDATORIO,
+  solicitarPermisoNotificaciones,
+} from "@/lib/recordatorios-pagos";
 
 const inputClass =
   "w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-accent";
@@ -20,10 +26,28 @@ export function ConfiguracionPerfil() {
   const [dia1, setDia1] = useState(String(configuracion.diasPago[0]));
   const [dia2, setDia2] = useState(String(configuracion.diasPago[1]));
   const [moneda, setMoneda] = useState(configuracion.moneda);
+  const recordatoriosInicial = obtenerRecordatoriosPagos(configuracion);
+  const [recordatoriosActivo, setRecordatoriosActivo] = useState(
+    recordatoriosInicial.activo
+  );
+  const [diasRecordatorio, setDiasRecordatorio] = useState(
+    String(recordatoriosInicial.diasAntes)
+  );
+  const [notificacionesNavegador, setNotificacionesNavegador] = useState(
+    recordatoriosInicial.notificacionesNavegador
+  );
+  const [mensajeNotificaciones, setMensajeNotificaciones] = useState("");
   const [guardado, setGuardado] = useState(false);
   const [error, setError] = useState("");
 
   const inicial = (sesion?.nombre ?? "?").charAt(0).toUpperCase();
+
+  useEffect(() => {
+    const r = obtenerRecordatoriosPagos(configuracion);
+    setRecordatoriosActivo(r.activo);
+    setDiasRecordatorio(String(r.diasAntes));
+    setNotificacionesNavegador(r.notificacionesNavegador);
+  }, [configuracion.recordatoriosPagos]);
 
   useEffect(() => {
     if (sesion?.nombre) setNombre(sesion.nombre);
@@ -63,10 +87,35 @@ export function ConfiguracionPerfil() {
     actualizarConfiguracion({
       diasPago: [d1, d2],
       moneda,
+      recordatoriosPagos: {
+        activo: recordatoriosActivo,
+        diasAntes: Number(diasRecordatorio) || 3,
+        notificacionesNavegador,
+      },
     });
 
     setGuardado(true);
     setTimeout(() => setGuardado(false), 2000);
+  }
+
+  async function activarNotificacionesNavegador() {
+    setMensajeNotificaciones("");
+    if (!notificacionesNavegadorDisponibles()) {
+      setMensajeNotificaciones(
+        "Tu navegador no admite notificaciones en este dispositivo."
+      );
+      return;
+    }
+    const permiso = await solicitarPermisoNotificaciones();
+    if (permiso === "granted") {
+      setNotificacionesNavegador(true);
+      setMensajeNotificaciones("Notificaciones activadas.");
+    } else if (permiso === "denied") {
+      setNotificacionesNavegador(false);
+      setMensajeNotificaciones(
+        "Permiso denegado. Actívalo en la configuración del navegador."
+      );
+    }
   }
 
   function handleCerrarSesion() {
@@ -166,6 +215,83 @@ export function ConfiguracionPerfil() {
               ingresos y diezmos.
             </p>
           </div>
+        </div>
+
+        <div className="border-t border-border pt-5">
+          <h3 className="text-sm font-semibold text-foreground">
+            Recordatorios de pago
+          </h3>
+          <p className="mt-1 text-xs text-muted">
+            Avisos en Home y, opcionalmente, notificaciones del navegador
+          </p>
+
+          <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-background p-4">
+            <input
+              type="checkbox"
+              checked={recordatoriosActivo}
+              onChange={(e) => setRecordatoriosActivo(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent"
+            />
+            <span>
+              <span className="block text-sm font-medium text-foreground">
+                Mostrar recordatorios de pagos próximos
+              </span>
+              <span className="mt-1 block text-xs text-muted">
+                Resalta en Home los compromisos que vencen pronto
+              </span>
+            </span>
+          </label>
+
+          <label className="mt-3 flex flex-col gap-1.5">
+            <span className="text-sm font-medium text-foreground">
+              Avisar con anticipación
+            </span>
+            <select
+              value={diasRecordatorio}
+              onChange={(e) => setDiasRecordatorio(e.target.value)}
+              disabled={!recordatoriosActivo}
+              className={inputClass}
+            >
+              {OPCIONES_DIAS_RECORDATORIO.map((op) => (
+                <option key={op.valor} value={op.valor}>
+                  {op.etiqueta}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {notificacionesNavegadorDisponibles() && (
+            <div className="mt-3 space-y-2">
+              <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-background p-4">
+                <input
+                  type="checkbox"
+                  checked={notificacionesNavegador}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      void activarNotificacionesNavegador();
+                    } else {
+                      setNotificacionesNavegador(false);
+                      setMensajeNotificaciones("");
+                    }
+                  }}
+                  disabled={!recordatoriosActivo}
+                  className="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-foreground">
+                    Notificaciones del navegador
+                  </span>
+                  <span className="mt-1 block text-xs text-muted">
+                    Te avisa aunque no tengas Fynix abierta (una vez al día por
+                    pago)
+                  </span>
+                </span>
+              </label>
+              {mensajeNotificaciones && (
+                <p className="text-xs text-muted">{mensajeNotificaciones}</p>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-3">

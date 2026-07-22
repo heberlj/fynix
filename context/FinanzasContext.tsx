@@ -24,8 +24,8 @@ import type {
   Transaccion,
 } from "@/types/finanzas";
 import { CATEGORIA_PAGO_TARJETA } from "@/types/finanzas";
-import { fechaHoy } from "@/lib/fechas";
-import { asignarQuincena } from "@/lib/quincenas";
+import { fechaHoy, mesActual } from "@/lib/fechas";
+import { asignarQuincena, obtenerQuincenasDelMes } from "@/lib/quincenas";
 import { disponibleLimiteCuotasPopular } from "@/lib/cuotas-popular";
 import {
   eliminarGastosFijosDeTarjeta,
@@ -33,7 +33,12 @@ import {
   sincronizarGastoFijoFinanciamiento,
 } from "@/lib/financiamiento-cuotas";
 import { aplicarEfectoTransaccion, origenPorDefectoPago } from "@/lib/transacciones";
-import { esGastoUnico, marcarGastoUnicoPagado } from "@/lib/gastos-fijos";
+import {
+  esGastoUnico,
+  gastoFijoPagable,
+  marcarGastoUnicoPagado,
+  obtenerGastosFijosPendientesEnPeriodo,
+} from "@/lib/gastos-fijos";
 import { normalizarAporteIngreso } from "@/lib/aporte-ingreso";
 import { colorCategoria } from "@/lib/graficos";
 import { iconoDefectoParaCategoria } from "@/lib/iconos-categoria";
@@ -102,6 +107,33 @@ interface FinanzasContextValue extends EstadoFinanzas {
   renombrarCategoriaIngreso: (anterior: string, nuevo: string) => void;
   eliminarCategoriaIngreso: (nombre: string) => void;
   importarEstado: (estado: EstadoFinanzas) => void;
+  registrarPagosGastosFijosEnLote: (
+    quincena: 1 | 2,
+    fecha?: string
+  ) => ResultadoRegistroLoteGastosFijos;
+}
+
+export interface ResultadoRegistroLoteGastosFijos {
+  registrados: number;
+  omitidos: { nombre: string; motivo: string }[];
+}
+
+function resolverOrigenPagoGastoFijo(
+  estado: EstadoFinanzas,
+  gasto: GastoFijo
+): OrigenFondo | null {
+  const tarjeta = estado.tarjetas.find((t) => t.moneda === gasto.moneda);
+  if (tarjeta) {
+    return { tipo: "tarjeta", id: tarjeta.id };
+  }
+  const cuenta = estado.cuentas.find((c) => c.moneda === gasto.moneda);
+  if (cuenta) {
+    return { tipo: "cuenta", id: cuenta.id };
+  }
+  if (gasto.moneda === estado.configuracion.moneda) {
+    return origenPorDefectoPago(estado.cuentas, gasto.moneda);
+  }
+  return null;
 }
 
 const FinanzasContext = createContext<FinanzasContextValue | null>(null);
@@ -684,20 +716,10 @@ export function FinanzasProvider({
     (gastoFijoId: string, fecha?: string) => {
       setEstado((prev) => {
         const gasto = prev.gastosFijos.find((g) => g.id === gastoFijoId);
-        if (!gasto || !gasto.activo) return prev;
+        if (!gasto || !gastoFijoPagable(gasto)) return prev;
 
-        const tarjeta = prev.tarjetas.find((t) => t.moneda === gasto.moneda);
-        const cuenta = prev.cuentas.find((c) => c.moneda === gasto.moneda);
-        let origen;
-        if (tarjeta) {
-          origen = { tipo: "tarjeta" as const, id: tarjeta.id };
-        } else if (cuenta) {
-          origen = { tipo: "cuenta" as const, id: cuenta.id };
-        } else if (gasto.moneda === prev.configuracion.moneda) {
-          origen = origenPorDefectoPago(prev.cuentas, gasto.moneda);
-        } else {
-          return prev;
-        }
+        const origen = resolverOrigenPagoGastoFijo(prev, gasto);
+        if (!origen) return prev;
 
         const monedaOrigen =
           origen.tipo === "tarjeta"
@@ -725,11 +747,121 @@ export function FinanzasProvider({
         };
 
         const conSaldos = aplicarEfectoTransaccion(prev, transaccion, 1);
+        let gastosFijos = conSaldos.gastosFijos;
+        if (esGastoUnico(gasto)) {
+          gastosFijos = marcarGastoUnicoPagado(gastosFijos, gasto.id, true);
+        }
         return {
           ...conSaldos,
+          gastosFijos,
           transacciones: [transaccion, ...prev.transacciones],
         };
       });
+    },
+    []
+  );
+
+  const registrarPagosGastosFijosEnLote = useCallback(
+    (quincena: 1 | 2, fecha?: string): ResultadoRegistroLoteGastosFijos => {
+      const resultado: ResultadoRegistroLoteGastosFijos = {
+        registrados: 0,
+        omitidos: [],
+      };
+
+      setEstado((prev) => {
+        const periodos = obtenerQuincenasDelMes(
+          mesActual(),
+          prev.configuracion.diasPago
+        );
+        const periodo =
+          periodos.find((p) => p.quincena === quincena) ??
+          periodos[quincena - 1];
+        if (!periodo) return prev;
+
+        const pendientes = obtenerGastosFijosPendientesEnPeriodo(
+          prev.gastosFijos,
+          prev.transacciones,
+          periodo
+        );
+        if (pendientes.length === 0) return prev;
+
+        const fechaPago = fecha ?? fechaHoy();
+        const { quincena: quincenaTx } = asignarQuincena(
+          fechaPago,
+          prev.configuracion
+        );
+
+        let estadoActual = prev;
+        const nuevasTransacciones: Transaccion[] = [];
+        const omitidos: { nombre: string; motivo: string }[] = [];
+
+        for (const { gasto, montoPendiente } of pendientes) {
+          const origen = resolverOrigenPagoGastoFijo(estadoActual, gasto);
+          if (!origen) {
+            omitidos.push({
+              nombre: gasto.nombre,
+              motivo: `Sin cuenta ni tarjeta en ${gasto.moneda}`,
+            });
+            continue;
+          }
+
+          const monedaOrigen =
+            origen.tipo === "tarjeta"
+              ? estadoActual.tarjetas.find((t) => t.id === origen.id)?.moneda
+              : origen.tipo === "cuenta"
+                ? estadoActual.cuentas.find((c) => c.id === origen.id)?.moneda
+                : estadoActual.configuracion.moneda;
+
+          if (monedaOrigen !== gasto.moneda) {
+            omitidos.push({
+              nombre: gasto.nombre,
+              motivo: `Origen en moneda distinta (${monedaOrigen})`,
+            });
+            continue;
+          }
+
+          const transaccion: Transaccion = {
+            id: generarId(),
+            descripcion: gasto.nombre,
+            monto: montoPendiente,
+            tipo: "gasto",
+            categoria: gasto.categoria,
+            fecha: fechaPago,
+            quincena: quincenaTx,
+            moneda: gasto.moneda,
+            origen,
+            gastoFijoId: gasto.id,
+          };
+
+          estadoActual = aplicarEfectoTransaccion(estadoActual, transaccion, 1);
+          if (esGastoUnico(gasto)) {
+            estadoActual = {
+              ...estadoActual,
+              gastosFijos: marcarGastoUnicoPagado(
+                estadoActual.gastosFijos,
+                gasto.id,
+                true
+              ),
+            };
+          }
+          nuevasTransacciones.push(transaccion);
+        }
+
+        if (nuevasTransacciones.length === 0) {
+          resultado.omitidos = omitidos;
+          return prev;
+        }
+
+        resultado.registrados = nuevasTransacciones.length;
+        resultado.omitidos = omitidos;
+
+        return {
+          ...estadoActual,
+          transacciones: [...nuevasTransacciones, ...prev.transacciones],
+        };
+      });
+
+      return resultado;
     },
     []
   );
@@ -1095,6 +1227,7 @@ export function FinanzasProvider({
       actualizarGastoFijo,
       eliminarGastoFijo,
       registrarPagoGastoFijo,
+      registrarPagosGastosFijosEnLote,
       registrarPagoTarjeta,
       agregarCuenta,
       actualizarCuenta,
@@ -1141,6 +1274,7 @@ export function FinanzasProvider({
       actualizarGastoFijo,
       eliminarGastoFijo,
       registrarPagoGastoFijo,
+      registrarPagosGastosFijosEnLote,
       registrarPagoTarjeta,
       agregarCuenta,
       actualizarCuenta,

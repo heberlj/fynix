@@ -5,7 +5,7 @@ import { urlBaseApp } from "@/lib/app-url";
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/login";
+  const next = searchParams.get("next") ?? "/";
   const destinoSeguro = next.startsWith("/") ? next : "/login";
   const base = urlBaseApp();
 

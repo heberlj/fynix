@@ -259,6 +259,23 @@ export const APORTE_INGRESO_ENTIDAD_ID = "__aporte-ingreso__";
 
 export type TemaApp = "claro" | "oscuro" | "sistema";
 
+export interface RecordatoriosPagosConfig {
+  activo: boolean;
+  /** Días antes del vencimiento para marcar como urgente y avisar */
+  diasAntes: number;
+  /** Notificaciones push del navegador (requiere permiso) */
+  notificacionesNavegador: boolean;
+}
+
+/** Regla aprendida al corregir categorías en importación bancaria */
+export interface ReglaCategoriaImportacion {
+  /** Descripción normalizada (clave de búsqueda) */
+  clave: string;
+  categoria: string;
+  tipo: "gasto" | "ingreso";
+  usos: number;
+}
+
 export interface ConfiguracionUsuario {
   /** Dos días del mes en que recibes tu salario, ej: [15, 30] */
   diasPago: [number, number];
@@ -276,6 +293,12 @@ export interface ConfiguracionUsuario {
   iconosCategoriaGasto?: Record<string, string>;
   /** Aporte opcional según % de ingresos (desactivado por defecto) */
   aporteIngreso?: AporteSegunIngreso;
+  /** Recordatorios de pagos próximos */
+  recordatoriosPagos?: RecordatoriosPagosConfig;
+  /** El usuario completó o omitió el onboarding inicial */
+  onboardingCompletado?: boolean;
+  /** Categorías aprendidas al importar movimientos del banco */
+  reglasCategoriaImportacion?: ReglaCategoriaImportacion[];
 }
 
 export interface ResumenQuincena {
@@ -354,6 +377,12 @@ export const CATEGORIAS_INGRESO_DEFAULT = [
   "Otros",
 ] as const;
 
+export const RECORDATORIOS_PAGOS_DEFAULT: RecordatoriosPagosConfig = {
+  activo: true,
+  diasAntes: 3,
+  notificacionesNavegador: false,
+};
+
 export const CONFIGURACION_DEFAULT: ConfiguracionUsuario = {
   diasPago: [15, 30],
   moneda: "DOP",
@@ -361,6 +390,8 @@ export const CONFIGURACION_DEFAULT: ConfiguracionUsuario = {
   categoriasGastosFijos: [...CATEGORIAS_GASTOS_FIJOS_DEFAULT],
   categoriasGasto: [...CATEGORIAS_GASTO_DEFAULT],
   categoriasIngreso: [...CATEGORIAS_INGRESO_DEFAULT],
+  recordatoriosPagos: { ...RECORDATORIOS_PAGOS_DEFAULT },
+  onboardingCompletado: false,
 };
 
 export const MONEDAS = [
