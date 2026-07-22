@@ -341,9 +341,29 @@ button {
   animation-delay: 0.32s;
 }
 
+.landing-entrada-activa main > .landing-anim-item:nth-child(5) {
+  animation-delay: 0.4s;
+}
+
+.landing-entrada-activa main > .landing-anim-item:nth-child(6) {
+  animation-delay: 0.48s;
+}
+
+.landing-entrada-activa main > .landing-anim-item:nth-child(7) {
+  animation-delay: 0.56s;
+}
+
+.landing-entrada-activa main > .landing-anim-item:nth-child(8) {
+  animation-delay: 0.64s;
+}
+
+.landing-entrada-activa main > .landing-anim-item:nth-child(9) {
+  animation-delay: 0.72s;
+}
+
 .landing-entrada-activa .landing-anim-footer {
   animation: landing-entrada-subir 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: 0.4s;
+  animation-delay: 0.8s;
 }
 
 @media (prefers-reduced-motion: reduce) {

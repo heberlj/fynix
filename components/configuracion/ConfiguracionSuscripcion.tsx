@@ -6,9 +6,13 @@ import { PanelConfiguracion } from "@/components/configuracion/PanelConfiguracio
 import { BotonPayPalPago } from "@/components/configuracion/BotonPayPalPago";
 import { useSuscripcion } from "@/hooks/useSuscripcion";
 import {
+  BENEFICIOS_PLAN_GRATIS,
+  BENEFICIOS_PLAN_PRO,
+  PRECIO_PRO_MENSUAL_USD,
+} from "@/lib/planes-contenido";
+import {
   etiquetaEstadoSuscripcion,
   etiquetaPlan,
-  PRECIO_PRO_MENSUAL_USD,
   tienePlanPro,
 } from "@/lib/suscripcion";
 import { formatearFecha } from "@/lib/fechas";
@@ -17,23 +21,6 @@ import {
   paypalPublicoConfigurado,
   usaEnlacePagoPaypal,
 } from "@/lib/paypal-client";
-
-const BENEFICIOS_GRATIS = [
-  "Hasta 2 cuentas y 1 tarjeta",
-  "Transacciones, gastos fijos y metas de ahorro",
-  "Quincenas y sincronización en la nube",
-  "Respaldo manual en JSON",
-  "20 mensajes de IA por semana",
-];
-
-const BENEFICIOS_PRO = [
-  "Cuentas y tarjetas ilimitadas",
-  "Cuotas Popular, BHD y Credimás",
-  "Exportación CSV y reportes mensuales",
-  "Importación de movimientos desde el banco (CSV)",
-  "100 mensajes de IA por semana",
-  "Soporte prioritario",
-];
 
 const PENDING_SUBSCRIPTION_KEY = "fynix_paypal_subscription_id";
 
@@ -329,7 +316,7 @@ export function ConfiguracionSuscripcion() {
           <div className="rounded-lg border border-border bg-background p-4">
             <h3 className="text-sm font-semibold text-foreground">Gratis</h3>
             <ul className="mt-3 space-y-2 text-sm text-muted">
-              {BENEFICIOS_GRATIS.map((item) => (
+              {BENEFICIOS_PLAN_GRATIS.map((item) => (
                 <li key={item} className="flex gap-2">
                   <span className="text-ingreso">✓</span>
                   <span>{item}</span>
@@ -344,7 +331,7 @@ export function ConfiguracionSuscripcion() {
               US${PRECIO_PRO_MENSUAL_USD}/mes · pago seguro con PayPal
             </p>
             <ul className="mt-3 space-y-2 text-sm text-muted">
-              {BENEFICIOS_PRO.map((item) => (
+              {BENEFICIOS_PLAN_PRO.map((item) => (
                 <li key={item} className="flex gap-2">
                   <span className="text-accent">✓</span>
                   <span>{item}</span>

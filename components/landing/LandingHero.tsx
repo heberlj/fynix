@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { LandingHeroAcciones } from "@/components/landing/LandingHeroAcciones";
 
 function BarraCategoria({
   etiqueta,
@@ -47,20 +47,7 @@ export function LandingHero() {
             soporte para pesos y dólares.
           </p>
 
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href="/registro"
-              className="rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-500"
-            >
-              Crear cuenta gratis
-            </Link>
-            <Link
-              href="/login"
-              className="rounded-lg border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
-            >
-              Ya tengo cuenta
-            </Link>
-          </div>
+          <LandingHeroAcciones />
         </div>
 
         <div className="relative mx-auto w-full max-w-md lg:max-w-none">

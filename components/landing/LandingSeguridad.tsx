@@ -27,7 +27,10 @@ const PRIVACIDAD = [
 
 export function LandingSeguridad() {
   return (
-    <section className="border-t border-white/5 px-4 py-20 sm:px-6">
+    <section
+      id="seguridad"
+      className="border-t border-white/5 px-4 py-20 sm:px-6 scroll-mt-20"
+    >
       <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-2 lg:items-start">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-blue-400">
